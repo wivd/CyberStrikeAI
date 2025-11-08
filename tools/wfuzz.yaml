@@ -1,0 +1,36 @@
+name: "wfuzz"
+command: "wfuzz"
+enabled: true
+
+short_description: "Web应用模糊测试工具"
+
+description: |
+  Wfuzz是一个Web应用模糊测试工具，用于发现Web应用中的漏洞。
+  
+  **主要功能：**
+  - Web应用模糊测试
+  - 参数发现
+  - 目录发现
+  - 多种过滤器
+  
+  **使用场景：**
+  - Web应用安全测试
+  - 参数模糊测试
+  - 目录枚举
+  - 漏洞发现
+
+parameters:
+  - name: "url"
+    type: "string"
+    description: "目标URL（使用FUZZ作为占位符）"
+    required: true
+    flag: "-u"
+    format: "flag"
+  
+  - name: "wordlist"
+    type: "string"
+    description: "字典文件路径"
+    required: false
+    flag: "-w"
+    format: "flag"
+

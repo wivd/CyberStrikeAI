@@ -1,0 +1,61 @@
+name: "dalfox"
+command: "dalfox"
+enabled: true
+
+short_description: "高级XSS漏洞扫描器"
+
+description: |
+  Dalfox是一个高级XSS漏洞扫描器，支持多种XSS检测技术。
+  
+  **主要功能：**
+  - XSS漏洞检测
+  - 盲XSS测试
+  - DOM挖掘
+  - 字典挖掘
+  
+  **使用场景：**
+  - XSS漏洞测试
+  - Web应用安全测试
+  - Bug bounty侦察
+  - 安全测试
+
+parameters:
+  - name: "url"
+    type: "string"
+    description: "目标URL"
+    required: true
+    flag: "-u"
+    format: "flag"
+  
+  - name: "pipe_mode"
+    type: "bool"
+    description: "使用管道模式输入"
+    required: false
+    flag: "--pipe"
+    format: "flag"
+    default: false
+  
+  - name: "blind"
+    type: "bool"
+    description: "启用盲XSS测试"
+    required: false
+    flag: "-b"
+    format: "flag"
+    default: false
+  
+  - name: "mining_dom"
+    type: "bool"
+    description: "启用DOM挖掘"
+    required: false
+    flag: "--mining-dom"
+    format: "flag"
+    default: true
+  
+  - name: "mining_dict"
+    type: "bool"
+    description: "启用字典挖掘"
+    required: false
+    flag: "--mining-dict"
+    format: "flag"
+    default: true
+

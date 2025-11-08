@@ -1,0 +1,33 @@
+name: "install-python-package"
+command: "pip"
+enabled: true
+
+short_description: "安装Python包工具"
+
+description: |
+  在虚拟环境中安装Python包。
+  
+  **主要功能：**
+  - 安装Python包
+  - 虚拟环境支持
+  - 依赖管理
+  
+  **使用场景：**
+  - 环境配置
+  - 依赖安装
+  - 工具安装
+
+parameters:
+  - name: "package"
+    type: "string"
+    description: "要安装的Python包名"
+    required: true
+    position: 0
+    format: "positional"
+  
+  - name: "env_name"
+    type: "string"
+    description: "虚拟环境名称"
+    required: false
+    default: "default"
+

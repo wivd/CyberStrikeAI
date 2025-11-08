@@ -1,0 +1,91 @@
+name: "nmap-advanced"
+command: "nmap"
+enabled: true
+
+short_description: "高级Nmap扫描，支持自定义NSE脚本和优化时序"
+
+description: |
+  高级Nmap扫描工具，支持自定义NSE脚本、优化时序和多种扫描技术。
+  
+  **主要功能：**
+  - 多种扫描技术（SYN, TCP, UDP等）
+  - 自定义NSE脚本
+  - 时序优化
+  - OS检测和版本检测
+  
+  **使用场景：**
+  - 高级网络扫描
+  - 深度安全评估
+  - 渗透测试
+  - 网络侦察
+
+parameters:
+  - name: "target"
+    type: "string"
+    description: "目标IP地址或主机名"
+    required: true
+    position: 0
+    format: "positional"
+  
+  - name: "scan_type"
+    type: "string"
+    description: "扫描类型（-sS, -sT, -sU等）"
+    required: false
+    flag: ""
+    format: "positional"
+    default: "-sS"
+  
+  - name: "ports"
+    type: "string"
+    description: "要扫描的端口"
+    required: false
+    flag: "-p"
+    format: "flag"
+  
+  - name: "timing"
+    type: "string"
+    description: "时序模板（T0-T5）"
+    required: false
+    flag: "-T"
+    format: "flag"
+    default: "T4"
+  
+  - name: "nse_scripts"
+    type: "string"
+    description: "要运行的自定义NSE脚本"
+    required: false
+    flag: "--script"
+    format: "flag"
+  
+  - name: "os_detection"
+    type: "bool"
+    description: "启用OS检测"
+    required: false
+    flag: "-O"
+    format: "flag"
+    default: false
+  
+  - name: "version_detection"
+    type: "bool"
+    description: "启用版本检测"
+    required: false
+    flag: "-sV"
+    format: "flag"
+    default: false
+  
+  - name: "aggressive"
+    type: "bool"
+    description: "启用激进扫描"
+    required: false
+    flag: "-A"
+    format: "flag"
+    default: false
+  
+  - name: "stealth"
+    type: "bool"
+    description: "启用隐蔽模式"
+    required: false
+    flag: "-sS"
+    format: "flag"
+    default: false
+

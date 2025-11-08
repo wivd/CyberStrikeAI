@@ -1,0 +1,53 @@
+name: "katana"
+command: "katana"
+enabled: true
+
+short_description: "下一代Web爬虫和蜘蛛工具"
+
+description: |
+  Katana是一个快速、智能的Web爬虫工具，用于发现Web应用中的端点和资源。
+  
+  **主要功能：**
+  - 智能Web爬虫
+  - JavaScript渲染支持
+  - 表单提取
+  - 端点发现
+  
+  **使用场景：**
+  - Web应用侦察
+  - 端点发现
+  - 内容爬取
+  - 安全测试
+
+parameters:
+  - name: "url"
+    type: "string"
+    description: "目标URL"
+    required: true
+    flag: "-u"
+    format: "flag"
+  
+  - name: "depth"
+    type: "int"
+    description: "爬取深度"
+    required: false
+    flag: "-d"
+    format: "flag"
+    default: 3
+  
+  - name: "js_crawl"
+    type: "bool"
+    description: "启用JavaScript爬取"
+    required: false
+    flag: "-js-crawl"
+    format: "flag"
+    default: true
+  
+  - name: "form_extraction"
+    type: "bool"
+    description: "启用表单提取"
+    required: false
+    flag: "-form"
+    format: "flag"
+    default: true
+

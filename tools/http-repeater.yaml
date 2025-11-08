@@ -1,0 +1,27 @@
+name: "http-repeater"
+command: "curl"
+enabled: true
+
+short_description: "发送精心制作的HTTP请求（Burp Repeater等效）"
+
+description: |
+  发送精心制作的HTTP请求，类似于Burp Suite的Repeater功能。
+  
+  **主要功能：**
+  - 请求重放
+  - 请求修改
+  - 响应查看
+  - 多次发送
+  
+  **使用场景：**
+  - HTTP请求测试
+  - 请求重放
+  - 安全测试
+  - 漏洞验证
+
+parameters:
+  - name: "request_spec"
+    type: "string"
+    description: "请求规范（JSON格式，包含url, method, headers, cookies, data）"
+    required: true
+

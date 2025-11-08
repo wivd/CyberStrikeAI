@@ -1,0 +1,42 @@
+name: "amass"
+command: "amass"
+enabled: true
+
+short_description: "子域名枚举和网络映射工具"
+
+description: |
+  Amass是一个深度子域名枚举和网络映射工具，通过多种技术发现目标域名的子域名。
+  
+  **主要功能：**
+  - 被动和主动子域名枚举
+  - 多种数据源集成
+  - 网络映射和可视化
+  - 证书透明度日志查询
+  
+  **使用场景：**
+  - 子域名发现
+  - 资产发现
+  - 渗透测试信息收集
+  - Bug bounty侦察
+
+parameters:
+  - name: "domain"
+    type: "string"
+    description: "目标域名"
+    required: true
+    flag: "-d"
+    format: "flag"
+  
+  - name: "mode"
+    type: "string"
+    description: "运行模式（enum, intel, viz）"
+    required: false
+    default: "enum"
+    flag: "-mode"
+    format: "flag"
+  
+  - name: "additional_args"
+    type: "string"
+    description: "额外的Amass参数"
+    required: false
+

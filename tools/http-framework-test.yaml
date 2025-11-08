@@ -1,0 +1,54 @@
+name: "http-framework-test"
+command: "curl"
+enabled: true
+
+short_description: "增强的HTTP测试框架（Burp Suite替代）"
+
+description: |
+  增强的HTTP测试框架，用于综合Web安全测试（Burp Suite替代）。
+  
+  **主要功能：**
+  - HTTP请求测试
+  - 代理拦截
+  - 重放器
+  - 入侵者
+  
+  **使用场景：**
+  - Web安全测试
+  - HTTP测试
+  - 渗透测试
+  - 安全评估
+
+parameters:
+  - name: "url"
+    type: "string"
+    description: "目标URL"
+    required: true
+  
+  - name: "method"
+    type: "string"
+    description: "HTTP方法（GET, POST, PUT, DELETE等）"
+    required: false
+    default: "GET"
+  
+  - name: "data"
+    type: "string"
+    description: "请求数据/参数（JSON格式）"
+    required: false
+  
+  - name: "headers"
+    type: "string"
+    description: "自定义请求头（JSON格式）"
+    required: false
+  
+  - name: "cookies"
+    type: "string"
+    description: "自定义Cookie（JSON格式）"
+    required: false
+  
+  - name: "action"
+    type: "string"
+    description: "要执行的操作（request, spider, proxy_history, repeater, intruder）"
+    required: false
+    default: "request"
+

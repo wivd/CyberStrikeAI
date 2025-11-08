@@ -1,0 +1,37 @@
+name: "objdump"
+command: "objdump"
+enabled: true
+
+short_description: "二进制文件反汇编工具"
+
+description: |
+  Objdump是GNU binutils的一部分，用于反汇编二进制文件。
+  
+  **主要功能：**
+  - 反汇编
+  - 符号表显示
+  - 节信息显示
+  - 多种架构支持
+  
+  **使用场景：**
+  - 二进制分析
+  - 逆向工程
+  - 程序理解
+  - 调试辅助
+
+parameters:
+  - name: "binary"
+    type: "string"
+    description: "要分析的二进制文件路径"
+    required: true
+    position: 0
+    format: "positional"
+  
+  - name: "disassemble"
+    type: "bool"
+    description: "反汇编二进制文件"
+    required: false
+    flag: "-d"
+    format: "flag"
+    default: true
+

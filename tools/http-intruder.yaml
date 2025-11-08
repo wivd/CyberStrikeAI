@@ -1,0 +1,55 @@
+name: "http-intruder"
+command: "ffuf"
+enabled: true
+
+short_description: "简单的Intruder（sniper）模糊测试工具"
+
+description: |
+  简单的Intruder（sniper）模糊测试，逐个参数迭代载荷。
+  
+  **主要功能：**
+  - 参数模糊测试
+  - 载荷迭代
+  - 多种位置支持
+  - 批量请求
+  
+  **使用场景：**
+  - 参数模糊测试
+  - 载荷测试
+  - 安全测试
+  - 漏洞发现
+
+parameters:
+  - name: "url"
+    type: "string"
+    description: "目标URL"
+    required: true
+  
+  - name: "method"
+    type: "string"
+    description: "HTTP方法"
+    required: false
+    default: "GET"
+  
+  - name: "location"
+    type: "string"
+    description: "载荷位置（query, body, headers, cookie）"
+    required: false
+    default: "query"
+  
+  - name: "params"
+    type: "string"
+    description: "参数列表（JSON格式）"
+    required: false
+  
+  - name: "payloads"
+    type: "string"
+    description: "载荷列表（JSON格式）"
+    required: false
+  
+  - name: "max_requests"
+    type: "int"
+    description: "最大请求数"
+    required: false
+    default: 100
+

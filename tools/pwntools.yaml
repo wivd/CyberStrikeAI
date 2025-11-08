@@ -1,0 +1,48 @@
+name: "pwntools"
+command: "python3"
+enabled: true
+
+short_description: "CTF和漏洞利用开发框架"
+
+description: |
+  Pwntools是一个CTF和漏洞利用开发框架，用于快速开发漏洞利用程序。
+  
+  **主要功能：**
+  - 漏洞利用开发
+  - 自动化脚本
+  - 网络交互
+  - 二进制分析辅助
+  
+  **使用场景：**
+  - CTF挑战
+  - 漏洞利用开发
+  - 二进制分析
+  - 安全研究
+
+parameters:
+  - name: "script_content"
+    type: "string"
+    description: "Python脚本内容（使用pwntools）"
+    required: true
+  
+  - name: "target_binary"
+    type: "string"
+    description: "本地二进制文件路径"
+    required: false
+  
+  - name: "target_host"
+    type: "string"
+    description: "远程主机地址"
+    required: false
+  
+  - name: "target_port"
+    type: "int"
+    description: "远程端口"
+    required: false
+  
+  - name: "exploit_type"
+    type: "string"
+    description: "漏洞利用类型（local, remote, format_string, rop）"
+    required: false
+    default: "local"
+

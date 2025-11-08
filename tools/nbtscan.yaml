@@ -1,0 +1,45 @@
+name: "nbtscan"
+command: "nbtscan"
+enabled: true
+
+short_description: "NetBIOS名称扫描工具"
+
+description: |
+  Nbtscan是一个NetBIOS名称扫描工具，用于发现网络中的Windows系统。
+  
+  **主要功能：**
+  - NetBIOS名称扫描
+  - Windows系统发现
+  - 网络映射
+  - 快速扫描
+  
+  **使用场景：**
+  - Windows网络发现
+  - NetBIOS枚举
+  - 网络映射
+  - 渗透测试
+
+parameters:
+  - name: "target"
+    type: "string"
+    description: "目标IP地址或范围"
+    required: true
+    position: 0
+    format: "positional"
+  
+  - name: "verbose"
+    type: "bool"
+    description: "详细输出"
+    required: false
+    flag: "-v"
+    format: "flag"
+    default: false
+  
+  - name: "timeout"
+    type: "int"
+    description: "超时时间（秒）"
+    required: false
+    flag: "-t"
+    format: "flag"
+    default: 2
+

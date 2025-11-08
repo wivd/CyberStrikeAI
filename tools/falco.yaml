@@ -1,0 +1,51 @@
+name: "falco"
+command: "falco"
+enabled: true
+
+short_description: "运行时安全监控工具"
+
+description: |
+  Falco是一个运行时安全监控工具，用于检测容器和主机中的异常行为。
+  
+  **主要功能：**
+  - 运行时监控
+  - 异常检测
+  - 规则引擎
+  - 实时告警
+  
+  **使用场景：**
+  - 运行时安全监控
+  - 异常检测
+  - 安全事件响应
+  - 合规性监控
+
+parameters:
+  - name: "config_file"
+    type: "string"
+    description: "Falco配置文件"
+    required: false
+    flag: "--config"
+    format: "flag"
+    default: "/etc/falco/falco.yaml"
+  
+  - name: "rules_file"
+    type: "string"
+    description: "自定义规则文件"
+    required: false
+    flag: "--rules"
+    format: "flag"
+  
+  - name: "output_format"
+    type: "string"
+    description: "输出格式（json, text）"
+    required: false
+    flag: "--output"
+    format: "flag"
+    default: "json"
+  
+  - name: "duration"
+    type: "int"
+    description: "监控持续时间（秒）"
+    required: false
+    default: 60
+

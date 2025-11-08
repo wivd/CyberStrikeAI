@@ -1,0 +1,43 @@
+name: "volatility"
+command: "volatility"
+enabled: true
+
+short_description: "内存取证分析工具"
+
+description: |
+  Volatility是一个内存取证框架，用于从内存转储中提取数字证据。
+  
+  **主要功能：**
+  - 内存转储分析
+  - 进程列表提取
+  - 网络连接分析
+  - 文件系统重建
+  
+  **使用场景：**
+  - 内存取证
+  - 恶意软件分析
+  - 事件响应
+  - 数字取证
+
+parameters:
+  - name: "memory_file"
+    type: "string"
+    description: "内存转储文件路径"
+    required: true
+    flag: "-f"
+    format: "flag"
+  
+  - name: "plugin"
+    type: "string"
+    description: "要使用的Volatility插件"
+    required: true
+    position: 0
+    format: "positional"
+  
+  - name: "profile"
+    type: "string"
+    description: "内存配置文件"
+    required: false
+    flag: "--profile"
+    format: "flag"
+

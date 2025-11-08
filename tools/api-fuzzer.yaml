@@ -1,0 +1,48 @@
+name: "api-fuzzer"
+command: "ffuf"
+enabled: true
+
+short_description: "API端点模糊测试工具，支持智能参数发现"
+
+description: |
+  高级API端点模糊测试工具，支持智能参数发现和漏洞评估。
+  
+  **主要功能：**
+  - API端点发现
+  - 参数模糊测试
+  - 漏洞评估
+  - 多种HTTP方法支持
+  
+  **使用场景：**
+  - API安全测试
+  - 端点发现
+  - 参数测试
+  - 安全评估
+
+parameters:
+  - name: "base_url"
+    type: "string"
+    description: "API基础URL"
+    required: true
+    flag: "-u"
+    format: "flag"
+  
+  - name: "endpoints"
+    type: "string"
+    description: "要测试的特定端点（逗号分隔）"
+    required: false
+  
+  - name: "methods"
+    type: "string"
+    description: "HTTP方法（逗号分隔）"
+    required: false
+    default: "GET,POST,PUT,DELETE"
+  
+  - name: "wordlist"
+    type: "string"
+    description: "端点发现字典"
+    required: false
+    default: "/usr/share/wordlists/api/api-endpoints.txt"
+    flag: "-w"
+    format: "flag"
+

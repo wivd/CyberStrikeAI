@@ -1,0 +1,56 @@
+name: "rpcclient"
+command: "rpcclient"
+enabled: true
+
+short_description: "RPC枚举工具"
+
+description: |
+  Rpcclient是一个RPC客户端工具，用于枚举Windows/Samba系统信息。
+  
+  **主要功能：**
+  - RPC枚举
+  - 用户和组枚举
+  - 域信息查询
+  - 系统信息收集
+  
+  **使用场景：**
+  - Windows系统渗透测试
+  - Samba枚举
+  - 域环境侦察
+  - 安全测试
+
+parameters:
+  - name: "target"
+    type: "string"
+    description: "目标IP地址"
+    required: true
+    position: 0
+    format: "positional"
+  
+  - name: "username"
+    type: "string"
+    description: "用户名"
+    required: false
+    flag: "-U"
+    format: "flag"
+  
+  - name: "password"
+    type: "string"
+    description: "密码"
+    required: false
+    flag: "-N"
+    format: "flag"
+  
+  - name: "domain"
+    type: "string"
+    description: "域名"
+    required: false
+    flag: "-W"
+    format: "flag"
+  
+  - name: "commands"
+    type: "string"
+    description: "RPC命令（分号分隔）"
+    required: false
+    default: "enumdomusers;enumdomgroups;querydominfo"
+

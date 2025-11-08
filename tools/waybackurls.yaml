@@ -1,0 +1,44 @@
+name: "waybackurls"
+command: "waybackurls"
+enabled: true
+
+short_description: "从Wayback Machine获取历史URL"
+
+description: |
+  Waybackurls从Wayback Machine获取目标域名的历史URL。
+  
+  **主要功能：**
+  - 历史URL发现
+  - 版本获取
+  - 子域名支持
+  
+  **使用场景：**
+  - 历史URL收集
+  - Bug bounty侦察
+  - 安全测试
+  - 内容发现
+
+parameters:
+  - name: "domain"
+    type: "string"
+    description: "目标域名"
+    required: true
+    position: 0
+    format: "positional"
+  
+  - name: "get_versions"
+    type: "bool"
+    description: "获取所有版本的URL"
+    required: false
+    flag: "-get-versions"
+    format: "flag"
+    default: false
+  
+  - name: "no_subs"
+    type: "bool"
+    description: "不包含子域名"
+    required: false
+    flag: "-no-subs"
+    format: "flag"
+    default: false
+

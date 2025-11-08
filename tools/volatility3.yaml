@@ -1,0 +1,43 @@
+name: "volatility3"
+command: "volatility"
+enabled: true
+
+short_description: "Volatility3内存取证分析工具"
+
+description: |
+  Volatility3是Volatility框架的下一代版本，用于内存取证分析。
+  
+  **主要功能：**
+  - 内存转储分析
+  - 高级插件系统
+  - 改进的性能
+  - 更好的文档
+  
+  **使用场景：**
+  - 内存取证
+  - 恶意软件分析
+  - 事件响应
+  - 数字取证
+
+parameters:
+  - name: "memory_file"
+    type: "string"
+    description: "内存转储文件路径"
+    required: true
+    flag: "-f"
+    format: "flag"
+  
+  - name: "plugin"
+    type: "string"
+    description: "要执行的Volatility3插件"
+    required: true
+    position: 0
+    format: "positional"
+  
+  - name: "output_file"
+    type: "string"
+    description: "输出文件路径"
+    required: false
+    flag: "-o"
+    format: "flag"
+

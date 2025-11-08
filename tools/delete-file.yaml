@@ -1,0 +1,35 @@
+name: "delete-file"
+command: "rm"
+enabled: true
+
+short_description: "删除文件或目录工具"
+
+description: |
+  删除服务器上的文件或目录。
+  
+  **主要功能：**
+  - 删除文件
+  - 删除目录
+  - 递归删除
+  
+  **使用场景：**
+  - 文件清理
+  - 临时文件删除
+  - 目录清理
+
+parameters:
+  - name: "filename"
+    type: "string"
+    description: "要删除的文件或目录名"
+    required: true
+    position: 0
+    format: "positional"
+  
+  - name: "recursive"
+    type: "bool"
+    description: "递归删除目录"
+    required: false
+    flag: "-r"
+    format: "flag"
+    default: false
+

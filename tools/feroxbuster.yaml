@@ -1,0 +1,44 @@
+name: "feroxbuster"
+command: "feroxbuster"
+enabled: true
+
+short_description: "递归内容发现工具"
+
+description: |
+  Feroxbuster是一个快速、简单的递归内容发现工具。
+  
+  **主要功能：**
+  - 递归目录发现
+  - 多线程支持
+  - 自动过滤
+  - 多种输出格式
+  
+  **使用场景：**
+  - Web内容发现
+  - 目录枚举
+  - 文件发现
+  - 安全测试
+
+parameters:
+  - name: "url"
+    type: "string"
+    description: "目标URL"
+    required: true
+    flag: "-u"
+    format: "flag"
+  
+  - name: "wordlist"
+    type: "string"
+    description: "字典文件路径"
+    required: false
+    flag: "-w"
+    format: "flag"
+  
+  - name: "threads"
+    type: "int"
+    description: "线程数"
+    required: false
+    flag: "-t"
+    format: "flag"
+    default: 10
+

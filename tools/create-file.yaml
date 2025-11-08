@@ -1,0 +1,36 @@
+name: "create-file"
+command: "sh"
+enabled: true
+
+short_description: "创建文件工具"
+
+description: |
+  在服务器上创建指定内容的文件。
+  
+  **主要功能：**
+  - 创建文件
+  - 写入内容
+  - 支持二进制文件
+  
+  **使用场景：**
+  - 文件创建
+  - 脚本生成
+  - 数据保存
+
+parameters:
+  - name: "filename"
+    type: "string"
+    description: "要创建的文件名"
+    required: true
+  
+  - name: "content"
+    type: "string"
+    description: "文件内容"
+    required: true
+  
+  - name: "binary"
+    type: "bool"
+    description: "是否为二进制内容"
+    required: false
+    default: false
+

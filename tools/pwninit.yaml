@@ -1,0 +1,51 @@
+name: "pwninit"
+command: "pwninit"
+enabled: true
+
+short_description: "CTF二进制漏洞利用设置工具"
+
+description: |
+  Pwninit是一个用于CTF二进制漏洞利用设置的工具，自动配置libc和loader。
+  
+  **主要功能：**
+  - 自动libc识别
+  - Loader配置
+  - 模板生成
+  - 环境设置
+  
+  **使用场景：**
+  - CTF挑战
+  - 漏洞利用开发
+  - 环境配置
+  - 安全研究
+
+parameters:
+  - name: "binary"
+    type: "string"
+    description: "二进制文件路径"
+    required: true
+    position: 0
+    format: "positional"
+  
+  - name: "libc"
+    type: "string"
+    description: "libc文件路径"
+    required: false
+    flag: "--libc"
+    format: "flag"
+  
+  - name: "ld"
+    type: "string"
+    description: "Loader文件路径"
+    required: false
+    flag: "--ld"
+    format: "flag"
+  
+  - name: "template_type"
+    type: "string"
+    description: "模板类型（python, c）"
+    required: false
+    flag: "--template"
+    format: "flag"
+    default: "python"
+

@@ -1,0 +1,36 @@
+name: "one-gadget"
+command: "one_gadget"
+enabled: true
+
+short_description: "在libc中查找one-shot RCE gadget的工具"
+
+description: |
+  One-gadget是一个用于在libc中查找one-shot RCE gadget的工具。
+  
+  **主要功能：**
+  - One-shot gadget搜索
+  - 约束级别检查
+  - 多种libc支持
+  
+  **使用场景：**
+  - CTF挑战
+  - 漏洞利用开发
+  - ROP链简化
+  - 安全研究
+
+parameters:
+  - name: "libc_path"
+    type: "string"
+    description: "libc二进制文件路径"
+    required: true
+    position: 0
+    format: "positional"
+  
+  - name: "level"
+    type: "int"
+    description: "约束级别（0, 1, 2）"
+    required: false
+    flag: "-l"
+    format: "flag"
+    default: 1
+

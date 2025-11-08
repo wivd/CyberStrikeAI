@@ -1,0 +1,44 @@
+name: "list-files"
+command: "ls"
+enabled: true
+
+short_description: "列出目录文件工具"
+
+description: |
+  列出服务器上指定目录中的文件。
+  
+  **主要功能：**
+  - 列出文件
+  - 显示详细信息
+  - 递归列出
+  
+  **使用场景：**
+  - 目录浏览
+  - 文件查找
+  - 系统检查
+
+parameters:
+  - name: "directory"
+    type: "string"
+    description: "要列出的目录（相对于服务器基础目录）"
+    required: false
+    default: "."
+    position: 0
+    format: "positional"
+  
+  - name: "long_format"
+    type: "bool"
+    description: "显示详细信息"
+    required: false
+    flag: "-l"
+    format: "flag"
+    default: true
+  
+  - name: "recursive"
+    type: "bool"
+    description: "递归列出"
+    required: false
+    flag: "-R"
+    format: "flag"
+    default: false
+

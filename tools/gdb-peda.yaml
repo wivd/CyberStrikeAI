@@ -1,0 +1,50 @@
+name: "gdb-peda"
+command: "gdb"
+enabled: true
+
+short_description: "带PEDA增强的GDB调试器"
+
+description: |
+  GDB-PEDA是带有PEDA（Python Exploit Development Assistance）增强的GDB调试器。
+  
+  **主要功能：**
+  - 增强的GDB功能
+  - 自动化分析
+  - 漏洞利用辅助
+  - 可视化显示
+  
+  **使用场景：**
+  - 二进制调试
+  - 漏洞利用开发
+  - 逆向工程
+  - 安全研究
+
+parameters:
+  - name: "binary"
+    type: "string"
+    description: "要调试的二进制文件"
+    required: false
+    position: 0
+    format: "positional"
+  
+  - name: "commands"
+    type: "string"
+    description: "GDB命令（分号分隔）"
+    required: false
+    flag: "-ex"
+    format: "flag"
+  
+  - name: "attach_pid"
+    type: "int"
+    description: "要附加的进程ID"
+    required: false
+    flag: "-p"
+    format: "flag"
+  
+  - name: "core_file"
+    type: "string"
+    description: "核心转储文件路径"
+    required: false
+    flag: "-c"
+    format: "flag"
+

@@ -1,0 +1,59 @@
+name: "masscan"
+command: "masscan"
+enabled: true
+
+short_description: "高速互联网级端口扫描工具"
+
+description: |
+  Masscan是一个高速端口扫描工具，可以在几分钟内扫描整个互联网。
+  
+  **主要功能：**
+  - 极高的扫描速度
+  - 支持大规模网络扫描
+  - Banner抓取
+  - 可配置扫描速率
+  
+  **使用场景：**
+  - 大规模网络扫描
+  - 互联网级扫描
+  - 快速端口发现
+
+parameters:
+  - name: "target"
+    type: "string"
+    description: "目标IP地址或CIDR范围"
+    required: true
+    position: 0
+    format: "positional"
+  
+  - name: "ports"
+    type: "string"
+    description: "端口范围（如：1-65535）"
+    required: false
+    flag: "-p"
+    format: "flag"
+    default: "1-65535"
+  
+  - name: "rate"
+    type: "int"
+    description: "每秒数据包数"
+    required: false
+    flag: "--rate"
+    format: "flag"
+    default: 1000
+  
+  - name: "interface"
+    type: "string"
+    description: "网络接口"
+    required: false
+    flag: "-e"
+    format: "flag"
+  
+  - name: "banners"
+    type: "bool"
+    description: "启用Banner抓取"
+    required: false
+    flag: "--banners"
+    format: "flag"
+    default: false
+

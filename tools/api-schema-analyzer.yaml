@@ -1,0 +1,37 @@
+name: "api-schema-analyzer"
+command: "spectral"
+enabled: true
+
+short_description: "API模式分析工具，识别潜在安全问题"
+
+description: |
+  分析API模式（OpenAPI/Swagger/GraphQL）并识别潜在安全问题。
+  
+  **主要功能：**
+  - API模式分析
+  - 安全问题识别
+  - 端点发现
+  - 建议生成
+  
+  **使用场景：**
+  - API安全审计
+  - 模式分析
+  - 安全问题发现
+  - 安全评估
+
+parameters:
+  - name: "schema_url"
+    type: "string"
+    description: "API模式URL（OpenAPI/Swagger/GraphQL）"
+    required: true
+    flag: "-s"
+    format: "flag"
+  
+  - name: "schema_type"
+    type: "string"
+    description: "模式类型（openapi, swagger, graphql）"
+    required: false
+    default: "openapi"
+    flag: "--type"
+    format: "flag"
+

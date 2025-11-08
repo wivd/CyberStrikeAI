@@ -1,0 +1,53 @@
+name: "graphql-scanner"
+command: "graphqlmap"
+enabled: true
+
+short_description: "GraphQL安全扫描和自省工具"
+
+description: |
+  高级GraphQL安全扫描和自省工具，用于检测GraphQL API中的安全问题。
+  
+  **主要功能：**
+  - GraphQL自省
+  - 查询深度测试
+  - 突变操作测试
+  - 漏洞评估
+  
+  **使用场景：**
+  - GraphQL安全测试
+  - API安全评估
+  - 漏洞发现
+  - 安全测试
+
+parameters:
+  - name: "endpoint"
+    type: "string"
+    description: "GraphQL端点URL"
+    required: true
+    flag: "-u"
+    format: "flag"
+  
+  - name: "introspection"
+    type: "bool"
+    description: "测试自省查询"
+    required: false
+    default: true
+    flag: "--introspection"
+    format: "flag"
+  
+  - name: "query_depth"
+    type: "int"
+    description: "要测试的最大查询深度"
+    required: false
+    default: 10
+    flag: "--depth"
+    format: "flag"
+  
+  - name: "test_mutations"
+    type: "bool"
+    description: "测试突变操作"
+    required: false
+    default: true
+    flag: "--mutations"
+    format: "flag"
+

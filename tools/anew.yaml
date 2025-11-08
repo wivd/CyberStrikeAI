@@ -1,0 +1,32 @@
+name: "anew"
+command: "anew"
+enabled: true
+
+short_description: "数据去重工具，用于处理文件中的新行"
+
+description: |
+  Anew是一个数据去重工具，用于将新行追加到文件中，自动过滤重复项。
+  
+  **主要功能：**
+  - 数据去重
+  - 文件追加
+  - 唯一行过滤
+  - 快速处理
+  
+  **使用场景：**
+  - 数据处理
+  - 结果去重
+  - 数据合并
+  - 工具链集成
+
+parameters:
+  - name: "input_data"
+    type: "string"
+    description: "输入数据"
+    required: true
+  
+  - name: "output_file"
+    type: "string"
+    description: "输出文件路径"
+    required: false
+

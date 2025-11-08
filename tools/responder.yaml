@@ -1,0 +1,60 @@
+name: "responder"
+command: "responder"
+enabled: true
+
+short_description: "LLMNR/NBT-NS/MDNS投毒和凭据收集工具"
+
+description: |
+  Responder是一个LLMNR/NBT-NS/MDNS投毒工具，用于收集网络凭据。
+  
+  **主要功能：**
+  - LLMNR/NBT-NS投毒
+  - 凭据收集
+  - WPAD代理
+  - 指纹识别
+  
+  **使用场景：**
+  - 网络渗透测试
+  - 凭据收集
+  - 横向移动
+  - 安全测试
+
+parameters:
+  - name: "interface"
+    type: "string"
+    description: "网络接口"
+    required: false
+    flag: "-I"
+    format: "flag"
+    default: "eth0"
+  
+  - name: "analyze"
+    type: "bool"
+    description: "仅分析模式"
+    required: false
+    flag: "-A"
+    format: "flag"
+    default: false
+  
+  - name: "wpad"
+    type: "bool"
+    description: "启用WPAD恶意代理"
+    required: false
+    flag: "-w"
+    format: "flag"
+    default: true
+  
+  - name: "fingerprint"
+    type: "bool"
+    description: "指纹识别模式"
+    required: false
+    flag: "-f"
+    format: "flag"
+    default: false
+  
+  - name: "duration"
+    type: "int"
+    description: "运行持续时间（秒）"
+    required: false
+    default: 300
+

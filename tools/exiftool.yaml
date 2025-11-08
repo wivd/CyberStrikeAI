@@ -1,0 +1,43 @@
+name: "exiftool"
+command: "exiftool"
+enabled: true
+
+short_description: "元数据提取工具"
+
+description: |
+  ExifTool用于读取、写入和编辑各种文件格式的元数据。
+  
+  **主要功能：**
+  - 元数据提取
+  - 多种文件格式支持
+  - 元数据编辑
+  - 批量处理
+  
+  **使用场景：**
+  - 取证分析
+  - 元数据检查
+  - 隐私保护
+  - 文件分析
+
+parameters:
+  - name: "file_path"
+    type: "string"
+    description: "要分析的文件路径"
+    required: true
+    position: 0
+    format: "positional"
+  
+  - name: "output_format"
+    type: "string"
+    description: "输出格式（json, xml, csv）"
+    required: false
+    flag: "-j"
+    format: "flag"
+  
+  - name: "tags"
+    type: "string"
+    description: "要提取的特定标签"
+    required: false
+    flag: "-TAG"
+    format: "flag"
+

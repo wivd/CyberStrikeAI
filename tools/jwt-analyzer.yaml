@@ -1,0 +1,36 @@
+name: "jwt-analyzer"
+command: "jwt_tool"
+enabled: true
+
+short_description: "JWT令牌分析和漏洞测试工具"
+
+description: |
+  高级JWT令牌分析和漏洞测试工具，用于检测JWT实现中的安全问题。
+  
+  **主要功能：**
+  - JWT令牌分析
+  - 漏洞测试
+  - 攻击向量检测
+  - 令牌操作
+  
+  **使用场景：**
+  - JWT安全测试
+  - 令牌分析
+  - 漏洞发现
+  - 安全测试
+
+parameters:
+  - name: "jwt_token"
+    type: "string"
+    description: "要分析的JWT令牌"
+    required: true
+    flag: "-t"
+    format: "flag"
+  
+  - name: "target_url"
+    type: "string"
+    description: "用于测试令牌操作的可选目标URL"
+    required: false
+    flag: "-u"
+    format: "flag"
+

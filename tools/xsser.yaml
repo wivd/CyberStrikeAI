@@ -1,0 +1,36 @@
+name: "xsser"
+command: "xsser"
+enabled: true
+
+short_description: "XSS漏洞测试工具"
+
+description: |
+  XSSer是一个自动化XSS漏洞测试工具。
+  
+  **主要功能：**
+  - XSS漏洞检测
+  - 多种XSS技术
+  - 自动化测试
+  - 报告生成
+  
+  **使用场景：**
+  - XSS漏洞测试
+  - Web应用安全测试
+  - 渗透测试
+  - 漏洞验证
+
+parameters:
+  - name: "url"
+    type: "string"
+    description: "目标URL"
+    required: true
+    flag: "--url"
+    format: "flag"
+  
+  - name: "params"
+    type: "string"
+    description: "要测试的参数"
+    required: false
+    flag: "--Fp"
+    format: "flag"
+

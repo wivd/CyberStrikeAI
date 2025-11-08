@@ -1,0 +1,37 @@
+name: "uro"
+command: "uro"
+enabled: true
+
+short_description: "URL过滤工具，用于过滤相似的URL"
+
+description: |
+  Uro是一个URL过滤工具，用于过滤掉相似的URL，去除重复项。
+  
+  **主要功能：**
+  - URL去重
+  - 相似URL过滤
+  - 白名单/黑名单支持
+  - 快速处理
+  
+  **使用场景：**
+  - URL去重
+  - 结果过滤
+  - 数据清理
+  - 工具链集成
+
+parameters:
+  - name: "urls"
+    type: "string"
+    description: "要过滤的URL（每行一个）"
+    required: true
+  
+  - name: "whitelist"
+    type: "string"
+    description: "白名单模式"
+    required: false
+  
+  - name: "blacklist"
+    type: "string"
+    description: "黑名单模式"
+    required: false
+

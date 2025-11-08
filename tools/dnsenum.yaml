@@ -1,0 +1,43 @@
+name: "dnsenum"
+command: "dnsenum"
+enabled: true
+
+short_description: "DNS枚举工具"
+
+description: |
+  DNSenum是一个DNS信息收集工具，用于枚举DNS信息。
+  
+  **主要功能：**
+  - DNS信息收集
+  - 子域名枚举
+  - 区域传输测试
+  - 反向查找
+  
+  **使用场景：**
+  - DNS枚举
+  - 子域名发现
+  - 网络侦察
+  - 渗透测试
+
+parameters:
+  - name: "domain"
+    type: "string"
+    description: "目标域名"
+    required: true
+    position: 0
+    format: "positional"
+  
+  - name: "dns_server"
+    type: "string"
+    description: "要使用的DNS服务器"
+    required: false
+    flag: "-n"
+    format: "flag"
+  
+  - name: "wordlist"
+    type: "string"
+    description: "用于暴力破解的字典文件"
+    required: false
+    flag: "-f"
+    format: "flag"
+

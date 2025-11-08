@@ -1,0 +1,37 @@
+name: "binwalk"
+command: "binwalk"
+enabled: true
+
+short_description: "固件和文件分析工具"
+
+description: |
+  Binwalk是一个固件分析工具，用于分析、提取和逆向工程固件镜像。
+  
+  **主要功能：**
+  - 文件签名识别
+  - 文件提取
+  - 熵分析
+  - 固件分析
+  
+  **使用场景：**
+  - 固件分析
+  - 文件格式识别
+  - 数据提取
+  - 逆向工程
+
+parameters:
+  - name: "file_path"
+    type: "string"
+    description: "要分析的文件路径"
+    required: true
+    position: 0
+    format: "positional"
+  
+  - name: "extract"
+    type: "bool"
+    description: "提取发现的文件"
+    required: false
+    flag: "-e"
+    format: "flag"
+    default: false
+

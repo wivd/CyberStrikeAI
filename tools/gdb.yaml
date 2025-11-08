@@ -1,0 +1,43 @@
+name: "gdb"
+command: "gdb"
+enabled: true
+
+short_description: "GNU调试器，用于二进制分析和调试"
+
+description: |
+  GDB是GNU调试器，用于调试和分析二进制程序。
+  
+  **主要功能：**
+  - 程序调试
+  - 内存分析
+  - 反汇编
+  - 断点设置
+  
+  **使用场景：**
+  - 二进制分析
+  - 漏洞研究
+  - 逆向工程
+  - 程序调试
+
+parameters:
+  - name: "binary"
+    type: "string"
+    description: "要分析的二进制文件路径"
+    required: true
+    position: 0
+    format: "positional"
+  
+  - name: "commands"
+    type: "string"
+    description: "要执行的GDB命令（分号分隔）"
+    required: false
+    flag: "-ex"
+    format: "flag"
+  
+  - name: "script_file"
+    type: "string"
+    description: "GDB脚本文件路径"
+    required: false
+    flag: "-x"
+    format: "flag"
+

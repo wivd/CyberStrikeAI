@@ -1,0 +1,48 @@
+name: "angr"
+command: "python3"
+enabled: true
+
+short_description: "符号执行和二进制分析框架"
+
+description: |
+  Angr是一个符号执行和二进制分析框架，用于自动化漏洞发现和利用。
+  
+  **主要功能：**
+  - 符号执行
+  - 控制流图分析
+  - 静态分析
+  - 漏洞发现
+  
+  **使用场景：**
+  - 二进制分析
+  - 漏洞发现
+  - 符号执行
+  - 安全研究
+
+parameters:
+  - name: "binary"
+    type: "string"
+    description: "要分析的二进制文件路径"
+    required: true
+  
+  - name: "script_content"
+    type: "string"
+    description: "自定义angr脚本内容"
+    required: false
+  
+  - name: "find_address"
+    type: "string"
+    description: "符号执行中要查找的地址"
+    required: false
+  
+  - name: "avoid_addresses"
+    type: "string"
+    description: "要避免的地址（逗号分隔）"
+    required: false
+  
+  - name: "analysis_type"
+    type: "string"
+    description: "分析类型（symbolic, cfg, static）"
+    required: false
+    default: "symbolic"
+

@@ -1,0 +1,44 @@
+name: "arp-scan"
+command: "arp-scan"
+enabled: true
+
+short_description: "ARP网络发现工具"
+
+description: |
+  Arp-scan是一个ARP网络发现工具，用于发现本地网络中的活动主机。
+  
+  **主要功能：**
+  - ARP扫描
+  - 本地网络发现
+  - MAC地址识别
+  - 快速扫描
+  
+  **使用场景：**
+  - 本地网络发现
+  - 主机发现
+  - 网络映射
+  - 渗透测试
+
+parameters:
+  - name: "target"
+    type: "string"
+    description: "目标IP范围（如果不使用local_network）"
+    required: false
+    flag: "-l"
+    format: "flag"
+  
+  - name: "interface"
+    type: "string"
+    description: "网络接口"
+    required: false
+    flag: "-I"
+    format: "flag"
+  
+  - name: "local_network"
+    type: "bool"
+    description: "扫描本地网络"
+    required: false
+    flag: "-l"
+    format: "flag"
+    default: false
+

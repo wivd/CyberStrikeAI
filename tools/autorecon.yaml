@@ -1,0 +1,61 @@
+name: "autorecon"
+command: "autorecon"
+enabled: true
+
+short_description: "自动化综合侦察工具"
+
+description: |
+  AutoRecon是一个自动化综合侦察工具，用于执行全面的目标枚举。
+  
+  **主要功能：**
+  - 自动化端口扫描
+  - 服务识别
+  - 漏洞扫描
+  - 综合报告
+  
+  **使用场景：**
+  - 综合安全评估
+  - 渗透测试
+  - 网络侦察
+  - 安全审计
+
+parameters:
+  - name: "target"
+    type: "string"
+    description: "目标IP地址或主机名"
+    required: true
+    position: 0
+    format: "positional"
+  
+  - name: "output_dir"
+    type: "string"
+    description: "输出目录"
+    required: false
+    flag: "-o"
+    format: "flag"
+    default: "/tmp/autorecon"
+  
+  - name: "port_scans"
+    type: "string"
+    description: "端口扫描配置"
+    required: false
+    flag: "--port-scans"
+    format: "flag"
+    default: "top-100-ports"
+  
+  - name: "service_scans"
+    type: "string"
+    description: "服务扫描配置"
+    required: false
+    flag: "--service-scans"
+    format: "flag"
+    default: "default"
+  
+  - name: "timeout"
+    type: "int"
+    description: "单个扫描的超时时间（秒）"
+    required: false
+    flag: "--timeout"
+    format: "flag"
+    default: 300
+

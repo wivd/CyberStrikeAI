@@ -1,0 +1,85 @@
+name: "httpx"
+command: "httpx"
+enabled: true
+
+short_description: "快速HTTP探测和指纹识别工具"
+
+description: |
+  HTTPx是一个快速HTTP探测工具，用于发现和验证HTTP服务。
+  
+  **主要功能：**
+  - 快速HTTP探测
+  - 技术检测
+  - 状态码过滤
+  - 多线程支持
+  
+  **使用场景：**
+  - HTTP服务发现
+  - 技术栈识别
+  - Web应用发现
+  - 安全测试
+
+parameters:
+  - name: "target"
+    type: "string"
+    description: "目标文件或单个URL"
+    required: true
+    flag: "-u"
+    format: "flag"
+  
+  - name: "probe"
+    type: "bool"
+    description: "启用探测"
+    required: false
+    flag: "-probe"
+    format: "flag"
+    default: true
+  
+  - name: "tech_detect"
+    type: "bool"
+    description: "启用技术检测"
+    required: false
+    flag: "-td"
+    format: "flag"
+    default: false
+  
+  - name: "status_code"
+    type: "bool"
+    description: "显示状态码"
+    required: false
+    flag: "-sc"
+    format: "flag"
+    default: false
+  
+  - name: "content_length"
+    type: "bool"
+    description: "显示内容长度"
+    required: false
+    flag: "-cl"
+    format: "flag"
+    default: false
+  
+  - name: "title"
+    type: "bool"
+    description: "显示页面标题"
+    required: false
+    flag: "-title"
+    format: "flag"
+    default: false
+  
+  - name: "web_server"
+    type: "bool"
+    description: "显示Web服务器"
+    required: false
+    flag: "-server"
+    format: "flag"
+    default: false
+  
+  - name: "threads"
+    type: "int"
+    description: "线程数"
+    required: false
+    flag: "-t"
+    format: "flag"
+    default: 50
+

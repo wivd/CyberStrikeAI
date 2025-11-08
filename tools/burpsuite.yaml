@@ -1,0 +1,65 @@
+name: "burpsuite"
+command: "burpsuite"
+enabled: true
+
+short_description: "Web应用安全测试平台"
+
+description: |
+  Burp Suite是一个Web应用安全测试平台，提供全面的Web安全测试功能。
+  
+  **主要功能：**
+  - Web应用安全扫描
+  - 代理拦截
+  - 漏洞扫描
+  - 手动测试工具
+  
+  **使用场景：**
+  - Web应用安全测试
+  - 渗透测试
+  - 漏洞扫描
+  - 安全评估
+
+parameters:
+  - name: "project_file"
+    type: "string"
+    description: "Burp项目文件路径"
+    required: false
+    flag: "--project-file"
+    format: "flag"
+  
+  - name: "config_file"
+    type: "string"
+    description: "Burp配置文件路径"
+    required: false
+    flag: "--config-file"
+    format: "flag"
+  
+  - name: "target"
+    type: "string"
+    description: "目标URL"
+    required: false
+    flag: "--target"
+    format: "flag"
+  
+  - name: "headless"
+    type: "bool"
+    description: "无头模式运行"
+    required: false
+    flag: "--headless"
+    format: "flag"
+    default: false
+  
+  - name: "scan_type"
+    type: "string"
+    description: "要执行的扫描类型"
+    required: false
+    flag: "--scan-type"
+    format: "flag"
+  
+  - name: "output_file"
+    type: "string"
+    description: "输出文件路径"
+    required: false
+    flag: "--output"
+    format: "flag"
+

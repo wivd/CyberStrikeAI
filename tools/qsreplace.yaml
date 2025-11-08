@@ -1,0 +1,33 @@
+name: "qsreplace"
+command: "qsreplace"
+enabled: true
+
+short_description: "查询字符串参数替换工具"
+
+description: |
+  Qsreplace是一个用于替换URL中查询字符串参数的工具，常用于模糊测试。
+  
+  **主要功能：**
+  - 参数替换
+  - 批量处理
+  - 多种替换模式
+  - 快速处理
+  
+  **使用场景：**
+  - 参数模糊测试
+  - URL处理
+  - 工具链集成
+  - 安全测试
+
+parameters:
+  - name: "urls"
+    type: "string"
+    description: "要处理的URL（每行一个）"
+    required: true
+  
+  - name: "replacement"
+    type: "string"
+    description: "替换字符串"
+    required: false
+    default: "FUZZ"
+

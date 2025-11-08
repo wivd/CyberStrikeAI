@@ -1,0 +1,37 @@
+name: "libc-database"
+command: "libc-database"
+enabled: true
+
+short_description: "libc识别和偏移查找工具"
+
+description: |
+  Libc-database是一个用于libc识别和偏移查找的工具。
+  
+  **主要功能：**
+  - libc识别
+  - 符号偏移查找
+  - libc下载
+  - 数据库查询
+  
+  **使用场景：**
+  - CTF挑战
+  - 漏洞利用开发
+  - libc识别
+  - 安全研究
+
+parameters:
+  - name: "action"
+    type: "string"
+    description: "要执行的操作（find, dump, download）"
+    required: true
+  
+  - name: "symbols"
+    type: "string"
+    description: "符号和偏移（格式：symbol1:offset1 symbol2:offset2）"
+    required: false
+  
+  - name: "libc_id"
+    type: "string"
+    description: "Libc ID（用于dump/download操作）"
+    required: false
+

@@ -1,0 +1,36 @@
+name: "radare2"
+command: "r2"
+enabled: true
+
+short_description: "二进制分析和逆向工程框架"
+
+description: |
+  Radare2是一个完整的二进制分析和逆向工程框架。
+  
+  **主要功能：**
+  - 反汇编和反编译
+  - 调试支持
+  - 脚本支持
+  - 多种架构支持
+  
+  **使用场景：**
+  - 二进制分析
+  - 逆向工程
+  - 漏洞研究
+  - 恶意软件分析
+
+parameters:
+  - name: "binary"
+    type: "string"
+    description: "要分析的二进制文件路径"
+    required: true
+    position: 0
+    format: "positional"
+  
+  - name: "commands"
+    type: "string"
+    description: "要执行的Radare2命令（分号分隔）"
+    required: false
+    flag: "-c"
+    format: "flag"
+

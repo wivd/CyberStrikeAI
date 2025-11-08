@@ -1,0 +1,32 @@
+name: "metasploit"
+command: "msfconsole"
+enabled: true
+
+short_description: "Metasploit渗透测试框架"
+
+description: |
+  Metasploit是一个渗透测试框架，提供大量漏洞利用模块和辅助工具。
+  
+  **主要功能：**
+  - 漏洞利用
+  - 载荷生成
+  - 后渗透模块
+  - 辅助工具
+  
+  **使用场景：**
+  - 渗透测试
+  - 漏洞利用
+  - 安全测试
+  - 安全研究
+
+parameters:
+  - name: "module"
+    type: "string"
+    description: "要使用的Metasploit模块"
+    required: true
+  
+  - name: "options"
+    type: "string"
+    description: "模块选项（JSON格式）"
+    required: false
+
