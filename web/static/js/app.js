@@ -132,6 +132,59 @@ function toggleProgressDetails(progressId) {
     }
 }
 
+// 折叠所有进度详情
+function collapseAllProgressDetails(assistantMessageId, progressId) {
+    // 折叠集成到MCP区域的详情
+    const detailsId = 'process-details-' + assistantMessageId;
+    const detailsContainer = document.getElementById(detailsId);
+    if (detailsContainer) {
+        const timeline = detailsContainer.querySelector('.progress-timeline');
+        if (timeline && timeline.classList.contains('expanded')) {
+            timeline.classList.remove('expanded');
+            const btn = document.querySelector(`#${assistantMessageId} .process-detail-btn`);
+            if (btn) {
+                btn.innerHTML = '<span>📋 过程详情</span>';
+            }
+        }
+    }
+    
+    // 折叠独立的详情组件（通过convertProgressToDetails创建的）
+    // 查找所有以details-开头的详情组件
+    const allDetails = document.querySelectorAll('[id^="details-"]');
+    allDetails.forEach(detail => {
+        const timeline = detail.querySelector('.progress-timeline');
+        const toggleBtn = detail.querySelector('.progress-toggle');
+        if (timeline && timeline.classList.contains('expanded')) {
+            timeline.classList.remove('expanded');
+            if (toggleBtn) {
+                toggleBtn.textContent = '展开详情';
+            }
+        }
+    });
+    
+    // 折叠原始的进度消息（如果还存在）
+    if (progressId) {
+        const progressTimeline = document.getElementById(progressId + '-timeline');
+        const progressToggleBtn = document.querySelector(`#${progressId} .progress-toggle`);
+        if (progressTimeline && progressTimeline.classList.contains('expanded')) {
+            progressTimeline.classList.remove('expanded');
+            if (progressToggleBtn) {
+                progressToggleBtn.textContent = '展开详情';
+            }
+        }
+    }
+}
+
+// 获取当前助手消息ID（用于done事件）
+function getAssistantId() {
+    // 从最近的助手消息中获取ID
+    const messages = document.querySelectorAll('.message.assistant');
+    if (messages.length > 0) {
+        return messages[messages.length - 1].id;
+    }
+    return null;
+}
+
 // 将进度详情集成到工具调用区域
 function integrateProgressToMCPSection(progressId, assistantMessageId) {
     const progressElement = document.getElementById(progressId);
@@ -186,12 +239,20 @@ function integrateProgressToMCPSection(progressId, assistantMessageId) {
         }
     }
     
-    // 设置详情内容
+    // 设置详情内容（默认折叠状态）
     detailsContainer.innerHTML = `
         <div class="process-details-content">
             ${hasContent ? `<div class="progress-timeline" id="${detailsId}-timeline">${timelineHTML}</div>` : '<div class="progress-timeline-empty">暂无过程详情</div>'}
         </div>
     `;
+    
+    // 确保初始状态是折叠的
+    if (hasContent) {
+        const timeline = document.getElementById(detailsId + '-timeline');
+        if (timeline) {
+            timeline.classList.remove('expanded');
+        }
+    }
     
     // 移除原来的进度消息
     removeMessage(progressId);
@@ -224,6 +285,14 @@ function toggleProcessDetails(progressId, assistantMessageId) {
             timeline.classList.add('expanded');
             if (btn) btn.innerHTML = '<span>📋 收起详情</span>';
         }
+    }
+    
+    // 滚动到底部以便查看展开的内容
+    if (timeline && timeline.classList.contains('expanded')) {
+        setTimeout(() => {
+            const messagesDiv = document.getElementById('chat-messages');
+            messagesDiv.scrollTop = messagesDiv.scrollHeight;
+        }, 100);
     }
 }
 
@@ -380,6 +449,11 @@ function handleStreamEvent(event, progressElement, progressId,
             // 将进度详情集成到工具调用区域
             integrateProgressToMCPSection(progressId, assistantId);
             
+            // 延迟自动折叠详情（3秒后）
+            setTimeout(() => {
+                collapseAllProgressDetails(assistantId, progressId);
+            }, 3000);
+            
             // 刷新对话列表
             loadConversations();
             break;
@@ -404,6 +478,16 @@ function handleStreamEvent(event, progressElement, progressId,
                 currentConversationId = event.data.conversationId;
                 updateActiveConversation();
             }
+            // 完成时自动折叠所有详情（延迟一下确保response事件已处理）
+            setTimeout(() => {
+                const assistantIdFromDone = getAssistantId();
+                if (assistantIdFromDone) {
+                    collapseAllProgressDetails(assistantIdFromDone, progressId);
+                } else {
+                    // 如果无法获取助手ID，尝试折叠所有详情
+                    collapseAllProgressDetails(null, progressId);
+                }
+            }, 500);
             break;
     }
     

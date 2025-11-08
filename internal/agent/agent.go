@@ -271,8 +271,11 @@ func (a *Agent) AgentLoopWithProgress(ctx context.Context, userInput string, his
 		MCPExecutionIDs: make([]string, 0),
 	}
 
-	maxIterations := 10
+	maxIterations := 30
 	for i := 0; i < maxIterations; i++ {
+		// 检查是否是最后一次迭代
+		isLastIteration := (i == maxIterations-1)
+		
 		// 获取可用工具
 		tools := a.getAvailableTools()
 
@@ -281,6 +284,12 @@ func (a *Agent) AgentLoopWithProgress(ctx context.Context, userInput string, his
 			sendProgress("iteration", "开始分析请求并制定测试策略", map[string]interface{}{
 				"iteration": i + 1,
 				"total":     maxIterations,
+			})
+		} else if isLastIteration {
+			sendProgress("iteration", fmt.Sprintf("第 %d 轮迭代（最后一次）", i+1), map[string]interface{}{
+				"iteration": i + 1,
+				"total":     maxIterations,
+				"isLast":    true,
 			})
 		} else {
 			sendProgress("iteration", fmt.Sprintf("第 %d 轮迭代", i+1), map[string]interface{}{
@@ -439,6 +448,29 @@ func (a *Agent) AgentLoopWithProgress(ctx context.Context, userInput string, his
 					}
 				}
 			}
+			
+			// 如果是最后一次迭代，执行完工具后要求AI进行总结
+			if isLastIteration {
+				sendProgress("progress", "最后一次迭代：正在生成总结和下一步计划...", nil)
+				// 添加用户消息，要求AI进行总结
+				messages = append(messages, ChatMessage{
+					Role:    "user",
+					Content: "这是最后一次迭代。请总结到目前为止的所有测试结果、发现的问题和已完成的工作。如果需要继续测试，请提供详细的下一步执行计划。请直接回复，不要调用工具。",
+				})
+				// 立即调用OpenAI获取总结
+				summaryResponse, err := a.callOpenAI(ctx, messages, []Tool{}) // 不提供工具，强制AI直接回复
+				if err == nil && summaryResponse != nil && len(summaryResponse.Choices) > 0 {
+					summaryChoice := summaryResponse.Choices[0]
+					if summaryChoice.Message.Content != "" {
+						result.Response = summaryChoice.Message.Content
+						sendProgress("progress", "总结生成完成", nil)
+						return result, nil
+					}
+				}
+				// 如果获取总结失败，跳出循环，让后续逻辑处理
+				break
+			}
+			
 			continue
 		}
 
@@ -455,6 +487,33 @@ func (a *Agent) AgentLoopWithProgress(ctx context.Context, userInput string, his
 			})
 		}
 
+		// 如果是最后一次迭代，无论finish_reason是什么，都要求AI进行总结
+		if isLastIteration {
+			sendProgress("progress", "最后一次迭代：正在生成总结和下一步计划...", nil)
+			// 添加用户消息，要求AI进行总结
+			messages = append(messages, ChatMessage{
+				Role:    "user",
+				Content: "这是最后一次迭代。请总结到目前为止的所有测试结果、发现的问题和已完成的工作。如果需要继续测试，请提供详细的下一步执行计划。请直接回复，不要调用工具。",
+			})
+			// 立即调用OpenAI获取总结
+			summaryResponse, err := a.callOpenAI(ctx, messages, []Tool{}) // 不提供工具，强制AI直接回复
+			if err == nil && summaryResponse != nil && len(summaryResponse.Choices) > 0 {
+				summaryChoice := summaryResponse.Choices[0]
+				if summaryChoice.Message.Content != "" {
+					result.Response = summaryChoice.Message.Content
+					sendProgress("progress", "总结生成完成", nil)
+					return result, nil
+				}
+			}
+			// 如果获取总结失败，使用当前回复作为结果
+			if choice.Message.Content != "" {
+				result.Response = choice.Message.Content
+				return result, nil
+			}
+			// 如果都没有内容，跳出循环，让后续逻辑处理
+			break
+		}
+		
 		// 如果完成，返回结果
 		if choice.FinishReason == "stop" {
 			sendProgress("progress", "正在生成最终回复...", nil)
@@ -463,7 +522,27 @@ func (a *Agent) AgentLoopWithProgress(ctx context.Context, userInput string, his
 		}
 	}
 
-	result.Response = "达到最大迭代次数"
+	// 如果循环结束仍未返回，说明达到了最大迭代次数
+	// 尝试最后一次调用AI获取总结
+	sendProgress("progress", "达到最大迭代次数，正在生成总结...", nil)
+	finalSummaryPrompt := ChatMessage{
+		Role:    "user",
+		Content: "已达到最大迭代次数（30轮）。请总结到目前为止的所有测试结果、发现的问题和已完成的工作。如果需要继续测试，请提供详细的下一步执行计划。请直接回复，不要调用工具。",
+	}
+	messages = append(messages, finalSummaryPrompt)
+	
+	summaryResponse, err := a.callOpenAI(ctx, messages, []Tool{}) // 不提供工具，强制AI直接回复
+	if err == nil && summaryResponse != nil && len(summaryResponse.Choices) > 0 {
+		summaryChoice := summaryResponse.Choices[0]
+		if summaryChoice.Message.Content != "" {
+			result.Response = summaryChoice.Message.Content
+			sendProgress("progress", "总结生成完成", nil)
+			return result, nil
+		}
+	}
+	
+	// 如果无法生成总结，返回友好的提示
+	result.Response = "已达到最大迭代次数（30轮）。系统已执行了多轮测试，但由于达到迭代上限，无法继续自动执行。建议您查看已执行的工具结果，或提出新的测试请求以继续测试。"
 	return result, nil
 }
 

@@ -569,12 +569,21 @@ header {
     background: rgba(156, 39, 176, 0.1) !important;
     border-color: rgba(156, 39, 176, 0.3) !important;
     color: #9c27b0 !important;
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
 }
 
 .process-detail-btn:hover {
     background: rgba(156, 39, 176, 0.2) !important;
     border-color: #9c27b0 !important;
     color: #7b1fa2 !important;
+}
+
+.process-detail-btn span {
+    display: inline-flex;
+    align-items: center;
+    gap: 4px;
 }
 
 .process-details-container {
@@ -592,11 +601,14 @@ header {
     max-height: 0;
     overflow: hidden;
     transition: max-height 0.3s ease;
+    opacity: 0;
 }
 
 .process-details-content .progress-timeline.expanded {
     max-height: 2000px;
     overflow-y: auto;
+    opacity: 1;
+    margin-top: 12px;
 }
 
 .chat-input-container {

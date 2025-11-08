@@ -317,95 +317,21 @@ func (e *Executor) buildCommandArgs(toolName string, toolConfig *config.ToolConf
 		return cmdArgs
 	}
 
-	// 向后兼容：如果没有定义参数，使用旧的硬编码逻辑
-	switch toolName {
-	case "nmap":
-		// nmap -sT -sV -sC target [ports]
-		// 使用 -sT (TCP连接扫描) 而不是 -sS (SYN扫描)，因为 -sS 需要root权限
-		e.logger.Debug("处理nmap参数",
-			zap.Any("args", args),
-		)
-		
-		// 尝试多种方式获取target参数
-		var target string
-		var ok bool
-		
-		// 方式1: 直接获取target
-		if target, ok = args["target"].(string); !ok || target == "" {
-			// 方式2: 尝试从tool字段获取（兼容某些格式）
-			if toolVal, exists := args["tool"]; exists {
-				if toolMap, ok := toolVal.(map[string]interface{}); ok {
-					if t, ok := toolMap["target"].(string); ok {
-						target = t
-					}
-				}
-			}
+	// 如果没有定义参数配置，使用固定参数和通用处理
+	// 添加固定参数
+	cmdArgs = append(cmdArgs, toolConfig.Args...)
+	
+	// 通用处理：将参数转换为命令行参数
+	for key, value := range args {
+		if key == "_tool_name" {
+			continue
 		}
-		
-		if target == "" {
-			e.logger.Warn("nmap缺少target参数",
-				zap.Any("args", args),
-			)
-			return cmdArgs // 返回空数组，让上层处理错误
-		}
-		
-		e.logger.Debug("提取到target",
-			zap.String("target", target),
-		)
-		
-		// 处理URL格式的目标（提取域名）
-		if strings.HasPrefix(target, "http://") || strings.HasPrefix(target, "https://") {
-			// 提取域名部分
-			target = strings.TrimPrefix(target, "http://")
-			target = strings.TrimPrefix(target, "https://")
-			// 移除路径部分
-			if idx := strings.Index(target, "/"); idx != -1 {
-				target = target[:idx]
-			}
-		}
-		
-		// 添加扫描选项：-sT (TCP连接扫描，不需要root权限), -sV (版本检测), -sC (默认脚本)
-		cmdArgs = append(cmdArgs, "-sT", "-sV", "-sC")
-		
-		// 添加端口范围（如果指定）
-		if ports, ok := args["ports"].(string); ok && ports != "" {
-			cmdArgs = append(cmdArgs, "-p", ports)
-		}
-		
-		// 添加目标
-		cmdArgs = append(cmdArgs, target)
-		
-		e.logger.Debug("nmap命令参数构建完成",
-			zap.Strings("cmdArgs", cmdArgs),
-		)
-	case "sqlmap":
-		// sqlmap -u url
-		if url, ok := args["url"].(string); ok {
-			cmdArgs = append(cmdArgs, "-u", url, "--batch", "--level=3", "--risk=2")
-		}
-	case "nikto":
-		// nikto -h target
-		if target, ok := args["target"].(string); ok {
-			cmdArgs = append(cmdArgs, "-h", target)
-		}
-	case "dirb":
-		// dirb url
-		if url, ok := args["url"].(string); ok {
-			cmdArgs = append(cmdArgs, url)
-		}
-	default:
-		// 通用处理
-		cmdArgs = append(cmdArgs, toolConfig.Args...)
-		for key, value := range args {
-			if key == "_tool_name" {
-				continue
-			}
-			cmdArgs = append(cmdArgs, fmt.Sprintf("--%s", key))
-			if strValue, ok := value.(string); ok {
-				cmdArgs = append(cmdArgs, strValue)
-			} else {
-				cmdArgs = append(cmdArgs, fmt.Sprintf("%v", value))
-			}
+		// 使用 --key value 格式
+		cmdArgs = append(cmdArgs, fmt.Sprintf("--%s", key))
+		if strValue, ok := value.(string); ok {
+			cmdArgs = append(cmdArgs, strValue)
+		} else {
+			cmdArgs = append(cmdArgs, fmt.Sprintf("%v", value))
 		}
 	}
 
@@ -592,54 +518,12 @@ func (e *Executor) buildInputSchema(toolConfig *config.ToolConfig) map[string]in
 		return schema
 	}
 
-	// 向后兼容：如果没有定义参数，使用旧的硬编码逻辑
-	switch toolConfig.Name {
-	case "nmap":
-		schema["properties"] = map[string]interface{}{
-			"target": map[string]interface{}{
-				"type":        "string",
-				"description": "目标IP地址或域名",
-			},
-			"ports": map[string]interface{}{
-				"type":        "string",
-				"description": "端口范围，例如: 1-1000",
-			},
-		}
-		schema["required"] = []string{"target"}
-	case "sqlmap":
-		schema["properties"] = map[string]interface{}{
-			"url": map[string]interface{}{
-				"type":        "string",
-				"description": "目标URL",
-			},
-		}
-		schema["required"] = []string{"url"}
-	case "nikto", "dirb":
-		schema["properties"] = map[string]interface{}{
-			"target": map[string]interface{}{
-				"type":        "string",
-				"description": "目标URL",
-			},
-		}
-		schema["required"] = []string{"target"}
-	case "exec":
-		schema["properties"] = map[string]interface{}{
-			"command": map[string]interface{}{
-				"type":        "string",
-				"description": "要执行的系统命令",
-			},
-			"shell": map[string]interface{}{
-				"type":        "string",
-				"description": "使用的shell（可选，默认为sh）",
-			},
-			"workdir": map[string]interface{}{
-				"type":        "string",
-				"description": "工作目录（可选）",
-			},
-		}
-		schema["required"] = []string{"command"}
-	}
-
+	// 如果没有定义参数配置，返回空schema
+	// 这种情况下工具可能只使用固定参数（args字段）
+	// 或者需要通过YAML配置文件定义参数
+	e.logger.Warn("工具未定义参数配置，返回空schema",
+		zap.String("tool", toolConfig.Name),
+	)
 	return schema
 }
 
