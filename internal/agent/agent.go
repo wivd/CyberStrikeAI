@@ -193,12 +193,40 @@ type AgentLoopResult struct {
 	MCPExecutionIDs []string
 }
 
+// ProgressCallback 进度回调函数类型
+type ProgressCallback func(eventType, message string, data interface{})
+
 // AgentLoop 执行Agent循环
 func (a *Agent) AgentLoop(ctx context.Context, userInput string, historyMessages []ChatMessage) (*AgentLoopResult, error) {
+	return a.AgentLoopWithProgress(ctx, userInput, historyMessages, nil)
+}
+
+// AgentLoopWithProgress 执行Agent循环（带进度回调）
+func (a *Agent) AgentLoopWithProgress(ctx context.Context, userInput string, historyMessages []ChatMessage, callback ProgressCallback) (*AgentLoopResult, error) {
+	// 发送进度更新
+	sendProgress := func(eventType, message string, data interface{}) {
+		if callback != nil {
+			callback(eventType, message, data)
+		}
+	}
+
+	// 系统提示词，指导AI如何处理工具错误
+	systemPrompt := `你是一个专业的网络安全渗透测试专家。你可以使用各种安全工具进行自主渗透测试。分析目标并选择最佳测试策略。
+
+重要：当工具调用失败时，请遵循以下原则：
+1. 仔细分析错误信息，理解失败的具体原因
+2. 如果工具不存在或未启用，尝试使用其他替代工具完成相同目标
+3. 如果参数错误，根据错误提示修正参数后重试
+4. 如果工具执行失败但输出了有用信息，可以基于这些信息继续分析
+5. 如果确实无法使用某个工具，向用户说明问题，并建议替代方案或手动操作
+6. 不要因为单个工具失败就停止整个测试流程，尝试其他方法继续完成任务
+
+当工具返回错误时，错误信息会包含在工具响应中，请仔细阅读并做出合理的决策。`
+	
 	messages := []ChatMessage{
 		{
 			Role:    "system",
-			Content: "你是一个专业的网络安全渗透测试专家。你可以使用各种安全工具进行自主渗透测试。分析目标并选择最佳测试策略。当需要执行工具时，使用提供的工具函数。",
+			Content: systemPrompt,
 		},
 	}
 	
@@ -248,6 +276,13 @@ func (a *Agent) AgentLoop(ctx context.Context, userInput string, historyMessages
 		// 获取可用工具
 		tools := a.getAvailableTools()
 
+		// 发送进度更新
+		if i == 0 {
+			sendProgress("progress", "正在分析请求并制定测试策略...", nil)
+		} else {
+			sendProgress("progress", fmt.Sprintf("正在继续分析（第 %d 轮迭代）...", i+1), nil)
+		}
+
 		// 记录每次调用OpenAI
 		if i == 0 {
 			a.logger.Info("调用OpenAI",
@@ -277,6 +312,7 @@ func (a *Agent) AgentLoop(ctx context.Context, userInput string, historyMessages
 		}
 
 		// 调用OpenAI
+		sendProgress("progress", "正在调用AI模型...", nil)
 		response, err := a.callOpenAI(ctx, messages, tools)
 		if err != nil {
 			result.Response = ""
@@ -304,17 +340,46 @@ func (a *Agent) AgentLoop(ctx context.Context, userInput string, historyMessages
 				ToolCalls: choice.Message.ToolCalls,
 			})
 
+			// 发送工具调用进度
+			sendProgress("progress", fmt.Sprintf("检测到 %d 个工具调用，开始执行...", len(choice.Message.ToolCalls)), nil)
+
 			// 执行所有工具调用
-			for _, toolCall := range choice.Message.ToolCalls {
+			for idx, toolCall := range choice.Message.ToolCalls {
+				// 发送工具调用开始事件
+				toolArgsJSON, _ := json.Marshal(toolCall.Function.Arguments)
+				sendProgress("tool_call", fmt.Sprintf("正在调用工具: %s", toolCall.Function.Name), map[string]interface{}{
+					"toolName":  toolCall.Function.Name,
+					"arguments": string(toolArgsJSON),
+					"index":     idx + 1,
+					"total":     len(choice.Message.ToolCalls),
+				})
+
 				// 执行工具
 				execResult, err := a.executeToolViaMCP(ctx, toolCall.Function.Name, toolCall.Function.Arguments)
 				if err != nil {
+					// 构建详细的错误信息，帮助AI理解问题并做出决策
+					errorMsg := a.formatToolError(toolCall.Function.Name, toolCall.Function.Arguments, err)
 					messages = append(messages, ChatMessage{
 						Role:      "tool",
 						ToolCallID: toolCall.ID,
-						Content:   fmt.Sprintf("工具执行失败: %v", err),
+						Content:   errorMsg,
 					})
+					
+					// 发送工具执行失败事件
+					sendProgress("tool_result", fmt.Sprintf("工具 %s 执行失败", toolCall.Function.Name), map[string]interface{}{
+						"toolName":  toolCall.Function.Name,
+						"success":   false,
+						"error":     err.Error(),
+						"index":     idx + 1,
+						"total":     len(choice.Message.ToolCalls),
+					})
+					
+					a.logger.Warn("工具执行失败，已返回详细错误信息",
+						zap.String("tool", toolCall.Function.Name),
+						zap.Error(err),
+					)
 				} else {
+					// 即使工具返回了错误结果（IsError=true），也继续处理，让AI决定下一步
 					messages = append(messages, ChatMessage{
 						Role:      "tool",
 						ToolCallID: toolCall.ID,
@@ -323,6 +388,29 @@ func (a *Agent) AgentLoop(ctx context.Context, userInput string, historyMessages
 					// 收集执行ID
 					if execResult.ExecutionID != "" {
 						result.MCPExecutionIDs = append(result.MCPExecutionIDs, execResult.ExecutionID)
+					}
+					
+					// 发送工具执行成功事件
+					resultPreview := execResult.Result
+					if len(resultPreview) > 200 {
+						resultPreview = resultPreview[:200] + "..."
+					}
+					sendProgress("tool_result", fmt.Sprintf("工具 %s 执行完成", toolCall.Function.Name), map[string]interface{}{
+						"toolName":    toolCall.Function.Name,
+						"success":     !execResult.IsError,
+						"isError":     execResult.IsError,
+						"result":      resultPreview,
+						"executionId": execResult.ExecutionID,
+						"index":       idx + 1,
+						"total":       len(choice.Message.ToolCalls),
+					})
+					
+					// 如果工具返回了错误，记录日志但不中断流程
+					if execResult.IsError {
+						a.logger.Warn("工具返回错误结果，但继续处理",
+							zap.String("tool", toolCall.Function.Name),
+							zap.String("result", execResult.Result),
+						)
 					}
 				}
 			}
@@ -337,6 +425,7 @@ func (a *Agent) AgentLoop(ctx context.Context, userInput string, historyMessages
 
 		// 如果完成，返回结果
 		if choice.FinishReason == "stop" {
+			sendProgress("progress", "正在生成最终回复...", nil)
 			result.Response = choice.Message.Content
 			return result, nil
 		}
@@ -347,115 +436,96 @@ func (a *Agent) AgentLoop(ctx context.Context, userInput string, historyMessages
 }
 
 // getAvailableTools 获取可用工具
+// 从MCP服务器动态获取工具列表，使用简短描述以减少token消耗
 func (a *Agent) getAvailableTools() []Tool {
-	// 从MCP服务器获取工具列表
-	executions := a.mcpServer.GetAllExecutions()
-	toolNames := make(map[string]bool)
-	for _, exec := range executions {
-		toolNames[exec.ToolName] = true
+	// 从MCP服务器获取所有已注册的工具
+	mcpTools := a.mcpServer.GetAllTools()
+	
+	// 转换为OpenAI格式的工具定义
+	tools := make([]Tool, 0, len(mcpTools))
+	for _, mcpTool := range mcpTools {
+		// 使用简短描述（如果存在），否则使用详细描述
+		description := mcpTool.ShortDescription
+		if description == "" {
+			description = mcpTool.Description
+		}
+		
+		// 转换schema中的类型为OpenAI标准类型
+		convertedSchema := a.convertSchemaTypes(mcpTool.InputSchema)
+		
+		tools = append(tools, Tool{
+			Type: "function",
+			Function: FunctionDefinition{
+				Name:        mcpTool.Name,
+				Description: description, // 使用简短描述减少token消耗
+				Parameters:  convertedSchema,
+			},
+		})
 	}
-
-	tools := []Tool{
-		{
-			Type: "function",
-			Function: FunctionDefinition{
-				Name:        "nmap",
-				Description: "使用nmap进行网络扫描，发现开放端口和服务。支持IP地址、域名或URL（会自动提取域名）。使用TCP连接扫描，不需要root权限。",
-				Parameters: map[string]interface{}{
-					"type": "object",
-					"properties": map[string]interface{}{
-						"target": map[string]interface{}{
-							"type":        "string",
-							"description": "目标IP地址、域名或URL（如 https://example.com）。如果是URL，会自动提取域名部分。",
-						},
-						"ports": map[string]interface{}{
-							"type":        "string",
-							"description": "要扫描的端口范围，例如: 1-1000 或 80,443,8080。如果不指定，将扫描常用端口。",
-						},
-					},
-					"required": []string{"target"},
-				},
-			},
-		},
-		{
-			Type: "function",
-			Function: FunctionDefinition{
-				Name:        "sqlmap",
-				Description: "使用sqlmap检测SQL注入漏洞",
-				Parameters: map[string]interface{}{
-					"type": "object",
-					"properties": map[string]interface{}{
-						"url": map[string]interface{}{
-							"type":        "string",
-							"description": "目标URL",
-						},
-					},
-					"required": []string{"url"},
-				},
-			},
-		},
-		{
-			Type: "function",
-			Function: FunctionDefinition{
-				Name:        "nikto",
-				Description: "使用nikto扫描Web服务器漏洞",
-				Parameters: map[string]interface{}{
-					"type": "object",
-					"properties": map[string]interface{}{
-						"target": map[string]interface{}{
-							"type":        "string",
-							"description": "目标URL",
-						},
-					},
-					"required": []string{"target"},
-				},
-			},
-		},
-		{
-			Type: "function",
-			Function: FunctionDefinition{
-				Name:        "dirb",
-				Description: "使用dirb进行目录扫描",
-				Parameters: map[string]interface{}{
-					"type": "object",
-					"properties": map[string]interface{}{
-						"url": map[string]interface{}{
-							"type":        "string",
-							"description": "目标URL",
-						},
-					},
-					"required": []string{"url"},
-				},
-			},
-		},
-		{
-			Type: "function",
-			Function: FunctionDefinition{
-				Name:        "exec",
-				Description: "执行系统命令（谨慎使用，仅用于必要的系统操作）",
-				Parameters: map[string]interface{}{
-					"type": "object",
-					"properties": map[string]interface{}{
-						"command": map[string]interface{}{
-							"type":        "string",
-							"description": "要执行的系统命令",
-						},
-						"shell": map[string]interface{}{
-							"type":        "string",
-							"description": "使用的shell（可选，默认为sh）",
-						},
-						"workdir": map[string]interface{}{
-							"type":        "string",
-							"description": "工作目录（可选）",
-						},
-					},
-					"required": []string{"command"},
-				},
-			},
-		},
-	}
-
+	
+	a.logger.Debug("获取可用工具列表",
+		zap.Int("count", len(tools)),
+	)
+	
 	return tools
+}
+
+// convertSchemaTypes 递归转换schema中的类型为OpenAI标准类型
+func (a *Agent) convertSchemaTypes(schema map[string]interface{}) map[string]interface{} {
+	if schema == nil {
+		return schema
+	}
+	
+	// 创建新的schema副本
+	converted := make(map[string]interface{})
+	for k, v := range schema {
+		converted[k] = v
+	}
+	
+	// 转换properties中的类型
+	if properties, ok := converted["properties"].(map[string]interface{}); ok {
+		convertedProperties := make(map[string]interface{})
+		for propName, propValue := range properties {
+			if prop, ok := propValue.(map[string]interface{}); ok {
+				convertedProp := make(map[string]interface{})
+				for pk, pv := range prop {
+					if pk == "type" {
+						// 转换类型
+						if typeStr, ok := pv.(string); ok {
+							convertedProp[pk] = a.convertToOpenAIType(typeStr)
+						} else {
+							convertedProp[pk] = pv
+						}
+					} else {
+						convertedProp[pk] = pv
+					}
+				}
+				convertedProperties[propName] = convertedProp
+			} else {
+				convertedProperties[propName] = propValue
+			}
+		}
+		converted["properties"] = convertedProperties
+	}
+	
+	return converted
+}
+
+// convertToOpenAIType 将配置中的类型转换为OpenAI/JSON Schema标准类型
+func (a *Agent) convertToOpenAIType(configType string) string {
+	switch configType {
+	case "bool":
+		return "boolean"
+	case "int", "integer":
+		return "number"
+	case "float", "double":
+		return "number"
+	case "string", "array", "object":
+		return configType
+	default:
+		// 默认返回原类型
+		return configType
+	}
 }
 
 // callOpenAI 调用OpenAI API
@@ -546,9 +616,11 @@ func (a *Agent) parseToolCall(content string) (map[string]interface{}, error) {
 type ToolExecutionResult struct {
 	Result      string
 	ExecutionID string
+	IsError     bool // 标记是否为错误结果
 }
 
 // executeToolViaMCP 通过MCP执行工具
+// 即使工具执行失败，也返回结果而不是错误，让AI能够处理错误情况
 func (a *Agent) executeToolViaMCP(ctx context.Context, toolName string, args map[string]interface{}) (*ToolExecutionResult, error) {
 	a.logger.Info("通过MCP执行工具",
 		zap.String("tool", toolName),
@@ -557,8 +629,30 @@ func (a *Agent) executeToolViaMCP(ctx context.Context, toolName string, args map
 
 	// 通过MCP服务器调用工具
 	result, executionID, err := a.mcpServer.CallTool(ctx, toolName, args)
+	
+	// 如果调用失败（如工具不存在），返回友好的错误信息而不是抛出异常
 	if err != nil {
-		return nil, fmt.Errorf("工具执行失败: %w", err)
+		errorMsg := fmt.Sprintf(`工具调用失败
+
+工具名称: %s
+错误类型: 系统错误
+错误详情: %v
+
+可能的原因：
+- 工具 "%s" 不存在或未启用
+- 系统配置问题
+- 网络或权限问题
+
+建议：
+- 检查工具名称是否正确
+- 尝试使用其他替代工具
+- 如果这是必需的工具，请向用户说明情况`, toolName, err, toolName)
+		
+		return &ToolExecutionResult{
+			Result:      errorMsg,
+			ExecutionID: executionID,
+			IsError:     true,
+		}, nil // 返回 nil 错误，让调用者处理结果
 	}
 
 	// 格式化结果
@@ -571,6 +665,24 @@ func (a *Agent) executeToolViaMCP(ctx context.Context, toolName string, args map
 	return &ToolExecutionResult{
 		Result:      resultText.String(),
 		ExecutionID: executionID,
+		IsError:     result != nil && result.IsError,
 	}, nil
+}
+
+// formatToolError 格式化工具错误信息，提供更友好的错误描述
+func (a *Agent) formatToolError(toolName string, args map[string]interface{}, err error) string {
+	errorMsg := fmt.Sprintf(`工具执行失败
+
+工具名称: %s
+调用参数: %v
+错误信息: %v
+
+请分析错误原因并采取以下行动之一：
+1. 如果参数错误，请修正参数后重试
+2. 如果工具不可用，请尝试使用替代工具
+3. 如果这是系统问题，请向用户说明情况并提供建议
+4. 如果错误信息中包含有用信息，可以基于这些信息继续分析`, toolName, args, err)
+	
+	return errorMsg
 }
 

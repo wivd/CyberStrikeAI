@@ -1,6 +1,8 @@
 package handler
 
 import (
+	"encoding/json"
+	"fmt"
 	"net/http"
 	"time"
 
@@ -129,6 +131,123 @@ func (h *AgentHandler) AgentLoop(c *gin.Context) {
 		MCPExecutionIDs: result.MCPExecutionIDs,
 		ConversationID: conversationID,
 		Time:            time.Now(),
+	})
+}
+
+// StreamEvent 流式事件
+type StreamEvent struct {
+	Type    string      `json:"type"`    // progress, tool_call, tool_result, response, error, done
+	Message string      `json:"message"` // 显示消息
+	Data    interface{} `json:"data,omitempty"`
+}
+
+// AgentLoopStream 处理Agent Loop流式请求
+func (h *AgentHandler) AgentLoopStream(c *gin.Context) {
+	var req ChatRequest
+	if err := c.ShouldBindJSON(&req); err != nil {
+		// 对于流式请求，也发送SSE格式的错误
+		c.Header("Content-Type", "text/event-stream")
+		c.Header("Cache-Control", "no-cache")
+		c.Header("Connection", "keep-alive")
+		event := StreamEvent{
+			Type:    "error",
+			Message: "请求参数错误: " + err.Error(),
+		}
+		eventJSON, _ := json.Marshal(event)
+		fmt.Fprintf(c.Writer, "data: %s\n\n", eventJSON)
+		c.Writer.Flush()
+		return
+	}
+
+	h.logger.Info("收到Agent Loop流式请求",
+		zap.String("message", req.Message),
+		zap.String("conversationId", req.ConversationID),
+	)
+
+	// 设置SSE响应头
+	c.Header("Content-Type", "text/event-stream")
+	c.Header("Cache-Control", "no-cache")
+	c.Header("Connection", "keep-alive")
+	c.Header("X-Accel-Buffering", "no") // 禁用nginx缓冲
+
+	// 发送初始事件
+	sendEvent := func(eventType, message string, data interface{}) {
+		event := StreamEvent{
+			Type:    eventType,
+			Message: message,
+			Data:    data,
+		}
+		eventJSON, _ := json.Marshal(event)
+		fmt.Fprintf(c.Writer, "data: %s\n\n", eventJSON)
+		c.Writer.Flush()
+	}
+
+	// 如果没有对话ID，创建新对话
+	conversationID := req.ConversationID
+	if conversationID == "" {
+		title := req.Message
+		if len(title) > 50 {
+			title = title[:50] + "..."
+		}
+		conv, err := h.db.CreateConversation(title)
+		if err != nil {
+			h.logger.Error("创建对话失败", zap.Error(err))
+			sendEvent("error", "创建对话失败: "+err.Error(), nil)
+			return
+		}
+		conversationID = conv.ID
+	}
+
+	// 获取历史消息
+	historyMessages, err := h.db.GetMessages(conversationID)
+	if err != nil {
+		h.logger.Warn("获取历史消息失败", zap.Error(err))
+		historyMessages = []database.Message{}
+	}
+
+	// 将数据库消息转换为Agent消息格式
+	agentHistoryMessages := make([]agent.ChatMessage, 0, len(historyMessages))
+	for _, msg := range historyMessages {
+		agentHistoryMessages = append(agentHistoryMessages, agent.ChatMessage{
+			Role:    msg.Role,
+			Content: msg.Content,
+		})
+	}
+
+	// 保存用户消息
+	_, err = h.db.AddMessage(conversationID, "user", req.Message, nil)
+	if err != nil {
+		h.logger.Error("保存用户消息失败", zap.Error(err))
+	}
+
+	// 创建进度回调函数
+	progressCallback := func(eventType, message string, data interface{}) {
+		sendEvent(eventType, message, data)
+	}
+
+	// 执行Agent Loop，传入进度回调
+	sendEvent("progress", "正在分析您的请求...", nil)
+	result, err := h.agent.AgentLoopWithProgress(c.Request.Context(), req.Message, agentHistoryMessages, progressCallback)
+	if err != nil {
+		h.logger.Error("Agent Loop执行失败", zap.Error(err))
+		sendEvent("error", "执行失败: "+err.Error(), nil)
+		sendEvent("done", "", nil)
+		return
+	}
+
+	// 保存助手回复
+	_, err = h.db.AddMessage(conversationID, "assistant", result.Response, result.MCPExecutionIDs)
+	if err != nil {
+		h.logger.Error("保存助手消息失败", zap.Error(err))
+	}
+
+	// 发送最终响应
+	sendEvent("response", result.Response, map[string]interface{}{
+		"mcpExecutionIds": result.MCPExecutionIDs,
+		"conversationId":  conversationID,
+	})
+	sendEvent("done", "", map[string]interface{}{
+		"conversationId": conversationID,
 	})
 }
 

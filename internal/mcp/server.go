@@ -361,6 +361,18 @@ func (s *Server) GetStats() map[string]*ToolStats {
 	return stats
 }
 
+// GetAllTools 获取所有已注册的工具（用于Agent动态获取工具列表）
+func (s *Server) GetAllTools() []Tool {
+	s.mu.RLock()
+	defer s.mu.RUnlock()
+	
+	tools := make([]Tool, 0, len(s.toolDefs))
+	for _, tool := range s.toolDefs {
+		tools = append(tools, tool)
+	}
+	return tools
+}
+
 // CallTool 直接调用工具（用于内部调用）
 func (s *Server) CallTool(ctx context.Context, toolName string, args map[string]interface{}) (*ToolResult, string, error) {
 	s.mu.RLock()

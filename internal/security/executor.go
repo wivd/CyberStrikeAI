@@ -150,10 +150,28 @@ func (e *Executor) RegisterTools(mcpServer *mcp.Server) {
 		toolName := toolConfig.Name
 		toolConfigCopy := toolConfig
 		
+		// 使用简短描述（如果存在），否则使用详细描述的前100个字符
+		shortDesc := toolConfigCopy.ShortDescription
+		if shortDesc == "" {
+			// 如果没有简短描述，从详细描述中提取第一行或前100个字符
+			desc := toolConfigCopy.Description
+			if len(desc) > 100 {
+				// 尝试找到第一个换行符
+				if idx := strings.Index(desc, "\n"); idx > 0 && idx < 100 {
+					shortDesc = strings.TrimSpace(desc[:idx])
+				} else {
+					shortDesc = desc[:100] + "..."
+				}
+			} else {
+				shortDesc = desc
+			}
+		}
+		
 		tool := mcp.Tool{
-			Name:        toolConfigCopy.Name,
-			Description: toolConfigCopy.Description,
-			InputSchema: e.buildInputSchema(&toolConfigCopy),
+			Name:             toolConfigCopy.Name,
+			Description:      toolConfigCopy.Description,
+			ShortDescription: shortDesc,
+			InputSchema:      e.buildInputSchema(&toolConfigCopy),
 		}
 
 		handler := func(ctx context.Context, args map[string]interface{}) (*mcp.ToolResult, error) {
@@ -543,8 +561,11 @@ func (e *Executor) buildInputSchema(toolConfig *config.ToolConfig) map[string]in
 		required := []string{}
 
 		for _, param := range toolConfig.Parameters {
+			// 转换类型为OpenAI/JSON Schema标准类型
+			openAIType := e.convertToOpenAIType(param.Type)
+			
 			prop := map[string]interface{}{
-				"type":        param.Type,
+				"type":        openAIType,
 				"description": param.Description,
 			}
 
@@ -620,6 +641,26 @@ func (e *Executor) buildInputSchema(toolConfig *config.ToolConfig) map[string]in
 	}
 
 	return schema
+}
+
+// convertToOpenAIType 将配置中的类型转换为OpenAI/JSON Schema标准类型
+func (e *Executor) convertToOpenAIType(configType string) string {
+	switch configType {
+	case "bool":
+		return "boolean"
+	case "int", "integer":
+		return "number"
+	case "float", "double":
+		return "number"
+	case "string", "array", "object":
+		return configType
+	default:
+		// 默认返回原类型，但记录警告
+		e.logger.Warn("未知的参数类型，使用原类型",
+			zap.String("type", configType),
+		)
+		return configType
+	}
 }
 
 // Vulnerability 漏洞信息

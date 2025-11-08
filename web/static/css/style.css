@@ -304,7 +304,131 @@ header {
     word-break: break-word;
     line-height: 1.6;
     box-shadow: var(--shadow-sm);
-    white-space: pre-wrap;
+}
+
+/* Markdown 样式 */
+.message-bubble p {
+    margin: 0.5em 0;
+}
+
+.message-bubble p:first-child {
+    margin-top: 0;
+}
+
+.message-bubble p:last-child {
+    margin-bottom: 0;
+}
+
+.message-bubble strong,
+.message-bubble b {
+    font-weight: 600;
+    color: inherit;
+}
+
+.message-bubble em,
+.message-bubble i {
+    font-style: italic;
+}
+
+.message-bubble code {
+    background: rgba(0, 0, 0, 0.05);
+    padding: 2px 6px;
+    border-radius: 3px;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.9em;
+}
+
+.message.user .message-bubble code {
+    background: rgba(255, 255, 255, 0.2);
+}
+
+.message-bubble pre {
+    background: rgba(0, 0, 0, 0.05);
+    padding: 12px;
+    border-radius: 6px;
+    overflow-x: auto;
+    margin: 0.5em 0;
+    font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+    font-size: 0.875em;
+    line-height: 1.5;
+}
+
+.message.user .message-bubble pre {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.message-bubble pre code {
+    background: none;
+    padding: 0;
+}
+
+.message-bubble ul,
+.message-bubble ol {
+    margin: 0.5em 0;
+    padding-left: 1.5em;
+}
+
+.message-bubble li {
+    margin: 0.25em 0;
+}
+
+.message-bubble blockquote {
+    border-left: 3px solid var(--border-color);
+    padding-left: 1em;
+    margin: 0.5em 0;
+    color: var(--text-secondary);
+}
+
+.message-bubble h1,
+.message-bubble h2,
+.message-bubble h3,
+.message-bubble h4,
+.message-bubble h5,
+.message-bubble h6 {
+    margin: 0.8em 0 0.4em 0;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.message-bubble h1:first-child,
+.message-bubble h2:first-child,
+.message-bubble h3:first-child,
+.message-bubble h4:first-child,
+.message-bubble h5:first-child,
+.message-bubble h6:first-child {
+    margin-top: 0;
+}
+
+.message-bubble h1 {
+    font-size: 1.5em;
+}
+
+.message-bubble h2 {
+    font-size: 1.3em;
+}
+
+.message-bubble h3 {
+    font-size: 1.1em;
+}
+
+.message-bubble hr {
+    border: none;
+    border-top: 1px solid var(--border-color);
+    margin: 1em 0;
+}
+
+.message-bubble a {
+    color: var(--accent-color);
+    text-decoration: none;
+}
+
+.message-bubble a:hover {
+    text-decoration: underline;
+}
+
+.message.user .message-bubble a {
+    color: rgba(255, 255, 255, 0.9);
+    text-decoration: underline;
 }
 
 .message.user .message-bubble {

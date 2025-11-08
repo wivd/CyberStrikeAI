@@ -36,9 +36,10 @@ type Error struct {
 
 // Tool 表示MCP工具定义
 type Tool struct {
-	Name        string                 `json:"name"`
-	Description string                 `json:"description"`
-	InputSchema map[string]interface{} `json:"inputSchema"`
+	Name             string                 `json:"name"`
+	Description      string                 `json:"description"`      // 详细描述
+	ShortDescription string                 `json:"shortDescription,omitempty"` // 简短描述（用于工具列表，减少token消耗）
+	InputSchema      map[string]interface{} `json:"inputSchema"`
 }
 
 // ToolCall 表示工具调用

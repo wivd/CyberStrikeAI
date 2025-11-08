@@ -115,6 +115,8 @@ func setupRoutes(router *gin.Engine, agentHandler *handler.AgentHandler, monitor
 	{
 		// Agent Loop
 		api.POST("/agent-loop", agentHandler.AgentLoop)
+		// Agent Loop 流式输出
+		api.POST("/agent-loop/stream", agentHandler.AgentLoopStream)
 		
 		// 对话历史
 		api.POST("/conversations", conversationHandler.CreateConversation)

@@ -15,11 +15,15 @@ async function sendMessage() {
     addMessage('user', message);
     input.value = '';
     
-    // 显示加载状态
-    const loadingId = addMessage('system', '正在处理中...');
+    // 创建进度消息容器
+    const progressId = addMessage('system', '正在处理中...');
+    const progressElement = document.getElementById(progressId);
+    const progressBubble = progressElement.querySelector('.message-bubble');
+    let assistantMessageId = null;
+    let mcpExecutionIds = [];
     
     try {
-        const response = await fetch('/api/agent-loop', {
+        const response = await fetch('/api/agent-loop/stream', {
             method: 'POST',
             headers: {
                 'Content-Type': 'application/json',
@@ -30,30 +34,124 @@ async function sendMessage() {
             }),
         });
         
-        const data = await response.json();
+        if (!response.ok) {
+            throw new Error('请求失败: ' + response.status);
+        }
         
-        // 移除加载消息
-        removeMessage(loadingId);
+        const reader = response.body.getReader();
+        const decoder = new TextDecoder();
+        let buffer = '';
         
-        if (response.ok) {
-            // 更新当前对话ID
-            if (data.conversationId) {
-                currentConversationId = data.conversationId;
+        while (true) {
+            const { done, value } = await reader.read();
+            if (done) break;
+            
+            buffer += decoder.decode(value, { stream: true });
+            const lines = buffer.split('\n');
+            buffer = lines.pop(); // 保留最后一个不完整的行
+            
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const eventData = JSON.parse(line.slice(6));
+                        handleStreamEvent(eventData, progressElement, progressBubble, progressId, 
+                                         () => assistantMessageId, (id) => { assistantMessageId = id; },
+                                         () => mcpExecutionIds, (ids) => { mcpExecutionIds = ids; });
+                    } catch (e) {
+                        console.error('解析事件数据失败:', e, line);
+                    }
+                }
+            }
+        }
+        
+        // 处理剩余的buffer
+        if (buffer.trim()) {
+            const lines = buffer.split('\n');
+            for (const line of lines) {
+                if (line.startsWith('data: ')) {
+                    try {
+                        const eventData = JSON.parse(line.slice(6));
+                        handleStreamEvent(eventData, progressElement, progressBubble, progressId,
+                                         () => assistantMessageId, (id) => { assistantMessageId = id; },
+                                         () => mcpExecutionIds, (ids) => { mcpExecutionIds = ids; });
+                    } catch (e) {
+                        console.error('解析事件数据失败:', e, line);
+                    }
+                }
+            }
+        }
+        
+    } catch (error) {
+        removeMessage(progressId);
+        addMessage('system', '错误: ' + error.message);
+    }
+}
+
+// 处理流式事件
+function handleStreamEvent(event, progressElement, progressBubble, progressId, 
+                          getAssistantId, setAssistantId, getMcpIds, setMcpIds) {
+    switch (event.type) {
+        case 'progress':
+            // 更新进度消息
+            progressBubble.textContent = event.message;
+            break;
+            
+        case 'tool_call':
+            // 显示工具调用信息
+            const toolInfo = event.data || {};
+            const toolName = toolInfo.toolName || '未知工具';
+            const index = toolInfo.index || 0;
+            const total = toolInfo.total || 0;
+            progressBubble.innerHTML = `🔧 正在调用工具: <strong>${escapeHtml(toolName)}</strong> (${index}/${total})`;
+            break;
+            
+        case 'tool_result':
+            // 显示工具执行结果
+            const resultInfo = event.data || {};
+            const resultToolName = resultInfo.toolName || '未知工具';
+            const success = resultInfo.success !== false;
+            const statusIcon = success ? '✅' : '❌';
+            progressBubble.innerHTML = `${statusIcon} 工具 <strong>${escapeHtml(resultToolName)}</strong> 执行${success ? '完成' : '失败'}`;
+            break;
+            
+        case 'response':
+            // 移除进度消息，显示最终回复
+            removeMessage(progressId);
+            const responseData = event.data || {};
+            const mcpIds = responseData.mcpExecutionIds || [];
+            setMcpIds(mcpIds);
+            
+            // 更新对话ID
+            if (responseData.conversationId) {
+                currentConversationId = responseData.conversationId;
                 updateActiveConversation();
             }
             
-            // 如果有MCP执行ID，显示所有调用
-            const mcpIds = data.mcpExecutionIds || [];
-            addMessage('assistant', data.response, mcpIds);
+            // 添加助手回复
+            const assistantId = addMessage('assistant', event.message, mcpIds);
+            setAssistantId(assistantId);
             
             // 刷新对话列表
             loadConversations();
-        } else {
-            addMessage('system', '错误: ' + (data.error || '未知错误'));
-        }
-    } catch (error) {
-        removeMessage(loadingId);
-        addMessage('system', '错误: ' + error.message);
+            break;
+            
+        case 'error':
+            // 显示错误
+            removeMessage(progressId);
+            addMessage('system', '错误: ' + event.message);
+            break;
+            
+        case 'done':
+            // 完成，确保进度消息已移除
+            if (progressElement && progressElement.parentNode) {
+                removeMessage(progressId);
+            }
+            // 更新对话ID
+            if (event.data && event.data.conversationId) {
+                currentConversationId = event.data.conversationId;
+                updateActiveConversation();
+            }
+            break;
     }
 }
 
@@ -88,8 +186,28 @@ function addMessage(role, content, mcpExecutionIds = null) {
     // 创建消息气泡
     const bubble = document.createElement('div');
     bubble.className = 'message-bubble';
-    // 处理换行和格式化
-    const formattedContent = content.replace(/\n/g, '<br>');
+    
+    // 解析 Markdown 格式
+    let formattedContent;
+    if (typeof marked !== 'undefined') {
+        // 使用 marked.js 解析 Markdown
+        try {
+            // 配置 marked 选项
+            marked.setOptions({
+                breaks: true,  // 支持换行
+                gfm: true,     // 支持 GitHub Flavored Markdown
+            });
+            formattedContent = marked.parse(content);
+        } catch (e) {
+            console.error('Markdown 解析失败:', e);
+            // 降级处理：转义 HTML 并保留换行
+            formattedContent = escapeHtml(content).replace(/\n/g, '<br>');
+        }
+    } else {
+        // 如果没有 marked.js，使用简单处理
+        formattedContent = escapeHtml(content).replace(/\n/g, '<br>');
+    }
+    
     bubble.innerHTML = formattedContent;
     contentWrapper.appendChild(bubble);
     
