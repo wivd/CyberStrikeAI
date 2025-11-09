@@ -229,34 +229,7 @@ func (e *Executor) buildCommandArgs(toolName string, toolConfig *config.ToolConf
 			}
 		}
 
-		// 对位置参数按位置排序
-		for i := 0; i < len(positionalParams); i++ {
-			for _, param := range positionalParams {
-				// 跳过特殊参数，它们会在后面单独处理
-				if param.Name == "additional_args" || param.Name == "scan_type" {
-					continue
-				}
-				
-				if param.Position != nil && *param.Position == i {
-					value := e.getParamValue(args, param)
-					if value == nil {
-						if param.Required {
-							// 必需参数缺失，返回空数组让上层处理错误
-							e.logger.Warn("缺少必需的位置参数",
-								zap.String("tool", toolName),
-								zap.String("param", param.Name),
-								zap.Int("position", *param.Position),
-							)
-							return []string{}
-						}
-						break
-					}
-					cmdArgs = append(cmdArgs, e.formatParamValue(param, value))
-					break
-				}
-			}
-		}
-
+		// 先处理标志参数（对于大多数命令，标志应该在位置参数之前）
 		// 处理标志参数
 		for _, param := range flagParams {
 			// 跳过特殊参数，它们会在后面单独处理
@@ -354,6 +327,40 @@ func (e *Executor) buildCommandArgs(toolName string, toolConfig *config.ToolConf
 			default:
 				// 默认：直接添加值
 				cmdArgs = append(cmdArgs, e.formatParamValue(param, value))
+			}
+		}
+
+		// 然后处理位置参数（位置参数通常在标志参数之后）
+		// 对位置参数按位置排序
+		for i := 0; i < len(positionalParams); i++ {
+			for _, param := range positionalParams {
+				// 跳过特殊参数，它们会在后面单独处理
+				if param.Name == "additional_args" || param.Name == "scan_type" {
+					continue
+				}
+				
+				if param.Position != nil && *param.Position == i {
+					value := e.getParamValue(args, param)
+					if value == nil {
+						if param.Required {
+							// 必需参数缺失，返回空数组让上层处理错误
+							e.logger.Warn("缺少必需的位置参数",
+								zap.String("tool", toolName),
+								zap.String("param", param.Name),
+								zap.Int("position", *param.Position),
+							)
+							return []string{}
+						}
+						// 对于非必需参数，如果值为 nil，尝试使用默认值
+						if param.Default != nil {
+							value = param.Default
+						} else {
+							break
+						}
+					}
+					cmdArgs = append(cmdArgs, e.formatParamValue(param, value))
+					break
+				}
 			}
 		}
 		
