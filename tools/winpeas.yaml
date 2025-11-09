@@ -1,0 +1,45 @@
+name: "winpeas"
+command: "winPEAS.exe"
+enabled: true
+
+short_description: "Windows 权限提升枚举工具，自动检测常见提权路径"
+
+description: |
+  WinPEAS (Windows Privilege Escalation Awesome Script) 是一个自动化权限提升枚举工具，用于检测 Windows 系统中的常见提权路径。
+  
+  **主要功能：**
+  - 系统信息收集
+  - 用户和组权限检查
+  - 服务配置分析
+  - 注册表检查
+  - 计划任务分析
+  - 网络配置检查
+  - 文件权限检查
+  - 凭证查找
+  
+  **使用场景：**
+  - 渗透测试中的权限提升
+  - Windows 安全审计
+  - 后渗透测试
+  - CTF 竞赛
+  
+  **注意事项：**
+  - 需要目标系统上已下载 winPEAS.exe
+  - 可能需要管理员权限
+  - 输出信息量大，建议保存到文件
+
+parameters:
+  - name: "quiet"
+    type: "bool"
+    description: "安静模式，只显示重要信息"
+    required: false
+    flag: "-q"
+    format: "flag"
+  
+  - name: "notcolor"
+    type: "bool"
+    description: "禁用颜色输出"
+    required: false
+    flag: "-notcolor"
+    format: "flag"
+

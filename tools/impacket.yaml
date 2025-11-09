@@ -1,0 +1,50 @@
+name: "impacket"
+command: "python3"
+enabled: true
+
+short_description: "Impacket 网络协议工具集，用于网络协议攻击和横向移动"
+
+description: |
+  Impacket 是一个 Python 工具集，用于处理网络协议，常用于渗透测试和横向移动。
+  
+  **主要功能：**
+  - SMB 协议攻击
+  - Kerberos 协议攻击
+  - RPC 协议攻击
+  - 远程命令执行
+  - 凭证转储
+  - 票据传递攻击
+  
+  **常用工具：**
+  - psexec: 远程命令执行
+  - smbexec: SMB 远程执行
+  - wmiexec: WMI 远程执行
+  - secretsdump: 凭证转储
+  - getTGT: Kerberos 票据获取
+  
+  **使用场景：**
+  - 横向移动
+  - 凭证转储
+  - 远程命令执行
+  - 后渗透测试
+  
+  **注意事项：**
+  - 需要 Python 环境
+  - 需要相应的凭据
+  - 仅用于授权的安全测试
+  - 工具路径通常在 /usr/share/doc/python3-impacket/examples/ 或通过 pip 安装
+
+parameters:
+  - name: "script"
+    type: "string"
+    description: "Impacket 脚本路径，例如 '/usr/share/doc/python3-impacket/examples/psexec.py'"
+    required: true
+    position: 0
+    format: "positional"
+  
+  - name: "args"
+    type: "string"
+    description: "脚本参数（JSON 格式的字符串，会被解析为多个参数）"
+    required: false
+    format: "positional"
+

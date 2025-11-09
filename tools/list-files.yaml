@@ -28,11 +28,11 @@ parameters:
   
   - name: "long_format"
     type: "bool"
-    description: "显示详细信息"
+    description: "显示详细信息（长格式）"
     required: false
     flag: "-l"
     format: "flag"
-    default: true
+    default: false
   
   - name: "recursive"
     type: "bool"

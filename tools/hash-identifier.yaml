@@ -1,0 +1,42 @@
+name: "hash-identifier"
+command: "hash-identifier"
+enabled: true
+
+short_description: "哈希类型识别工具，用于识别未知哈希值的类型"
+
+description: |
+  hash-identifier 是一个用于识别哈希值类型的工具，可以帮助确定未知哈希值使用的算法。
+  
+  **主要功能：**
+  - 识别多种哈希算法
+  - 支持 MD5, SHA1, SHA256, bcrypt 等
+  - 交互式识别
+  - 快速识别常见哈希类型
+  
+  **支持的哈希类型：**
+  - MD5
+  - SHA1, SHA256, SHA512
+  - bcrypt
+  - NTLM
+  - MySQL
+  - PostgreSQL
+  - 等多种哈希算法
+  
+  **使用场景：**
+  - CTF 密码破解
+  - 哈希值分析
+  - 密码学研究
+  - 安全审计
+  
+  **注意事项：**
+  - 需要 Python 环境
+  - 交互式工具，可能需要特殊处理
+
+parameters:
+  - name: "hash"
+    type: "string"
+    description: "要识别的哈希值"
+    required: true
+    position: 0
+    format: "positional"
+
