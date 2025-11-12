@@ -1,287 +1,289 @@
 # CyberStrikeAI
 
-🚀 **AI自主渗透测试平台** - 基于Golang构建，内置上百个安全工具，支持灵活扩展自定义工具，通过MCP协议实现AI智能决策与自动化执行，让安全测试像对话一样简单。
-- web模式
-  ![详情预览](./img/效果.png)
-- mcp-stdio模式
-  ![详情预览](./img/mcp-stdio2.png) 
-  
-## 更新日志
- - 2025.11.13 在前端新增`设置`功能；
- - 2025.11.13 新增 MCP Stdio 模式支持，现可在代码编辑器、CLI 及自动化脚本等多种场景下，无缝集成并使用全套安全工具；
- - 2025.11.12 增加了任务停止功能，优化前端；
+[中文](README_CN.md) | [English](README.md)
 
+🚀 **AI-Powered Autonomous Penetration Testing Platform** - Built with Golang, featuring hundreds of built-in security tools, flexible custom tool extensions, and intelligent AI decision-making through MCP protocol, making security testing as simple as a conversation.
 
-## ✨ 功能特性
+- Web Mode
+  ![Preview](./img/效果.png)
+- MCP Stdio Mode
+  ![Preview](./img/mcp-stdio2.png)
 
-### 核心功能
-- 🤖 **AI智能代理** - 集成OpenAI兼容API（支持GPT、Claude、DeepSeek等），AI自主决策和执行安全测试
-- 🧠 **智能决策引擎** - AI分析目标并自动选择最佳测试策略和工具组合
-- ⚡ **自主执行** - AI代理自动调用安全工具，无需人工干预
-- 🔄 **自适应调整** - 根据工具执行结果和发现的漏洞，AI自动调整测试策略
-- 📝 **智能总结** - 达到最大迭代次数时，AI自动总结测试结果并提供下一步执行计划
-- 💬 **对话式交互** - 自然语言对话界面，支持流式输出（SSE），实时查看执行过程
-- 📊 **对话历史管理** - 完整的对话历史记录，支持查看、删除和管理
-- ⚙️ **可视化配置管理** - Web界面配置系统设置，支持实时加载和保存配置，必填项验证
+## Changelog
+- 2025.11.13 Added `Settings` feature in the frontend
+- 2025.11.13 Added MCP Stdio mode support, now seamlessly integrated and usable in code editors, CLI, and automation scripts
+- 2025.11.12 Added task stop functionality, optimized frontend
 
-### 工具集成
-- 🔌 **MCP协议支持** - 完整实现MCP协议，支持工具注册、调用、监控
-- 📡 **双传输模式** - 支持HTTP和stdio两种传输方式，可在Web应用和IDE中无缝使用
-- 🛠️ **灵活工具配置** - 支持从目录加载工具配置（YAML），易于扩展和维护
-- 📈 **实时监控** - 监控所有工具的执行状态、结果、调用次数和统计信息
-- 🔍 **漏洞自动分析** - 自动分析工具输出，提取和分类发现的漏洞
+## ✨ Features
 
-### 技术特性
-- 🚀 **流式输出** - 支持Server-Sent Events (SSE)实时流式输出，提升用户体验
-- 💾 **数据持久化** - SQLite数据库存储对话历史和过程详情
-- 📝 **详细日志** - 结构化日志记录，便于调试和问题排查
-- 🔒 **安全执行** - 工具执行隔离，错误处理和超时控制
+### Core Features
+- 🤖 **AI Intelligent Agent** - Integrated OpenAI-compatible API (supports GPT, Claude, DeepSeek, etc.), AI autonomously makes decisions and executes security tests
+- 🧠 **Intelligent Decision Engine** - AI analyzes targets and automatically selects optimal testing strategies and tool combinations
+- ⚡ **Autonomous Execution** - AI agent automatically invokes security tools without human intervention
+- 🔄 **Adaptive Adjustment** - AI automatically adjusts testing strategies based on tool execution results and discovered vulnerabilities
+- 📝 **Intelligent Summary** - When maximum iterations are reached, AI automatically summarizes test results and provides next-step execution plans
+- 💬 **Conversational Interface** - Natural language conversation interface with streaming output (SSE), real-time execution viewing
+- 📊 **Conversation History Management** - Complete conversation history records, supports viewing, deletion, and management
+- ⚙️ **Visual Configuration Management** - Web interface for system settings, supports real-time loading and saving configurations with required field validation
 
-## 📁 项目结构
+### Tool Integration
+- 🔌 **MCP Protocol Support** - Complete MCP protocol implementation, supports tool registration, invocation, and monitoring
+- 📡 **Dual Transport Modes** - Supports both HTTP and stdio transport methods, seamlessly usable in web applications and IDEs
+- 🛠️ **Flexible Tool Configuration** - Supports loading tool configurations from directories (YAML), easy to extend and maintain
+- 📈 **Real-time Monitoring** - Monitors execution status, results, call counts, and statistics of all tools
+- 🔍 **Automatic Vulnerability Analysis** - Automatically analyzes tool output, extracts and categorizes discovered vulnerabilities
+
+### Technical Features
+- 🚀 **Streaming Output** - Supports Server-Sent Events (SSE) for real-time streaming output, enhancing user experience
+- 💾 **Data Persistence** - SQLite database stores conversation history and process details
+- 📝 **Detailed Logging** - Structured logging for easy debugging and troubleshooting
+- 🔒 **Secure Execution** - Tool execution isolation, error handling, and timeout control
+
+## 📁 Project Structure
 
 ```
 CyberStrikeAI/
 ├── cmd/
 │   ├── server/
-│   │   └── main.go          # 程序入口，启动HTTP服务器
+│   │   └── main.go          # Program entry point, starts HTTP server
 │   ├── mcp-stdio/
-│   │   └── main.go          # MCP stdio模式入口（用于Cursor等IDE集成）
+│   │   └── main.go          # MCP stdio mode entry (for Cursor and other IDE integration)
 │   └── test-config/
-│       └── main.go          # 配置测试工具
+│       └── main.go          # Configuration testing tool
 ├── internal/
-│   ├── agent/               # AI代理模块
-│   │   └── agent.go         # Agent Loop实现，处理AI对话和工具调用
-│   ├── app/                 # 应用初始化
-│   │   └── app.go           # 应用主逻辑，路由设置
-│   ├── config/              # 配置管理
-│   │   └── config.go        # 配置加载和工具配置管理
-│   ├── database/            # 数据库模块
-│   │   ├── database.go      # 数据库连接和表结构
-│   │   └── conversation.go  # 对话和消息数据访问
-│   ├── handler/             # HTTP处理器
-│   │   ├── agent.go         # Agent Loop API处理
-│   │   ├── conversation.go  # 对话历史API处理
-│   │   └── monitor.go       # 监控API处理
-│   ├── logger/              # 日志系统
-│   │   └── logger.go        # 结构化日志封装
-│   ├── mcp/                 # MCP协议实现
-│   │   ├── server.go        # MCP服务器核心逻辑
-│   │   └── types.go         # MCP协议类型定义
-│   └── security/            # 安全工具执行器
-│       └── executor.go      # 工具执行和参数构建
-├── tools/                   # 工具配置文件目录
-│   ├── nmap.yaml            # nmap工具配置
-│   ├── sqlmap.yaml          # sqlmap工具配置
-│   ├── nikto.yaml           # nikto工具配置
-│   ├── dirb.yaml            # dirb工具配置
-│   ├── exec.yaml            # 系统命令执行工具配置
-│   └── README.md            # 工具配置说明
-├── web/                     # Web前端
-│   ├── static/              # 静态资源
+│   ├── agent/               # AI agent module
+│   │   └── agent.go         # Agent Loop implementation, handles AI conversations and tool calls
+│   ├── app/                 # Application initialization
+│   │   └── app.go           # Main application logic, route setup
+│   ├── config/              # Configuration management
+│   │   └── config.go        # Configuration loading and tool configuration management
+│   ├── database/            # Database module
+│   │   ├── database.go      # Database connection and table structure
+│   │   └── conversation.go  # Conversation and message data access
+│   ├── handler/             # HTTP handlers
+│   │   ├── agent.go         # Agent Loop API handling
+│   │   ├── conversation.go  # Conversation history API handling
+│   │   └── monitor.go       # Monitoring API handling
+│   ├── logger/              # Logging system
+│   │   └── logger.go        # Structured logging wrapper
+│   ├── mcp/                 # MCP protocol implementation
+│   │   ├── server.go        # MCP server core logic
+│   │   └── types.go         # MCP protocol type definitions
+│   └── security/            # Security tool executor
+│       └── executor.go      # Tool execution and parameter building
+├── tools/                   # Tool configuration directory
+│   ├── nmap.yaml            # nmap tool configuration
+│   ├── sqlmap.yaml          # sqlmap tool configuration
+│   ├── nikto.yaml           # nikto tool configuration
+│   ├── dirb.yaml            # dirb tool configuration
+│   ├── exec.yaml            # System command execution tool configuration
+│   └── README.md            # Tool configuration documentation
+├── web/                     # Web frontend
+│   ├── static/              # Static resources
 │   │   ├── css/
-│   │   │   └── style.css    # 样式文件
+│   │   │   └── style.css    # Stylesheet
 │   │   └── js/
-│   │       └── app.js       # 前端JavaScript逻辑
-│   └── templates/           # HTML模板
-│       └── index.html       # 主页面模板
-├── data/                    # 数据目录（自动创建）
-│   └── conversations.db     # SQLite数据库文件
-├── config.yaml              # 主配置文件
-├── go.mod                   # Go模块依赖
-├── go.sum                   # Go依赖校验和
-├── run.sh                   # 启动脚本
-└── README.md                # 项目说明文档
+│   │       └── app.js       # Frontend JavaScript logic
+│   └── templates/           # HTML templates
+│       └── index.html       # Main page template
+├── data/                    # Data directory (auto-created)
+│   └── conversations.db     # SQLite database file
+├── config.yaml              # Main configuration file
+├── go.mod                   # Go module dependencies
+├── go.sum                   # Go dependency checksums
+├── run.sh                   # Startup script
+└── README.md                # Project documentation
 ```
 
-## 快速开始
+## Quick Start
 
-### 前置要求
+### Prerequisites
 
-- Go 1.21 或更高版本
-- OpenAI API Key（或其他兼容OpenAI协议的API，如DeepSeek、Claude等）
-- 安全工具（可选）：根据您的需求安装相应的安全工具，系统支持上百个工具
+- Go 1.21 or higher
+- OpenAI API Key (or other OpenAI-compatible API, such as DeepSeek, Claude, etc.)
+- Security tools (optional): Install corresponding security tools based on your needs, the system supports hundreds of tools
 
-### 安装步骤
+### Installation Steps
 
-1. **克隆项目**
+1. **Clone the repository**
 ```bash
 git clone https://github.com/Ed1s0nZ/CyberStrikeAI.git
 cd CyberStrikeAI-main
 ```
 
-2. **安装依赖**
+2. **Install dependencies**
 ```bash
 go mod download
 ```
 
-3. **配置**
+3. **Configuration**
 
-#### 方式一：通过Web界面配置（推荐）
+#### Method 1: Configure via Web Interface (Recommended)
 
-启动服务器后，在Web界面点击右上角的"设置"按钮，可以可视化配置：
-- **OpenAI配置**：API Key、Base URL、模型（必填项，标记为 *）
-- **MCP工具配置**：启用/禁用工具
-- **Agent配置**：最大迭代次数等
+After starting the server, click the "Settings" button in the top-right corner of the web interface to configure:
+- **OpenAI Configuration**: API Key, Base URL, Model (required fields marked with *)
+- **MCP Tool Configuration**: Enable/disable tools
+- **Agent Configuration**: Maximum iterations, etc.
 
-配置会自动保存到 `config.yaml` 文件中。打开设置时会自动加载当前配置文件中的值。
+Configuration is automatically saved to the `config.yaml` file. Opening settings automatically loads values from the current configuration file.
 
-#### 方式二：直接编辑配置文件
+#### Method 2: Edit Configuration File Directly
 
-编辑 `config.yaml` 文件，设置您的API配置：
+Edit the `config.yaml` file and set your API configuration:
 
 ```yaml
-# OpenAI兼容API配置（支持OpenAI、DeepSeek、Claude等）
+# OpenAI-compatible API configuration (supports OpenAI, DeepSeek, Claude, etc.)
 openai:
-  api_key: "sk-your-api-key-here"  # 替换为您的API Key
-  base_url: "https://api.openai.com/v1"  # 或使用其他兼容API的地址
-  model: "gpt-4"  # 或 "deepseek-chat", "gpt-3.5-turbo" 等
+  api_key: "sk-your-api-key-here"  # Replace with your API Key
+  base_url: "https://api.openai.com/v1"  # Or use other compatible API addresses
+  model: "gpt-4"  # Or "deepseek-chat", "gpt-3.5-turbo", etc.
 
-# 服务器配置
+# Server configuration
 server:
   host: "0.0.0.0"
   port: 8080
 
-# 数据库配置
+# Database configuration
 database:
   path: "data/conversations.db"
 
-# 安全工具配置
+# Security tool configuration
 security:
-  tools_dir: "tools"  # 工具配置文件目录
+  tools_dir: "tools"  # Tool configuration file directory
 ```
 
-**支持的API服务商：**
+**Supported API Providers:**
 - OpenAI: `https://api.openai.com/v1`
 - DeepSeek: `https://api.deepseek.com/v1`
-- 其他兼容OpenAI协议的API服务
+- Other OpenAI-compatible API services
 
-**注意**：API Key、Base URL 和模型是必填项，必须配置才能正常运行系统。在Web界面配置时，这些字段会进行验证，未填写时会显示错误提示。
+**Note**: API Key, Base URL, and Model are required fields and must be configured for the system to run properly. When configuring in the web interface, these fields are validated, and error prompts are displayed if not filled.
 
-4. **安装安全工具（可选）**
+4. **Install Security Tools (Optional)**
 
-根据您的需求安装相应的安全工具。系统支持上百个工具，您可以根据实际需要选择性安装：
+Install corresponding security tools based on your needs. The system supports hundreds of tools, and you can selectively install based on actual requirements:
 
 ```bash
-# macOS (使用Homebrew)
+# macOS (using Homebrew)
 brew install nmap sqlmap nuclei httpx gobuster feroxbuster subfinder amass
 
 # Ubuntu/Debian
 sudo apt-get install nmap sqlmap nuclei httpx gobuster feroxbuster
 
-# 或使用Docker运行工具
-# 或使用各工具的官方安装方法
+# Or use Docker to run tools
+# Or use official installation methods for each tool
 ```
 
-Ubuntu安全工具批量安装脚本: `https://github.com/Ed1s0nZ/sec_tools/blob/main/install_tools_ubuntu.sh`
+Ubuntu security tools batch installation script: `https://github.com/Ed1s0nZ/sec_tools/blob/main/install_tools_ubuntu.sh`
 
-**注意**：不是所有工具都需要安装，AI会根据您的测试需求自动选择可用的工具。如果某个工具未安装，AI会尝试使用替代工具。
+**Note**: Not all tools need to be installed. AI will automatically select available tools based on your testing needs. If a tool is not installed, AI will try to use alternative tools.
 
-5. **启动服务器**
+5. **Start the Server**
 
-#### 方式一：使用启动脚本（推荐）
+#### Method 1: Using Startup Script (Recommended)
 ```bash
 chmod +x run.sh
 ./run.sh
 ```
 
-#### 方式二：直接运行
+#### Method 2: Direct Run
 ```bash
 go run cmd/server/main.go
 ```
 
-#### 方式三：编译后运行
+#### Method 3: Build and Run
 ```bash
 go build -o cyberstrike-ai cmd/server/main.go
 ./cyberstrike-ai
 ```
 
-#### 方式四：指定配置文件
+#### Method 4: Specify Configuration File
 ```bash
 go run cmd/server/main.go -config /path/to/config.yaml
 ```
 
-6. **访问应用**
-打开浏览器访问：http://localhost:8080
+6. **Access the Application**
+Open your browser and visit: http://localhost:8080
 
-您将看到：
-- **对话测试** - 与AI对话进行渗透测试
-- **工具监控** - 查看工具执行状态和结果
-- **对话历史** - 管理历史对话记录
-- **系统设置** - 配置API密钥、工具启用状态等（点击右上角设置按钮）
+You will see:
+- **Conversation Testing** - Chat with AI for penetration testing
+- **Tool Monitoring** - View tool execution status and results
+- **Conversation History** - Manage historical conversation records
+- **System Settings** - Configure API keys, tool enable status, etc. (click the settings button in the top-right corner)
 
-**首次使用提示**：
-- 在开始使用前，请先点击右上角的"设置"按钮配置您的API Key
-- API Key、Base URL 和模型是必填项（标记为 *），必须填写才能正常使用
-- 配置会自动保存到 `config.yaml` 文件中
-- 打开设置时会自动加载当前配置文件中的最新配置
+**First-time Usage Tips**:
+- Before starting, please click the "Settings" button in the top-right corner to configure your API Key
+- API Key, Base URL, and Model are required fields (marked with *), must be filled for normal use
+- Configuration is automatically saved to the `config.yaml` file
+- Opening settings automatically loads the latest configuration from the current configuration file
 
-## ⚙️ 配置说明
+## ⚙️ Configuration
 
-### Web界面配置管理
+### Web Interface Configuration Management
 
-系统提供了可视化的配置管理界面，您可以通过以下方式访问：
+The system provides a visual configuration management interface. You can access it as follows:
 
-1. **打开设置**：点击Web界面右上角的"设置"按钮
-2. **加载配置**：打开设置时会自动从 `config.yaml` 加载当前配置
-3. **修改配置**：
-   - **OpenAI配置**：修改API Key、Base URL、模型（必填项标记为 *）
-   - **MCP工具配置**：启用或禁用工具，支持搜索和批量操作
-   - **Agent配置**：设置最大迭代次数等参数
-4. **保存配置**：点击"应用配置"按钮，配置会保存到 `config.yaml` 并立即生效
-5. **验证提示**：必填项未填写时会显示错误提示，并高亮显示错误字段
+1. **Open Settings**: Click the "Settings" button in the top-right corner of the web interface
+2. **Load Configuration**: Opening settings automatically loads current configuration from `config.yaml`
+3. **Modify Configuration**:
+   - **OpenAI Configuration**: Modify API Key, Base URL, Model (required fields marked with *)
+   - **MCP Tool Configuration**: Enable or disable tools, supports search and batch operations
+   - **Agent Configuration**: Set maximum iterations and other parameters
+4. **Save Configuration**: Click the "Apply Configuration" button, configuration is saved to `config.yaml` and takes effect immediately
+5. **Validation Prompts**: Error prompts are displayed when required fields are not filled, and error fields are highlighted
 
-**配置验证规则**：
-- API Key、Base URL、模型为必填项
-- 保存时会自动验证，未填写必填项会阻止保存并提示错误
+**Configuration Validation Rules**:
+- API Key, Base URL, and Model are required fields
+- Validation is performed automatically when saving, and saving is blocked with error prompts if required fields are not filled
 
-### 完整配置示例
+### Complete Configuration Example
 
 ```yaml
-# 服务器配置
+# Server configuration
 server:
-  host: "0.0.0.0"  # 监听地址
-  port: 8080        # HTTP服务端口
+  host: "0.0.0.0"  # Listen address
+  port: 8080        # HTTP service port
 
-# 日志配置
+# Log configuration
 log:
-  level: "info"     # 日志级别: debug, info, warn, error
-  output: "stdout"  # 输出位置: stdout, stderr, 或文件路径
+  level: "info"     # Log level: debug, info, warn, error
+  output: "stdout"  # Output location: stdout, stderr, or file path
 
-# MCP协议配置
+# MCP protocol configuration
 mcp:
-  enabled: true     # 是否启用MCP服务器
-  host: "0.0.0.0"   # MCP服务器监听地址
-  port: 8081        # MCP服务器端口
+  enabled: true     # Whether to enable MCP server
+  host: "0.0.0.0"   # MCP server listen address
+  port: 8081        # MCP server port
 
-# AI模型配置（支持OpenAI兼容API）
+# AI model configuration (supports OpenAI-compatible API)
 openai:
-  api_key: "sk-xxx"  # API密钥
-  base_url: "https://api.deepseek.com/v1"  # API基础URL
-  model: "deepseek-chat"  # 模型名称
+  api_key: "sk-xxx"  # API key
+  base_url: "https://api.deepseek.com/v1"  # API base URL
+  model: "deepseek-chat"  # Model name
 
-# 数据库配置
+# Database configuration
 database:
-  path: "data/conversations.db"  # SQLite数据库路径
+  path: "data/conversations.db"  # SQLite database path
 
-# 安全工具配置
+# Security tool configuration
 security:
-  # 推荐方式：从目录加载工具配置
-  tools_dir: "tools"  # 工具配置文件目录（相对于配置文件所在目录）
+  # Recommended: Load tool configurations from directory
+  tools_dir: "tools"  # Tool configuration file directory (relative to config file location)
   
-  # 向后兼容：也可以在主配置文件中直接定义工具
+  # Backward compatibility: Can also define tools directly in main config file
   # tools:
   #   - name: "nmap"
   #     command: "nmap"
   #     args: ["-sT", "-sV", "-sC"]
-  #     description: "网络扫描工具"
+  #     description: "Network scanning tool"
   #     enabled: true
 ```
 
-### 工具配置方式
+### Tool Configuration Methods
 
-**方式一：使用工具目录（推荐）**
+**Method 1: Using Tool Directory (Recommended)**
 
-在 `tools/` 目录下为每个工具创建独立的YAML配置文件，例如 `tools/nmap.yaml`：
+Create independent YAML configuration files for each tool in the `tools/` directory, for example `tools/nmap.yaml`:
 
 ```yaml
 name: "nmap"
@@ -289,239 +291,238 @@ command: "nmap"
 args: ["-sT", "-sV", "-sC"]
 enabled: true
 
-short_description: "网络扫描工具，用于发现网络主机、开放端口和服务"
+short_description: "Network scanning tool for discovering network hosts, open ports, and services"
 
 description: |
-  网络映射和端口扫描工具，用于发现网络中的主机、服务和开放端口。
+  Network mapping and port scanning tool for discovering hosts, services, and open ports in a network.
 
 parameters:
   - name: "target"
     type: "string"
-    description: "目标IP地址或域名"
+    description: "Target IP address or domain name"
     required: true
     position: 0
     format: "positional"
   
   - name: "ports"
     type: "string"
-    description: "端口范围，例如: 1-1000"
+    description: "Port range, e.g.: 1-1000"
     required: false
     flag: "-p"
     format: "flag"
 ```
 
-**方式二：在主配置文件中定义**
+**Method 2: Define in Main Configuration File**
 
-直接在 `config.yaml` 的 `security.tools` 中定义工具配置。
+Define tool configurations directly in `config.yaml` under `security.tools`.
 
-**注意：** 如果同时配置了 `tools_dir` 和 `tools`，`tools_dir` 中的工具优先。
+**Note**: If both `tools_dir` and `tools` are configured, tools in `tools_dir` take priority.
 
-## 🚀 使用示例
+## 🚀 Usage Examples
 
-### 对话式渗透测试
+### Conversational Penetration Testing
 
-在Web界面的"对话测试"标签页中，您可以使用自然语言与AI对话：
+In the "Conversation Testing" tab of the web interface, you can use natural language to chat with AI:
 
-#### 1. 网络扫描
+#### 1. Network Scanning
 ```
-扫描 192.168.1.1 的开放端口
+Scan open ports on 192.168.1.1
 ```
-或更详细的指令：
+Or more detailed instructions:
 ```
-对 192.168.1.1 进行全面的端口扫描，重点关注80、443、22、21端口
-```
-
-#### 2. SQL注入检测
-```
-检测 https://example.com/page?id=1 是否存在SQL注入漏洞
+Perform a comprehensive port scan on 192.168.1.1, focusing on ports 80, 443, 22, 21
 ```
 
-#### 3. Web漏洞扫描
+#### 2. SQL Injection Detection
 ```
-扫描 https://example.com 的Web服务器漏洞，包括常见的安全问题
-```
-
-#### 4. 目录扫描
-```
-扫描 https://example.com 的隐藏目录和文件
+Check if https://example.com/page?id=1 has SQL injection vulnerabilities
 ```
 
-#### 5. 综合安全测试
+#### 3. Web Vulnerability Scanning
 ```
-对 example.com 进行全面的安全评估，包括端口扫描、Web漏洞检测和目录枚举
-```
-
-#### 6. 多步骤测试
-```
-首先扫描 192.168.1.1 的开放端口，然后对发现的Web服务进行漏洞扫描
+Scan https://example.com for web server vulnerabilities, including common security issues
 ```
 
-### 后渗透测试
-
-在获得初始访问权限后，可以使用后渗透工具进行权限提升、横向移动和持久化：
-
-#### 1. Linux 权限提升枚举
+#### 4. Directory Scanning
 ```
-使用 linpeas 对目标 Linux 系统进行权限提升检查
+Scan https://example.com for hidden directories and files
 ```
 
-#### 2. Windows 权限提升枚举
+#### 5. Comprehensive Security Testing
 ```
-使用 winpeas 对目标 Windows 系统进行权限提升检查
-```
-
-#### 3. Active Directory 攻击路径分析
-```
-使用 bloodhound 分析 Active Directory 的攻击路径
+Perform a comprehensive security assessment on example.com, including port scanning, web vulnerability detection, and directory enumeration
 ```
 
-#### 4. 凭证提取
+#### 6. Multi-step Testing
 ```
-使用 mimikatz 提取 Windows 系统的凭证信息
-```
-
-#### 5. 横向移动
-```
-使用 impacket 工具集进行网络协议攻击和横向移动
+First scan open ports on 192.168.1.1, then perform vulnerability scanning on discovered web services
 ```
 
-#### 6. 后门生成
-```
-使用 msfvenom 生成反向 shell 载荷
-```
+### Post-Exploitation Testing
 
-### CTF 竞赛支持
+After gaining initial access, you can use post-exploitation tools for privilege escalation, lateral movement, and persistence:
 
-系统内置了丰富的 CTF 工具，支持各种 CTF 题型的解题：
-
-#### 1. 隐写分析
+#### 1. Linux Privilege Escalation Enumeration
 ```
-使用 stegsolve 分析图片隐写
-使用 zsteg 检测 LSB 隐写
+Use linpeas to perform privilege escalation checks on the target Linux system
 ```
 
-#### 2. 密码破解
+#### 2. Windows Privilege Escalation Enumeration
 ```
-使用 hashcat 破解哈希值
-使用 john 破解密码文件
-使用 fcrackzip 破解 ZIP 文件密码
-使用 pdfcrack 破解 PDF 文件密码
+Use winpeas to perform privilege escalation checks on the target Windows system
 ```
 
-#### 3. 二进制分析
+#### 3. Active Directory Attack Path Analysis
 ```
-使用 gdb 调试二进制文件
-使用 radare2 进行逆向分析
-使用 strings 提取二进制文件中的字符串
+Use bloodhound to analyze Active Directory attack paths
 ```
 
-#### 4. 哈希识别
+#### 4. Credential Extraction
 ```
-使用 hash-identifier 识别哈希类型
-```
-
-#### 5. 数据转换和分析
-```
-使用 cyberchef 进行各种数据转换和分析
-使用 xxd 查看文件十六进制内容
+Use mimikatz to extract credential information from Windows systems
 ```
 
-#### 6. 综合 CTF 解题
+#### 5. Lateral Movement
 ```
-分析这个 CTF 题目：给定一个包含隐写和加密的文件，找出 flag
+Use impacket toolset for network protocol attacks and lateral movement
 ```
 
-### 监控工具执行
+#### 6. Backdoor Generation
+```
+Use msfvenom to generate reverse shell payloads
+```
 
-在"工具监控"标签页中，您可以：
+### CTF Competition Support
 
-- 📊 **执行统计** - 查看所有工具的调用次数、成功/失败统计
-- 📝 **执行记录** - 查看详细的工具执行历史，包括参数、结果、耗时
-- 🔍 **漏洞列表** - 自动提取和分类发现的漏洞
-- ⏱️ **实时状态** - 实时查看正在执行的工具状态
+The system has built-in rich CTF tools supporting various CTF problem types:
 
-### 对话历史管理
+#### 1. Steganography Analysis
+```
+Use stegsolve to analyze image steganography
+Use zsteg to detect LSB steganography
+```
 
-- 📚 **查看历史** - 浏览所有历史对话记录
-- 🔍 **搜索对话** - 根据标题搜索对话
-- 🗑️ **删除对话** - 清理不需要的对话记录
-- 📄 **查看详情** - 查看对话的完整消息和工具执行过程
+#### 2. Password Cracking
+```
+Use hashcat to crack hash values
+Use john to crack password files
+Use fcrackzip to crack ZIP file passwords
+Use pdfcrack to crack PDF file passwords
+```
 
-## 效果
+#### 3. Binary Analysis
+```
+Use gdb to debug binary files
+Use radare2 for reverse engineering analysis
+Use strings to extract strings from binary files
+```
 
-### 对话效果
-  ![详情预览](./img/效果1.png)
-  ![详情预览](./img/效果2.png)
+#### 4. Hash Identification
+```
+Use hash-identifier to identify hash types
+```
 
-### MCP调用
-  ![详情预览](./img/MCP.png)
+#### 5. Data Conversion and Analysis
+```
+Use cyberchef for various data conversions and analysis
+Use xxd to view file hexadecimal content
+```
 
-### 调用链
-  ![详情预览](./img/调用链1.png)
-  
+#### 6. Comprehensive CTF Problem Solving
+```
+Analyze this CTF problem: Given a file containing steganography and encryption, find the flag
+```
 
-## 📡 API接口
+### Monitor Tool Execution
+
+In the "Tool Monitoring" tab, you can:
+
+- 📊 **Execution Statistics** - View call counts, success/failure statistics for all tools
+- 📝 **Execution Records** - View detailed tool execution history, including parameters, results, and duration
+- 🔍 **Vulnerability List** - Automatically extracted and categorized discovered vulnerabilities
+- ⏱️ **Real-time Status** - Real-time viewing of currently executing tool status
+
+### Conversation History Management
+
+- 📚 **View History** - Browse all historical conversation records
+- 🔍 **Search Conversations** - Search conversations by title
+- 🗑️ **Delete Conversations** - Clean up unwanted conversation records
+- 📄 **View Details** - View complete messages and tool execution processes of conversations
+
+## Results
+
+### Conversation Results
+  ![Preview](./img/效果1.png)
+  ![Preview](./img/效果2.png)
+
+### MCP Calls
+  ![Preview](./img/MCP.png)
+
+### Call Chain
+  ![Preview](./img/调用链1.png)
+
+## 📡 API Endpoints
 
 ### Agent Loop API
 
-#### 标准请求（同步）
+#### Standard Request (Synchronous)
 
 **POST** `/api/agent-loop`
 
-请求体：
+Request body:
 ```json
 {
-  "message": "扫描 192.168.1.1",
-  "conversationId": "optional-conversation-id"  // 可选，用于继续对话
+  "message": "Scan 192.168.1.1",
+  "conversationId": "optional-conversation-id"  // Optional, for continuing conversations
 }
 ```
 
-响应：
+Response:
 ```json
 {
-  "response": "AI的回复内容",
+  "response": "AI response content",
   "mcpExecutionIds": ["exec-id-1", "exec-id-2"],
   "conversationId": "conversation-id",
   "time": "2024-01-01T00:00:00Z"
 }
 ```
 
-使用示例：
+Usage example:
 ```bash
 curl -X POST http://localhost:8080/api/agent-loop \
   -H "Content-Type: application/json" \
-  -d '{"message": "扫描 192.168.1.1"}'
+  -d '{"message": "Scan 192.168.1.1"}'
 ```
 
-#### 流式请求（推荐，实时输出）
+#### Streaming Request (Recommended, Real-time Output)
 
 **POST** `/api/agent-loop/stream`
 
-使用Server-Sent Events (SSE)实时返回执行过程。
+Uses Server-Sent Events (SSE) to return execution process in real-time.
 
-请求体：
+Request body:
 ```json
 {
-  "message": "扫描 192.168.1.1",
+  "message": "Scan 192.168.1.1",
   "conversationId": "optional-conversation-id"
 }
 ```
 
-事件类型：
-- `progress` - 进度更新
-- `iteration` - 迭代开始
-- `thinking` - AI思考内容
-- `tool_call` - 工具调用开始
-- `tool_result` - 工具执行结果
-- `response` - 最终回复
-- `error` - 错误信息
-- `done` - 完成
+Event types:
+- `progress` - Progress update
+- `iteration` - Iteration start
+- `thinking` - AI thinking content
+- `tool_call` - Tool call start
+- `tool_result` - Tool execution result
+- `response` - Final response
+- `error` - Error information
+- `done` - Complete
 
-使用示例（JavaScript）：
+Usage example (JavaScript):
 ```javascript
 const eventSource = new EventSource('/api/agent-loop/stream', {
   method: 'POST',
-  body: JSON.stringify({ message: '扫描 192.168.1.1' })
+  body: JSON.stringify({ message: 'Scan 192.168.1.1' })
 });
 
 eventSource.onmessage = (event) => {
@@ -530,56 +531,56 @@ eventSource.onmessage = (event) => {
 };
 ```
 
-### 对话历史API
+### Conversation History API
 
-#### 创建对话
+#### Create Conversation
 
 **POST** `/api/conversations`
 
-请求体：
+Request body:
 ```json
 {
-  "title": "对话标题"
+  "title": "Conversation title"
 }
 ```
 
-#### 获取对话列表
+#### Get Conversation List
 
 **GET** `/api/conversations`
 
-查询参数：
-- `limit` - 限制返回数量（可选）
-- `offset` - 偏移量（可选）
+Query parameters:
+- `limit` - Limit return count (optional)
+- `offset` - Offset (optional)
 
-#### 获取单个对话
+#### Get Single Conversation
 
 **GET** `/api/conversations/:id`
 
-返回对话的完整信息，包括所有消息。
+Returns complete conversation information, including all messages.
 
-#### 删除对话
+#### Delete Conversation
 
 **DELETE** `/api/conversations/:id`
 
-### 监控API
+### Monitoring API
 
-#### 获取所有监控信息
+#### Get All Monitoring Information
 
 **GET** `/api/monitor`
 
-返回所有执行记录、统计信息和漏洞列表。
+Returns all execution records, statistics, and vulnerability lists.
 
-#### 获取特定执行记录
+#### Get Specific Execution Record
 
 **GET** `/api/monitor/execution/:id`
 
-返回指定ID的工具执行详情。
+Returns tool execution details for the specified ID.
 
-#### 获取统计信息
+#### Get Statistics
 
 **GET** `/api/monitor/stats`
 
-返回所有工具的调用统计：
+Returns call statistics for all tools:
 ```json
 {
   "nmap": {
@@ -592,11 +593,11 @@ eventSource.onmessage = (event) => {
 }
 ```
 
-#### 获取漏洞列表
+#### Get Vulnerability List
 
 **GET** `/api/monitor/vulnerabilities`
 
-返回所有发现的漏洞：
+Returns all discovered vulnerabilities:
 ```json
 {
   "total": 5,
@@ -610,74 +611,74 @@ eventSource.onmessage = (event) => {
 }
 ```
 
-### MCP协议接口
+### MCP Protocol Endpoint
 
 **POST** `/api/mcp`
 
-MCP协议端点，支持JSON-RPC 2.0格式的请求。
+MCP protocol endpoint, supports JSON-RPC 2.0 format requests.
 
-## 🔌 MCP协议
+## 🔌 MCP Protocol
 
-本项目完整实现了MCP（Model Context Protocol）协议，支持以下功能：
+This project fully implements the MCP (Model Context Protocol) protocol, supporting the following features:
 
-### 传输模式
+### Transport Modes
 
-CyberStrikeAI 支持两种 MCP 传输模式：
+CyberStrikeAI supports two MCP transport modes:
 
-#### 1. HTTP 模式（默认）
-- 通过 HTTP POST 请求进行通信
-- 适用于 Web 应用和其他 HTTP 客户端
-- 默认监听地址：`0.0.0.0:8081/mcp`
-- 可通过 `/api/mcp` 端点访问
+#### 1. HTTP Mode (Default)
+- Communication via HTTP POST requests
+- Suitable for web applications and other HTTP clients
+- Default listen address: `0.0.0.0:8081/mcp`
+- Accessible via `/api/mcp` endpoint
 
-#### 2. stdio 模式（新增）
-- 通过标准输入输出（stdio）进行通信
-- 适用于 Cursor、Claude Desktop 等 IDE 集成
-- 完全符合 JSON-RPC 2.0 规范
-- 支持字符串、数字和 null 类型的 id 字段
-- 正确处理通知（notification）消息
+#### 2. stdio Mode (New)
+- Communication via standard input/output (stdio)
+- Suitable for Cursor, Claude Desktop, and other IDE integrations
+- Fully compliant with JSON-RPC 2.0 specification
+- Supports string, number, and null types for id field
+- Properly handles notification messages
 
-### 支持的方法
+### Supported Methods
 
-- `initialize` - 初始化连接，协商协议版本和功能
-- `tools/list` - 列出所有可用的工具
-- `tools/call` - 调用指定工具并执行
-- `prompts/list` - 列出可用的提示词模板
-- `prompts/get` - 获取提示词模板内容
-- `resources/list` - 列出可用资源
-- `resources/read` - 读取资源内容
-- `sampling/request` - 采样请求（占位实现）
-- `notifications/initialized` - 初始化完成通知（stdio 模式）
+- `initialize` - Initialize connection, negotiate protocol version and capabilities
+- `tools/list` - List all available tools
+- `tools/call` - Call specified tool and execute
+- `prompts/list` - List available prompt templates
+- `prompts/get` - Get prompt template content
+- `resources/list` - List available resources
+- `resources/read` - Read resource content
+- `sampling/request` - Sampling request (placeholder implementation)
+- `notifications/initialized` - Initialization complete notification (stdio mode)
 
-### 工具执行机制
+### Tool Execution Mechanism
 
-- 工具调用是同步执行的，确保错误能正确返回
-- 每个工具调用都会创建执行记录，包含：
-  - 执行ID（唯一标识）
-  - 工具名称和参数
-  - 执行状态（running, completed, failed）
-  - 开始和结束时间
-  - 执行结果或错误信息
-- 系统自动跟踪所有工具的执行统计信息
+- Tool calls are executed synchronously, ensuring errors are correctly returned
+- Each tool call creates an execution record containing:
+  - Execution ID (unique identifier)
+  - Tool name and parameters
+  - Execution status (running, completed, failed)
+  - Start and end time
+  - Execution result or error information
+- System automatically tracks execution statistics for all tools
 
-### MCP stdio 模式（Cursor IDE 集成）
+### MCP stdio Mode (Cursor IDE Integration)
 
-stdio 模式允许你在 Cursor IDE 中直接使用 CyberStrikeAI 的所有安全工具。
+stdio mode allows you to directly use all CyberStrikeAI security tools in Cursor IDE.
 
-#### 编译 stdio 模式程序
+#### Compile stdio Mode Program
 
 ```bash
-# 在项目根目录执行
+# Execute in project root directory
 go build -o cyberstrike-ai-mcp cmd/mcp-stdio/main.go
 ```
 
-#### 在 Cursor 中配置
+#### Configure in Cursor
 
-**方法一：通过 UI 配置**
+**Method 1: Via UI Configuration**
 
-1. 打开 Cursor 设置 → **Tools & MCP**
-2. 点击 **Add Custom MCP**
-3. 配置如下（请替换为你的实际路径）：
+1. Open Cursor Settings → **Tools & MCP**
+2. Click **Add Custom MCP**
+3. Configure as follows (replace with your actual path):
 
 ```json
 {
@@ -693,9 +694,9 @@ go build -o cyberstrike-ai-mcp cmd/mcp-stdio/main.go
 }
 ```
 
-**方法二：通过项目配置文件**
+**Method 2: Via Project Configuration File**
 
-在项目根目录创建 `.cursor/mcp.json` 文件：
+Create `.cursor/mcp.json` file in project root directory:
 
 ```json
 {
@@ -711,24 +712,24 @@ go build -o cyberstrike-ai-mcp cmd/mcp-stdio/main.go
 }
 ```
 
-**重要提示：**
-- ✅ 使用绝对路径：`command` 和配置文件路径必须使用绝对路径
-- ✅ 可执行权限：确保编译后的程序有执行权限（Linux/macOS）
-- ✅ 重启 Cursor：配置后需要重启 Cursor 才能生效
+**Important Notes:**
+- ✅ Use absolute paths: `command` and config file paths must use absolute paths
+- ✅ Executable permissions: Ensure compiled program has execute permissions (Linux/macOS)
+- ✅ Restart Cursor: Need to restart Cursor after configuration for it to take effect
 
-配置完成后，重启 Cursor，你就可以在聊天中直接使用所有安全工具了！
+After configuration, restart Cursor, and you can directly use all security tools in chat!
 
-#### stdio 模式特性
+#### stdio Mode Features
 
-- ✅ 完全符合 JSON-RPC 2.0 规范
-- ✅ 支持字符串、数字和 null 类型的 id 字段
-- ✅ 正确处理通知（notification）消息
-- ✅ 日志输出到 stderr，不干扰 JSON-RPC 通信
-- ✅ 与 HTTP 模式完全独立，可同时使用
+- ✅ Fully compliant with JSON-RPC 2.0 specification
+- ✅ Supports string, number, and null types for id field
+- ✅ Properly handles notification messages
+- ✅ Log output to stderr, doesn't interfere with JSON-RPC communication
+- ✅ Completely independent from HTTP mode, can be used simultaneously
 
-### MCP HTTP 模式使用示例
+### MCP HTTP Mode Usage Examples
 
-#### 初始化连接
+#### Initialize Connection
 
 ```bash
 curl -X POST http://localhost:8080/api/mcp \
@@ -748,7 +749,7 @@ curl -X POST http://localhost:8080/api/mcp \
   }'
 ```
 
-#### 列出工具
+#### List Tools
 
 ```bash
 curl -X POST http://localhost:8080/api/mcp \
@@ -760,7 +761,7 @@ curl -X POST http://localhost:8080/api/mcp \
   }'
 ```
 
-#### 调用工具
+#### Call Tool
 
 ```bash
 curl -X POST http://localhost:8080/api/mcp \
@@ -779,57 +780,57 @@ curl -X POST http://localhost:8080/api/mcp \
   }'
 ```
 
-## 🛠️ 安全工具支持
+## 🛠️ Security Tool Support
 
-### 工具概览
+### Tool Overview
 
-当前系统集成了 **上百个安全工具**，涵盖以下类别：
+The system currently integrates **hundreds of security tools**, covering the following categories:
 
-- **网络扫描工具** - nmap, masscan, rustscan, arp-scan, nbtscan 等
-- **Web应用扫描** - sqlmap, nikto, dirb, gobuster, feroxbuster, ffuf, httpx 等
-- **漏洞扫描** - nuclei, wpscan, wafw00f, dalfox, xsser 等
-- **子域名枚举** - subfinder, amass, findomain, dnsenum, fierce 等
-- **API安全** - graphql-scanner, arjun, api-fuzzer, api-schema-analyzer 等
-- **容器安全** - trivy, clair, docker-bench-security, kube-bench, kube-hunter 等
-- **云安全** - prowler, scout-suite, cloudmapper, pacu, terrascan, checkov 等
-- **二进制分析** - gdb, radare2, ghidra, objdump, strings, binwalk 等
-- **漏洞利用** - metasploit, msfvenom, pwntools, ropper, ropgadget 等
-- **密码破解** - hashcat, john, hashpump 等
-- **取证分析** - volatility, volatility3, foremost, steghide, exiftool 等
-- **后渗透工具** - linpeas, winpeas, mimikatz, bloodhound, impacket, responder 等
-- **CTF工具** - stegsolve, zsteg, hash-identifier, fcrackzip, pdfcrack, cyberchef 等
-- **系统工具** - exec, create-file, delete-file, list-files, modify-file 等
+- **Network Scanning Tools** - nmap, masscan, rustscan, arp-scan, nbtscan, etc.
+- **Web Application Scanning** - sqlmap, nikto, dirb, gobuster, feroxbuster, ffuf, httpx, etc.
+- **Vulnerability Scanning** - nuclei, wpscan, wafw00f, dalfox, xsser, etc.
+- **Subdomain Enumeration** - subfinder, amass, findomain, dnsenum, fierce, etc.
+- **API Security** - graphql-scanner, arjun, api-fuzzer, api-schema-analyzer, etc.
+- **Container Security** - trivy, clair, docker-bench-security, kube-bench, kube-hunter, etc.
+- **Cloud Security** - prowler, scout-suite, cloudmapper, pacu, terrascan, checkov, etc.
+- **Binary Analysis** - gdb, radare2, ghidra, objdump, strings, binwalk, etc.
+- **Exploitation** - metasploit, msfvenom, pwntools, ropper, ropgadget, etc.
+- **Password Cracking** - hashcat, john, hashpump, etc.
+- **Forensics** - volatility, volatility3, foremost, steghide, exiftool, etc.
+- **Post-Exploitation Tools** - linpeas, winpeas, mimikatz, bloodhound, impacket, responder, etc.
+- **CTF Tools** - stegsolve, zsteg, hash-identifier, fcrackzip, pdfcrack, cyberchef, etc.
+- **System Tools** - exec, create-file, delete-file, list-files, modify-file, etc.
 
-### 主要工具示例
+### Main Tool Examples
 
-- **nmap** - 网络端口扫描和服务识别
-  - 功能：主机发现、端口扫描、服务版本检测、操作系统识别
-  - 配置：`tools/nmap.yaml`
+- **nmap** - Network port scanning and service identification
+  - Features: Host discovery, port scanning, service version detection, OS identification
+  - Configuration: `tools/nmap.yaml`
   
-- **sqlmap** - SQL注入自动化检测和利用工具
-  - 功能：自动检测SQL注入漏洞、数据库指纹识别、数据提取
-  - 配置：`tools/sqlmap.yaml`
+- **sqlmap** - Automated SQL injection detection and exploitation tool
+  - Features: Automatic SQL injection detection, database fingerprinting, data extraction
+  - Configuration: `tools/sqlmap.yaml`
   
-- **nuclei** - 快速漏洞扫描器
-  - 功能：基于模板的漏洞扫描、大规模扫描支持
-  - 配置：`tools/nuclei.yaml`
+- **nuclei** - Fast vulnerability scanner
+  - Features: Template-based vulnerability scanning, large-scale scanning support
+  - Configuration: `tools/nuclei.yaml`
   
-- **httpx** - HTTP探测工具
-  - 功能：HTTP/HTTPS探测、状态码检测、标题提取
-  - 配置：`tools/httpx.yaml`
+- **httpx** - HTTP probing tool
+  - Features: HTTP/HTTPS probing, status code detection, title extraction
+  - Configuration: `tools/httpx.yaml`
   
-- **exec** - 系统命令执行工具
-  - 功能：执行任意系统命令（需谨慎使用）
-  - 配置：`tools/exec.yaml`
-  - ⚠️ 警告：此工具可以执行任意命令，请确保安全使用
+- **exec** - System command execution tool
+  - Features: Execute arbitrary system commands (use with caution)
+  - Configuration: `tools/exec.yaml`
+  - ⚠️ Warning: This tool can execute arbitrary commands, please ensure secure use
 
-完整的工具列表请查看 `tools/TOOLS_LIST.md` 文件。
+For the complete tool list, please check the `tools/TOOLS_LIST.md` file.
 
-### 添加新工具
+### Adding New Tools
 
-#### 方法一：创建工具配置文件（推荐）
+#### Method 1: Create Tool Configuration File (Recommended)
 
-1. 在 `tools/` 目录下创建新的YAML文件，例如 `tools/mytool.yaml`：
+1. Create a new YAML file in the `tools/` directory, for example `tools/mytool.yaml`:
 
 ```yaml
 name: "mytool"
@@ -837,184 +838,184 @@ command: "mytool"
 args: ["--default-arg"]
 enabled: true
 
-short_description: "简短描述（用于工具列表）"
+short_description: "Short description (for tool list)"
 
 description: |
-  工具的详细描述，帮助AI理解工具的用途和使用场景。
+  Detailed tool description to help AI understand the tool's purpose and use cases.
 
 parameters:
   - name: "target"
     type: "string"
-    description: "目标参数描述"
+    description: "Target parameter description"
     required: true
-    position: 0  # 位置参数
+    position: 0  # Positional parameter
     format: "positional"
   
   - name: "option"
     type: "string"
-    description: "选项参数描述"
+    description: "Option parameter description"
     required: false
     flag: "--option"
     format: "flag"
 ```
 
-2. 重启服务器，工具会自动加载。
+2. Restart the server, and the tool will be automatically loaded.
 
-#### 方法二：在主配置文件中添加
+#### Method 2: Add to Main Configuration File
 
-在 `config.yaml` 的 `security.tools` 中添加工具配置。
+Add tool configuration in `config.yaml` under `security.tools`.
 
-### 工具参数配置
+### Tool Parameter Configuration
 
-工具参数支持以下格式：
+Tool parameters support the following formats:
 
-- **positional** - 位置参数，按顺序添加到命令中
-- **flag** - 标志参数，格式为 `--flag value` 或 `-f value`
-- **combined** - 组合格式，格式为 `--flag=value`
-- **template** - 模板格式，使用自定义模板字符串
+- **positional** - Positional parameters, added to command in order
+- **flag** - Flag parameters, format: `--flag value` or `-f value`
+- **combined** - Combined format, format: `--flag=value`
+- **template** - Template format, uses custom template string
 
-参数类型支持：
-- `string` - 字符串
-- `int` / `integer` - 整数
-- `bool` / `boolean` - 布尔值
-- `array` - 数组（自动转换为逗号分隔的字符串）
+Supported parameter types:
+- `string` - String
+- `int` / `integer` - Integer
+- `bool` / `boolean` - Boolean
+- `array` - Array (automatically converted to comma-separated string)
 
-## 🔧 故障排除
+## 🔧 Troubleshooting
 
-### API连接问题
+### API Connection Issues
 
-**问题：无法连接到OpenAI API**
+**Problem: Cannot connect to OpenAI API**
 
-- ✅ 检查API Key是否正确配置在 `config.yaml` 中
-- ✅ 检查网络连接是否正常
-- ✅ 验证 `base_url` 配置是否正确
-- ✅ 确认API服务商是否支持您使用的模型
-- ✅ 检查API配额和余额是否充足
+- ✅ Check if API Key is correctly configured in `config.yaml`
+- ✅ Check if network connection is normal
+- ✅ Verify `base_url` configuration is correct
+- ✅ Confirm API provider supports the model you're using
+- ✅ Check API quota and balance are sufficient
 
-**问题：API返回401或403错误**
+**Problem: API returns 401 or 403 error**
 
-- ✅ 验证API Key是否有效
-- ✅ 检查API Key是否有权限访问指定模型
-- ✅ 确认API服务商的访问限制
+- ✅ Verify API Key is valid
+- ✅ Check if API Key has permission to access specified model
+- ✅ Confirm API provider access restrictions
 
-### 工具执行问题
+### Tool Execution Issues
 
-**问题：工具执行失败或找不到命令**
+**Problem: Tool execution fails or command not found**
 
-- ✅ 确保已安装相应的安全工具：
+- ✅ Ensure corresponding security tools are installed:
   ```bash
-  # 检查工具是否安装
+  # Check if tools are installed
   which nmap sqlmap nikto dirb
   ```
-- ✅ 检查工具是否在系统PATH中
-- ✅ 某些工具可能需要root权限（如nmap的SYN扫描）
-- ✅ 查看服务器日志获取详细错误信息
+- ✅ Check if tools are in system PATH
+- ✅ Some tools may require root privileges (e.g., nmap SYN scan)
+- ✅ Check server logs for detailed error information
 
-**问题：工具执行超时**
+**Problem: Tool execution timeout**
 
-- ✅ 某些工具（如nmap全端口扫描）可能需要较长时间
-- ✅ 检查网络连接和目标响应
-- ✅ 考虑使用更小的扫描范围
+- ✅ Some tools (e.g., nmap full port scan) may take a long time
+- ✅ Check network connection and target response
+- ✅ Consider using smaller scan ranges
 
-**问题：工具参数错误**
+**Problem: Tool parameter errors**
 
-- ✅ 检查工具配置文件中的参数定义
-- ✅ 查看工具执行日志中的实际命令
-- ✅ 参考工具的官方文档验证参数格式
+- ✅ Check parameter definitions in tool configuration files
+- ✅ View actual commands in tool execution logs
+- ✅ Refer to tool official documentation to verify parameter format
 
-### 服务器问题
+### Server Issues
 
-**问题：前端无法加载**
+**Problem: Frontend cannot load**
 
-- ✅ 检查服务器是否正常运行：
+- ✅ Check if server is running normally:
   ```bash
   curl http://localhost:8080
   ```
-- ✅ 检查端口8080是否被占用：
+- ✅ Check if port 8080 is occupied:
   ```bash
   lsof -i :8080
   ```
-- ✅ 查看浏览器控制台错误信息
-- ✅ 检查防火墙设置
+- ✅ Check browser console error messages
+- ✅ Check firewall settings
 
-**问题：数据库错误**
+**Problem: Database errors**
 
-- ✅ 确保 `data/` 目录有写权限
-- ✅ 检查数据库文件是否损坏
-- ✅ 删除数据库文件让系统重新创建（会丢失历史数据）
+- ✅ Ensure `data/` directory has write permissions
+- ✅ Check if database file is corrupted
+- ✅ Delete database file to let system recreate (will lose historical data)
 
-### 配置问题
+### Configuration Issues
 
-**问题：工具未加载**
+**Problem: Tools not loaded**
 
-- ✅ 检查 `tools_dir` 配置是否正确
-- ✅ 验证工具配置文件格式是否正确（YAML语法）
-- ✅ 查看启动日志中的工具加载信息
-- ✅ 确保工具配置中的 `enabled: true`
+- ✅ Check if `tools_dir` configuration is correct
+- ✅ Verify tool configuration file format is correct (YAML syntax)
+- ✅ Check tool loading information in startup logs
+- ✅ Ensure `enabled: true` in tool configuration
 
-**问题：MCP服务器无法启动**
+**Problem: MCP server cannot start**
 
-- ✅ 检查MCP端口（默认8081）是否被占用
-- ✅ 验证MCP配置中的 `enabled: true`
-- ✅ 查看日志中的MCP服务器启动信息
+- ✅ Check if MCP port (default 8081) is occupied
+- ✅ Verify `enabled: true` in MCP configuration
+- ✅ Check MCP server startup information in logs
 
-**问题：Cursor 中 MCP stdio 模式无法连接**
+**Problem: MCP stdio mode cannot connect in Cursor**
 
-- ✅ 检查 `cyberstrike-ai-mcp` 程序路径是否正确（使用绝对路径）
-- ✅ 检查程序是否有执行权限（Linux/macOS）：`chmod +x cyberstrike-ai-mcp`
-- ✅ 检查 `config.yaml` 配置文件路径是否正确
-- ✅ 查看 Cursor 的日志输出（通常在 Cursor 的开发者工具中）
-- ✅ 确保配置文件中的 `security.tools_dir` 配置正确
+- ✅ Check if `cyberstrike-ai-mcp` program path is correct (use absolute path)
+- ✅ Check if program has execute permissions (Linux/macOS): `chmod +x cyberstrike-ai-mcp`
+- ✅ Check if `config.yaml` configuration file path is correct
+- ✅ Check Cursor log output (usually in Cursor developer tools)
+- ✅ Ensure `security.tools_dir` configuration in config file is correct
 
-**问题：Cursor 中工具列表为空**
+**Problem: Tool list is empty in Cursor**
 
-- ✅ 确保 `config.yaml` 中的 `security.tools_dir` 配置正确
-- ✅ 确保工具配置文件在指定目录中
-- ✅ 检查工具配置文件格式是否正确（YAML 语法）
-- ✅ 查看程序日志（stderr 输出）
+- ✅ Ensure `security.tools_dir` configuration in `config.yaml` is correct
+- ✅ Ensure tool configuration files are in specified directory
+- ✅ Check tool configuration file format is correct (YAML syntax)
+- ✅ Check program logs (stderr output)
 
-**问题：Cursor 中工具执行失败**
+**Problem: Tool execution fails in Cursor**
 
-- ✅ 确保相应的安全工具已安装在系统中
-- ✅ 检查工具是否在系统 PATH 中
-- ✅ 查看程序日志（stderr 输出）
-- ✅ 尝试在终端中直接运行工具命令，确认工具可用
+- ✅ Ensure corresponding security tools are installed in the system
+- ✅ Check if tools are in system PATH
+- ✅ Check program logs (stderr output)
+- ✅ Try running tool commands directly in terminal to confirm tools are available
 
-### 日志调试
+### Log Debugging
 
-启用详细日志：
+Enable detailed logging:
 ```yaml
 log:
-  level: "debug"  # 改为debug级别
+  level: "debug"  # Change to debug level
   output: "stdout"
 ```
 
-查看实时日志：
+View real-time logs:
 ```bash
-# 如果使用run.sh
+# If using run.sh
 ./run.sh | tee cyberstrike.log
 
-# 或直接运行
+# Or run directly
 go run cmd/server/main.go 2>&1 | tee cyberstrike.log
 ```
 
-## 安全注意事项
+## Security Considerations
 
-⚠️ **重要提示**：
+⚠️ **Important Notes**:
 
-- 仅对您拥有或已获得授权的系统进行测试
-- 遵守相关法律法规
-- 建议在隔离的测试环境中使用
-- 不要在生产环境中使用
-- 某些安全工具可能需要root权限
+- Only test systems you own or have authorization for
+- Comply with relevant laws and regulations
+- Recommended to use in isolated test environments
+- Do not use in production environments
+- Some security tools may require root privileges
 
-## 💻 开发指南
+## 💻 Development Guide
 
-### 项目架构
+### Project Architecture
 
 ```
 ┌─────────────┐
-│   Web UI    │  ← 用户界面（HTML/CSS/JS）
+│   Web UI    │  ← User interface (HTML/CSS/JS)
 └──────┬──────┘
        │ HTTP
 ┌──────▼─────────────────────────────────────┐
@@ -1039,61 +1040,61 @@ go run cmd/server/main.go 2>&1 | tee cyberstrike.log
 └─────────────────────────────────────────────┘
          │
 ┌────────▼────────┐
-│  SQLite Database│  ← 对话历史和消息存储
+│  SQLite Database│  ← Conversation history and message storage
 └─────────────────┘
 ```
 
-### 核心模块说明
+### Core Module Descriptions
 
-- **Agent模块** (`internal/agent/agent.go`)
-  - 实现Agent Loop，处理AI对话和工具调用决策
-  - 支持多轮对话和工具调用链
-  - 处理工具执行错误和重试逻辑
+- **Agent Module** (`internal/agent/agent.go`)
+  - Implements Agent Loop, handles AI conversations and tool call decisions
+  - Supports multi-turn conversations and tool call chains
+  - Handles tool execution errors and retry logic
 
 - **MCP Server** (`internal/mcp/server.go`)
-  - 实现MCP协议服务器
-  - 管理工具注册和调用
-  - 跟踪工具执行状态和统计
+  - Implements MCP protocol server
+  - Manages tool registration and invocation
+  - Tracks tool execution status and statistics
 
 - **Security Executor** (`internal/security/executor.go`)
-  - 执行安全工具命令
-  - 构建工具参数
-  - 解析工具输出
+  - Executes security tool commands
+  - Builds tool parameters
+  - Parses tool output
 
 - **Database** (`internal/database/`)
-  - SQLite数据库操作
-  - 对话和消息管理
-  - 过程详情存储
+  - SQLite database operations
+  - Conversation and message management
+  - Process detail storage
 
-### 添加新工具
+### Adding New Tools
 
-#### 推荐方式：使用工具配置文件
+#### Recommended: Use Tool Configuration Files
 
-1. 在 `tools/` 目录创建工具配置文件（如 `tools/mytool.yaml`）
-2. 定义工具参数和描述
-3. 重启服务器，工具自动加载
+1. Create tool configuration file in `tools/` directory (e.g., `tools/mytool.yaml`)
+2. Define tool parameters and descriptions
+3. Restart server, tool automatically loads
 
-#### 高级方式：自定义参数构建逻辑
+#### Advanced: Custom Parameter Building Logic
 
-如果工具需要特殊的参数处理，可以在 `internal/security/executor.go` 的 `buildCommandArgs` 方法中添加：
+If a tool requires special parameter handling, you can add it in the `buildCommandArgs` method of `internal/security/executor.go`:
 
 ```go
 case "mytool":
-    // 自定义参数构建逻辑
+    // Custom parameter building logic
     if target, ok := args["target"].(string); ok {
         cmdArgs = append(cmdArgs, "--target", target)
     }
 ```
 
-### 构建和部署
+### Build and Deployment
 
-#### 本地构建
+#### Local Build
 
 ```bash
 go build -o cyberstrike-ai cmd/server/main.go
 ```
 
-#### 交叉编译
+#### Cross-compilation
 
 ```bash
 # Linux
@@ -1106,7 +1107,7 @@ GOOS=darwin GOARCH=amd64 go build -o cyberstrike-ai-macos cmd/server/main.go
 GOOS=windows GOARCH=amd64 go build -o cyberstrike-ai.exe cmd/server/main.go
 ```
 
-#### Docker部署（示例）
+#### Docker Deployment (Example)
 
 ```dockerfile
 FROM golang:1.21-alpine AS builder
@@ -1125,72 +1126,72 @@ EXPOSE 8080
 CMD ["./cyberstrike-ai"]
 ```
 
-### 代码贡献
+### Code Contribution
 
-欢迎提交Issue和Pull Request！
+Welcome to submit Issues and Pull Requests!
 
-贡献指南：
-1. Fork本项目
-2. 创建特性分支 (`git checkout -b feature/AmazingFeature`)
-3. 提交更改 (`git commit -m 'Add some AmazingFeature'`)
-4. 推送到分支 (`git push origin feature/AmazingFeature`)
-5. 开启Pull Request
+Contribution Guidelines:
+1. Fork this project
+2. Create a feature branch (`git checkout -b feature/AmazingFeature`)
+3. Commit your changes (`git commit -m 'Add some AmazingFeature'`)
+4. Push to the branch (`git push origin feature/AmazingFeature`)
+5. Open a Pull Request
 
-## 📋 技术栈
+## 📋 Tech Stack
 
-- **后端框架**: Gin (Go Web Framework)
-- **数据库**: SQLite3
-- **日志**: Zap (Uber's structured logging)
-- **配置**: YAML
-- **协议**: MCP (Model Context Protocol)
-- **前端**: HTML/CSS/JavaScript (原生，无框架依赖)
+- **Backend Framework**: Gin (Go Web Framework)
+- **Database**: SQLite3
+- **Logging**: Zap (Uber's structured logging)
+- **Configuration**: YAML
+- **Protocol**: MCP (Model Context Protocol)
+- **Frontend**: HTML/CSS/JavaScript (native, no framework dependencies)
 
-## 🔐 安全注意事项
+## 🔐 Security Considerations
 
-⚠️ **重要提示**：
+⚠️ **Important Notes**:
 
-- ⚠️ **仅对您拥有或已获得授权的系统进行测试**
-- ⚠️ **遵守相关法律法规和道德准则**
-- ⚠️ **建议在隔离的测试环境中使用**
-- ⚠️ **不要在生产环境中使用**
-- ⚠️ **某些安全工具可能需要root权限，请谨慎使用**
-- ⚠️ **exec工具可以执行任意系统命令，存在安全风险**
-- ⚠️ **妥善保管API密钥，不要提交到代码仓库**
+- ⚠️ **Only test systems you own or have authorization for**
+- ⚠️ **Comply with relevant laws, regulations, and ethical guidelines**
+- ⚠️ **Recommended to use in isolated test environments**
+- ⚠️ **Do not use in production environments**
+- ⚠️ **Some security tools may require root privileges, use with caution**
+- ⚠️ **exec tool can execute arbitrary system commands, security risk exists**
+- ⚠️ **Properly store API keys, do not commit to code repositories**
 
-## ⚙️ 高级特性
+## ⚙️ Advanced Features
 
-### AI迭代机制
+### AI Iteration Mechanism
 
-- **最大迭代次数**：系统支持多轮AI迭代，确保复杂测试任务能够完成
-- **智能总结**：当达到最大迭代次数时，AI会自动总结所有测试结果、发现的问题和已完成的工作
-- **下一步计划**：如果测试未完成，AI会提供详细的下一步执行计划，指导后续测试
+- **Maximum Iterations**: System supports multiple rounds of AI iterations, ensuring complex testing tasks can be completed
+- **Intelligent Summary**: When maximum iterations are reached, AI automatically summarizes all test results, discovered issues, and completed work
+- **Next Steps Plan**: If testing is incomplete, AI provides detailed next-step execution plans to guide subsequent testing
 
-### 工具执行优化
+### Tool Execution Optimization
 
-- **错误处理**：工具执行失败时，AI会自动分析错误原因并尝试替代方案
-- **参数优化**：AI会根据目标特征自动优化工具参数，提高测试效率
-- **结果分析**：自动分析工具输出，提取关键信息和漏洞
+- **Error Handling**: When tool execution fails, AI automatically analyzes error causes and tries alternative solutions
+- **Parameter Optimization**: AI automatically optimizes tool parameters based on target characteristics, improving testing efficiency
+- **Result Analysis**: Automatically analyzes tool output, extracts key information and vulnerabilities
 
-## 📄 许可证
+## 📄 License
 
-本项目仅供学习和研究使用。
+This project is for learning and research purposes only.
 
-## 🤝 贡献
+## 🤝 Contributing
 
-欢迎提交Issue和Pull Request！
+Welcome to submit Issues and Pull Requests!
 
-如果您发现bug或有功能建议，请：
-1. 查看现有的Issues，避免重复
-2. 创建详细的Issue描述问题或建议
-3. 提交Pull Request时请包含清晰的说明
+If you find bugs or have feature suggestions, please:
+1. Check existing Issues to avoid duplicates
+2. Create detailed Issue descriptions of problems or suggestions
+3. When submitting Pull Requests, please include clear descriptions
 
-## 📞 支持
+## 📞 Support
 
-如有问题或需要帮助，请：
-- 查看本文档的故障排除部分
-- 查看项目的Issues
-- 提交新的Issue描述您的问题
+For questions or help, please:
+- Check the troubleshooting section of this documentation
+- Check project Issues
+- Submit new Issues describing your problems
 
-## 🙏 致谢
+## 🙏 Acknowledgments
 
-感谢所有贡献者和开源社区的支持！
+Thanks to all contributors and the open-source community for support!
