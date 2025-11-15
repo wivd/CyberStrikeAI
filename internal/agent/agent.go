@@ -14,6 +14,7 @@ import (
 
 	"cyberstrike-ai/internal/config"
 	"cyberstrike-ai/internal/mcp"
+	"cyberstrike-ai/internal/storage"
 	"go.uber.org/zap"
 )
 
@@ -21,19 +22,53 @@ import (
 type Agent struct {
 	openAIClient      *http.Client
 	config            *config.OpenAIConfig
+	agentConfig       *config.AgentConfig
 	mcpServer         *mcp.Server
 	externalMCPMgr    *mcp.ExternalMCPManager // 外部MCP管理器
 	logger            *zap.Logger
 	maxIterations     int
+	resultStorage     ResultStorage // 结果存储
+	largeResultThreshold int        // 大结果阈值（字节）
 	mu                sync.RWMutex // 添加互斥锁以支持并发更新
 	toolNameMapping   map[string]string // 工具名称映射：OpenAI格式 -> 原始格式（用于外部MCP工具）
 }
 
+// ResultStorage 结果存储接口（直接使用 storage 包的类型）
+type ResultStorage interface {
+	SaveResult(executionID string, toolName string, result string) error
+	GetResult(executionID string) (string, error)
+	GetResultPage(executionID string, page int, limit int) (*storage.ResultPage, error)
+	SearchResult(executionID string, keyword string) ([]string, error)
+	FilterResult(executionID string, filter string) ([]string, error)
+	GetResultMetadata(executionID string) (*storage.ResultMetadata, error)
+	DeleteResult(executionID string) error
+}
+
 // NewAgent 创建新的Agent
-func NewAgent(cfg *config.OpenAIConfig, mcpServer *mcp.Server, externalMCPMgr *mcp.ExternalMCPManager, logger *zap.Logger, maxIterations int) *Agent {
+func NewAgent(cfg *config.OpenAIConfig, agentCfg *config.AgentConfig, mcpServer *mcp.Server, externalMCPMgr *mcp.ExternalMCPManager, logger *zap.Logger, maxIterations int) *Agent {
 	// 如果 maxIterations 为 0 或负数，使用默认值 30
 	if maxIterations <= 0 {
 		maxIterations = 30
+	}
+	
+	// 设置大结果阈值，默认50KB
+	largeResultThreshold := 50 * 1024
+	if agentCfg != nil && agentCfg.LargeResultThreshold > 0 {
+		largeResultThreshold = agentCfg.LargeResultThreshold
+	}
+	
+	// 设置结果存储目录，默认tmp
+	resultStorageDir := "tmp"
+	if agentCfg != nil && agentCfg.ResultStorageDir != "" {
+		resultStorageDir = agentCfg.ResultStorageDir
+	}
+	
+	// 初始化结果存储
+	var resultStorage ResultStorage
+	if resultStorageDir != "" {
+		// 导入storage包（避免循环依赖，使用接口）
+		// 这里需要在实际使用时初始化
+		// 暂时设为nil，在需要时初始化
 	}
 	
 	// 配置HTTP Transport，优化连接管理和超时设置
@@ -57,13 +92,23 @@ func NewAgent(cfg *config.OpenAIConfig, mcpServer *mcp.Server, externalMCPMgr *m
 			Timeout:   30 * time.Minute, // 从5分钟增加到30分钟
 			Transport: transport,
 		},
-		config:            cfg,
-		mcpServer:         mcpServer,
-		externalMCPMgr:    externalMCPMgr,
-		logger:            logger,
-		maxIterations:     maxIterations,
-		toolNameMapping:   make(map[string]string), // 初始化工具名称映射
+		config:              cfg,
+		agentConfig:         agentCfg,
+		mcpServer:           mcpServer,
+		externalMCPMgr:      externalMCPMgr,
+		logger:              logger,
+		maxIterations:       maxIterations,
+		resultStorage:       resultStorage,
+		largeResultThreshold: largeResultThreshold,
+		toolNameMapping:     make(map[string]string), // 初始化工具名称映射
 	}
+}
+
+// SetResultStorage 设置结果存储（用于避免循环依赖）
+func (a *Agent) SetResultStorage(storage ResultStorage) {
+	a.mu.Lock()
+	defer a.mu.Unlock()
+	a.resultStorage = storage
 }
 
 // ChatMessage 聊天消息
@@ -1037,12 +1082,68 @@ func (a *Agent) executeToolViaMCP(ctx context.Context, toolName string, args map
 		resultText.WriteString(content.Text)
 		resultText.WriteString("\n")
 	}
+	
+	resultStr := resultText.String()
+	resultSize := len(resultStr)
+	
+	// 检测大结果并保存
+	a.mu.RLock()
+	threshold := a.largeResultThreshold
+	storage := a.resultStorage
+	a.mu.RUnlock()
+	
+	if resultSize > threshold && storage != nil {
+		// 异步保存大结果
+		go func() {
+			if err := storage.SaveResult(executionID, toolName, resultStr); err != nil {
+				a.logger.Warn("保存大结果失败",
+					zap.String("executionID", executionID),
+					zap.String("toolName", toolName),
+					zap.Error(err),
+				)
+			} else {
+				a.logger.Info("大结果已保存",
+					zap.String("executionID", executionID),
+					zap.String("toolName", toolName),
+					zap.Int("size", resultSize),
+				)
+			}
+		}()
+		
+		// 返回最小化通知
+		lines := strings.Split(resultStr, "\n")
+		notification := a.formatMinimalNotification(executionID, toolName, resultSize, len(lines))
+		
+		return &ToolExecutionResult{
+			Result:      notification,
+			ExecutionID: executionID,
+			IsError:     result != nil && result.IsError,
+		}, nil
+	}
 
 	return &ToolExecutionResult{
-		Result:      resultText.String(),
+		Result:      resultStr,
 		ExecutionID: executionID,
 		IsError:     result != nil && result.IsError,
 	}, nil
+}
+
+// formatMinimalNotification 格式化最小化通知
+func (a *Agent) formatMinimalNotification(executionID string, toolName string, size int, lineCount int) string {
+	var sb strings.Builder
+	
+	sb.WriteString(fmt.Sprintf("工具执行完成。结果已保存（ID: %s）。\n\n", executionID))
+	sb.WriteString("结果信息：\n")
+	sb.WriteString(fmt.Sprintf("  - 工具: %s\n", toolName))
+	sb.WriteString(fmt.Sprintf("  - 大小: %d 字节 (%.2f KB)\n", size, float64(size)/1024))
+	sb.WriteString(fmt.Sprintf("  - 行数: %d 行\n", lineCount))
+	sb.WriteString("\n")
+	sb.WriteString("使用以下工具查询完整结果：\n")
+	sb.WriteString(fmt.Sprintf("  - 查询第一页: query_execution_result(execution_id=\"%s\", page=1, limit=100)\n", executionID))
+	sb.WriteString(fmt.Sprintf("  - 搜索关键词: query_execution_result(execution_id=\"%s\", search=\"关键词\")\n", executionID))
+	sb.WriteString(fmt.Sprintf("  - 过滤条件: query_execution_result(execution_id=\"%s\", filter=\"error\")\n", executionID))
+	
+	return sb.String()
 }
 
 // UpdateConfig 更新OpenAI配置

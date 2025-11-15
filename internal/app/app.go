@@ -13,6 +13,7 @@ import (
 	"cyberstrike-ai/internal/logger"
 	"cyberstrike-ai/internal/mcp"
 	"cyberstrike-ai/internal/security"
+	"cyberstrike-ai/internal/storage"
 
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
@@ -85,12 +86,35 @@ func New(cfg *config.Config, log *logger.Logger) (*App, error) {
 		externalMCPMgr.StartAllEnabled()
 	}
 
+	// 初始化结果存储
+	resultStorageDir := "tmp"
+	if cfg.Agent.ResultStorageDir != "" {
+		resultStorageDir = cfg.Agent.ResultStorageDir
+	}
+	
+	// 确保存储目录存在
+	if err := os.MkdirAll(resultStorageDir, 0755); err != nil {
+		return nil, fmt.Errorf("创建结果存储目录失败: %w", err)
+	}
+	
+	// 创建结果存储实例
+	resultStorage, err := storage.NewFileResultStorage(resultStorageDir, log.Logger)
+	if err != nil {
+		return nil, fmt.Errorf("初始化结果存储失败: %w", err)
+	}
+	
 	// 创建Agent
 	maxIterations := cfg.Agent.MaxIterations
 	if maxIterations <= 0 {
 		maxIterations = 30 // 默认值
 	}
-	agent := agent.NewAgent(&cfg.OpenAI, mcpServer, externalMCPMgr, log.Logger, maxIterations)
+	agent := agent.NewAgent(&cfg.OpenAI, &cfg.Agent, mcpServer, externalMCPMgr, log.Logger, maxIterations)
+	
+	// 设置结果存储到Agent
+	agent.SetResultStorage(resultStorage)
+	
+	// 设置结果存储到Executor（用于查询工具）
+	executor.SetResultStorage(resultStorage)
 
 	// 获取配置文件路径
 	configPath := "config.yaml"

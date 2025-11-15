@@ -232,13 +232,13 @@ func TestExternalMCPManager_CallTool(t *testing.T) {
 	manager := NewExternalMCPManager(logger)
 
 	// 测试调用不存在的工具
-	_, err := manager.CallTool(context.Background(), "nonexistent::tool", map[string]interface{}{})
+	_, _, err := manager.CallTool(context.Background(), "nonexistent::tool", map[string]interface{}{})
 	if err == nil {
 		t.Error("应该返回错误")
 	}
 
 	// 测试无效的工具名称格式
-	_, err = manager.CallTool(context.Background(), "invalid-tool-name", map[string]interface{}{})
+	_, _, err = manager.CallTool(context.Background(), "invalid-tool-name", map[string]interface{}{})
 	if err == nil {
 		t.Error("应该返回错误（无效格式）")
 	}

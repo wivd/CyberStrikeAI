@@ -20,7 +20,7 @@ log:
 # MCP 协议配置
 # MCP (Model Context Protocol) 用于工具注册和调用
 mcp:
-  enabled: true # 是否启用 MCP 服务器
+  enabled: false # 是否启用 MCP 服务器（http模式）
   host: 0.0.0.0 # MCP 服务器监听地址
   port: 8081 # MCP 服务器端口
 # AI 模型配置（支持 OpenAI 兼容 API）
@@ -38,6 +38,8 @@ openai:
 agent:
   max_iterations: 30 # 最大迭代次数，AI 代理最多执行多少轮工具调用
   # 达到最大迭代次数时，AI 会自动总结测试结果
+  large_result_threshold: 51200 # 大结果阈值（字节），默认50KB，超过此大小会自动保存到存储
+  result_storage_dir: tmp # 结果存储目录，大结果会保存在此目录下
 # 数据库配置
 database:
   path: data/conversations.db # SQLite 数据库文件路径，用于存储对话历史和消息
@@ -48,3 +50,4 @@ security:
   # 推荐方式：在 tools/ 目录下为每个工具创建独立的配置文件
 # 外部MCP配置
 external_mcp:
+  servers: {}

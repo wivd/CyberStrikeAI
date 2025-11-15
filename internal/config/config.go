@@ -55,7 +55,9 @@ type DatabaseConfig struct {
 }
 
 type AgentConfig struct {
-	MaxIterations int `yaml:"max_iterations" json:"max_iterations"`
+	MaxIterations        int    `yaml:"max_iterations" json:"max_iterations"`
+	LargeResultThreshold int    `yaml:"large_result_threshold" json:"large_result_threshold"` // 大结果阈值（字节），默认50KB
+	ResultStorageDir     string `yaml:"result_storage_dir" json:"result_storage_dir"`         // 结果存储目录，默认tmp
 }
 
 type AuthConfig struct {

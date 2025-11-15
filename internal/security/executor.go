@@ -9,29 +9,48 @@ import (
 
 	"cyberstrike-ai/internal/config"
 	"cyberstrike-ai/internal/mcp"
+	"cyberstrike-ai/internal/storage"
 
 	"go.uber.org/zap"
 )
 
 // Executor 安全工具执行器
 type Executor struct {
-	config    *config.SecurityConfig
-	toolIndex map[string]*config.ToolConfig // 工具索引，用于 O(1) 查找
-	mcpServer *mcp.Server
-	logger    *zap.Logger
+	config        *config.SecurityConfig
+	toolIndex     map[string]*config.ToolConfig // 工具索引，用于 O(1) 查找
+	mcpServer     *mcp.Server
+	logger        *zap.Logger
+	resultStorage ResultStorage // 结果存储（用于查询工具）
+}
+
+// ResultStorage 结果存储接口（直接使用 storage 包的类型）
+type ResultStorage interface {
+	SaveResult(executionID string, toolName string, result string) error
+	GetResult(executionID string) (string, error)
+	GetResultPage(executionID string, page int, limit int) (*storage.ResultPage, error)
+	SearchResult(executionID string, keyword string) ([]string, error)
+	FilterResult(executionID string, filter string) ([]string, error)
+	GetResultMetadata(executionID string) (*storage.ResultMetadata, error)
+	DeleteResult(executionID string) error
 }
 
 // NewExecutor 创建新的执行器
 func NewExecutor(cfg *config.SecurityConfig, mcpServer *mcp.Server, logger *zap.Logger) *Executor {
 	executor := &Executor{
-		config:    cfg,
-		toolIndex: make(map[string]*config.ToolConfig),
-		mcpServer: mcpServer,
-		logger:    logger,
+		config:        cfg,
+		toolIndex:     make(map[string]*config.ToolConfig),
+		mcpServer:     mcpServer,
+		logger:        logger,
+		resultStorage: nil, // 稍后通过 SetResultStorage 设置
 	}
 	// 构建工具索引
 	executor.buildToolIndex()
 	return executor
+}
+
+// SetResultStorage 设置结果存储
+func (e *Executor) SetResultStorage(storage ResultStorage) {
+	e.resultStorage = storage
 }
 
 // buildToolIndex 构建工具索引，将 O(n) 查找优化为 O(1)
@@ -77,6 +96,15 @@ func (e *Executor) ExecuteTool(ctx context.Context, toolName string, args map[st
 		zap.String("command", toolConfig.Command),
 		zap.Strings("args", toolConfig.Args),
 	)
+
+	// 特殊处理：内部工具（command 以 "internal:" 开头）
+	if strings.HasPrefix(toolConfig.Command, "internal:") {
+		e.logger.Info("执行内部工具",
+			zap.String("toolName", toolName),
+			zap.String("command", toolConfig.Command),
+		)
+		return e.executeInternalTool(ctx, toolName, toolConfig.Command, args)
+	}
 
 	// 构建命令 - 根据工具类型使用不同的参数格式
 	cmdArgs := e.buildCommandArgs(toolName, toolConfig, args)
@@ -651,6 +679,229 @@ func (e *Executor) executeSystemCommand(ctx context.Context, args map[string]int
 		},
 		IsError: false,
 	}, nil
+}
+
+// executeInternalTool 执行内部工具（不执行外部命令）
+func (e *Executor) executeInternalTool(ctx context.Context, toolName string, command string, args map[string]interface{}) (*mcp.ToolResult, error) {
+	// 提取内部工具类型（去掉 "internal:" 前缀）
+	internalToolType := strings.TrimPrefix(command, "internal:")
+
+	e.logger.Info("执行内部工具",
+		zap.String("toolName", toolName),
+		zap.String("internalToolType", internalToolType),
+		zap.Any("args", args),
+	)
+
+	// 根据内部工具类型分发处理
+	switch internalToolType {
+	case "query_execution_result":
+		return e.executeQueryExecutionResult(ctx, args)
+	default:
+		return &mcp.ToolResult{
+			Content: []mcp.Content{
+				{
+					Type: "text",
+					Text: fmt.Sprintf("错误: 未知的内部工具类型: %s", internalToolType),
+				},
+			},
+			IsError: true,
+		}, nil
+	}
+}
+
+// executeQueryExecutionResult 执行查询执行结果工具
+func (e *Executor) executeQueryExecutionResult(ctx context.Context, args map[string]interface{}) (*mcp.ToolResult, error) {
+	// 获取 execution_id 参数
+	executionID, ok := args["execution_id"].(string)
+	if !ok || executionID == "" {
+		return &mcp.ToolResult{
+			Content: []mcp.Content{
+				{
+					Type: "text",
+					Text: "错误: execution_id 参数必需且不能为空",
+				},
+			},
+			IsError: true,
+		}, nil
+	}
+
+	// 获取可选参数
+	page := 1
+	if p, ok := args["page"].(float64); ok {
+		page = int(p)
+	}
+	if page < 1 {
+		page = 1
+	}
+
+	limit := 100
+	if l, ok := args["limit"].(float64); ok {
+		limit = int(l)
+	}
+	if limit < 1 {
+		limit = 100
+	}
+	if limit > 500 {
+		limit = 500 // 限制最大每页行数
+	}
+
+	search := ""
+	if s, ok := args["search"].(string); ok {
+		search = s
+	}
+
+	filter := ""
+	if f, ok := args["filter"].(string); ok {
+		filter = f
+	}
+
+	// 检查结果存储是否可用
+	if e.resultStorage == nil {
+		return &mcp.ToolResult{
+			Content: []mcp.Content{
+				{
+					Type: "text",
+					Text: "错误: 结果存储未初始化",
+				},
+			},
+			IsError: true,
+		}, nil
+	}
+
+	// 执行查询
+	var resultPage *storage.ResultPage
+	var err error
+
+	if search != "" {
+		// 搜索模式
+		matchedLines, err := e.resultStorage.SearchResult(executionID, search)
+		if err != nil {
+			return &mcp.ToolResult{
+				Content: []mcp.Content{
+					{
+						Type: "text",
+						Text: fmt.Sprintf("搜索失败: %v", err),
+					},
+				},
+				IsError: true,
+			}, nil
+		}
+		// 对搜索结果进行分页
+		resultPage = paginateLines(matchedLines, page, limit)
+	} else if filter != "" {
+		// 过滤模式
+		filteredLines, err := e.resultStorage.FilterResult(executionID, filter)
+		if err != nil {
+			return &mcp.ToolResult{
+				Content: []mcp.Content{
+					{
+						Type: "text",
+						Text: fmt.Sprintf("过滤失败: %v", err),
+					},
+				},
+				IsError: true,
+			}, nil
+		}
+		// 对过滤结果进行分页
+		resultPage = paginateLines(filteredLines, page, limit)
+	} else {
+		// 普通分页查询
+		resultPage, err = e.resultStorage.GetResultPage(executionID, page, limit)
+		if err != nil {
+			return &mcp.ToolResult{
+				Content: []mcp.Content{
+					{
+						Type: "text",
+						Text: fmt.Sprintf("查询失败: %v", err),
+					},
+				},
+				IsError: true,
+			}, nil
+		}
+	}
+
+	// 获取元信息
+	metadata, err := e.resultStorage.GetResultMetadata(executionID)
+	if err != nil {
+		// 元信息获取失败不影响查询结果
+		e.logger.Warn("获取结果元信息失败", zap.Error(err))
+	}
+
+	// 格式化返回结果
+	var sb strings.Builder
+	sb.WriteString(fmt.Sprintf("查询结果 (执行ID: %s)\n", executionID))
+
+	if metadata != nil {
+		sb.WriteString(fmt.Sprintf("工具: %s | 大小: %d 字节 (%.2f KB) | 总行数: %d\n",
+			metadata.ToolName, metadata.TotalSize, float64(metadata.TotalSize)/1024, metadata.TotalLines))
+	}
+
+	sb.WriteString(fmt.Sprintf("第 %d/%d 页，每页 %d 行，共 %d 行\n\n",
+		resultPage.Page, resultPage.TotalPages, resultPage.Limit, resultPage.TotalLines))
+
+	if len(resultPage.Lines) == 0 {
+		sb.WriteString("没有找到匹配的结果。\n")
+	} else {
+		for i, line := range resultPage.Lines {
+			lineNum := (resultPage.Page-1)*resultPage.Limit + i + 1
+			sb.WriteString(fmt.Sprintf("%d: %s\n", lineNum, line))
+		}
+	}
+
+	sb.WriteString("\n")
+	if resultPage.Page < resultPage.TotalPages {
+		sb.WriteString(fmt.Sprintf("提示: 使用 page=%d 查看下一页", resultPage.Page+1))
+		if search != "" {
+			sb.WriteString(fmt.Sprintf("，或使用 search=\"%s\" 继续搜索", search))
+		}
+		if filter != "" {
+			sb.WriteString(fmt.Sprintf("，或使用 filter=\"%s\" 继续过滤", filter))
+		}
+		sb.WriteString("\n")
+	}
+
+	return &mcp.ToolResult{
+		Content: []mcp.Content{
+			{
+				Type: "text",
+				Text: sb.String(),
+			},
+		},
+		IsError: false,
+	}, nil
+}
+
+// paginateLines 对行列表进行分页
+func paginateLines(lines []string, page int, limit int) *storage.ResultPage {
+	totalLines := len(lines)
+	totalPages := (totalLines + limit - 1) / limit
+	if page < 1 {
+		page = 1
+	}
+	if page > totalPages && totalPages > 0 {
+		page = totalPages
+	}
+
+	start := (page - 1) * limit
+	end := start + limit
+	if end > totalLines {
+		end = totalLines
+	}
+
+	var pageLines []string
+	if start < totalLines {
+		pageLines = lines[start:end]
+	} else {
+		pageLines = []string{}
+	}
+
+	return &storage.ResultPage{
+		Lines:      pageLines,
+		Page:       page,
+		Limit:      limit,
+		TotalLines: totalLines,
+		TotalPages: totalPages,
+	}
 }
 
 // buildInputSchema 构建输入模式
