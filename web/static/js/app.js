@@ -2984,8 +2984,26 @@ async function toggleExternalMCP(name, currentStatus) {
         
         const result = await response.json();
         
-        // 如果是启动操作，轮询状态直到连接成功或失败
+        // 如果是启动操作，先立即检查一次状态
         if (action === 'start') {
+            // 立即检查一次状态（可能已经连接）
+            try {
+                const statusResponse = await apiFetch(`/api/external-mcp/${encodeURIComponent(name)}`);
+                if (statusResponse.ok) {
+                    const statusData = await statusResponse.json();
+                    const status = statusData.status || 'disconnected';
+                    
+                    if (status === 'connected') {
+                        // 已经连接，立即刷新
+                        await loadExternalMCPs();
+                        return;
+                    }
+                }
+            } catch (error) {
+                console.error('检查状态失败:', error);
+            }
+            
+            // 如果还未连接，开始轮询
             await pollExternalMCPStatus(name, 30); // 最多轮询30次（约30秒）
         } else {
             // 停止操作，直接刷新
