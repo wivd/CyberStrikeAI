@@ -1688,6 +1688,9 @@ async function cancelActiveTask(conversationId, button) {
 // 设置相关功能
 let currentConfig = null;
 let allTools = [];
+// 全局工具状态映射，用于保存用户在所有页面的修改
+// key: tool.name, value: { enabled: boolean, is_external: boolean, external_mcp: string }
+let toolStateMap = new Map();
 // 从localStorage读取每页显示数量，默认为20
 const getToolsPageSize = () => {
     const saved = localStorage.getItem('toolsPageSize');
@@ -1705,6 +1708,9 @@ let toolsPagination = {
 async function openSettings() {
     const modal = document.getElementById('settings-modal');
     modal.style.display = 'block';
+    
+    // 每次打开时清空全局状态映射，重新加载最新配置
+    toolStateMap.clear();
     
     // 每次打开时重新加载最新配置
     await loadConfig();
@@ -1775,6 +1781,9 @@ let toolsSearchKeyword = '';
 // 加载工具列表（分页）
 async function loadToolsList(page = 1, searchKeyword = '') {
     try {
+        // 在加载新页面之前，先保存当前页的状态到全局映射
+        saveCurrentPageToolStates();
+        
         const pageSize = toolsPagination.pageSize;
         let url = `/api/config/tools?page=${page}&page_size=${pageSize}`;
         if (searchKeyword) {
@@ -1795,6 +1804,17 @@ async function loadToolsList(page = 1, searchKeyword = '') {
             totalPages: result.total_pages || 1
         };
         
+        // 初始化工具状态映射（如果工具不在映射中，使用服务器返回的状态）
+        allTools.forEach(tool => {
+            if (!toolStateMap.has(tool.name)) {
+                toolStateMap.set(tool.name, {
+                    enabled: tool.enabled,
+                    is_external: tool.is_external || false,
+                    external_mcp: tool.external_mcp || ''
+                });
+            }
+        });
+        
         renderToolsList();
         renderToolsPagination();
     } catch (error) {
@@ -1804,6 +1824,23 @@ async function loadToolsList(page = 1, searchKeyword = '') {
             toolsList.innerHTML = `<div class="error">加载工具列表失败: ${escapeHtml(error.message)}</div>`;
         }
     }
+}
+
+// 保存当前页的工具状态到全局映射
+function saveCurrentPageToolStates() {
+    document.querySelectorAll('#tools-list .tool-item').forEach(item => {
+        const checkbox = item.querySelector('input[type="checkbox"]');
+        const toolName = item.dataset.toolName;
+        const isExternal = item.dataset.isExternal === 'true';
+        const externalMcp = item.dataset.externalMcp || '';
+        if (toolName && checkbox) {
+            toolStateMap.set(toolName, {
+                enabled: checkbox.checked,
+                is_external: isExternal,
+                external_mcp: externalMcp
+            });
+        }
+    });
 }
 
 // 搜索工具
@@ -1859,11 +1896,18 @@ function renderToolsList() {
         toolItem.dataset.isExternal = tool.is_external ? 'true' : 'false';
         toolItem.dataset.externalMcp = tool.external_mcp || '';
         
+        // 从全局状态映射获取工具状态，如果不存在则使用服务器返回的状态
+        const toolState = toolStateMap.get(tool.name) || {
+            enabled: tool.enabled,
+            is_external: tool.is_external || false,
+            external_mcp: tool.external_mcp || ''
+        };
+        
         // 外部工具标签
-        const externalBadge = tool.is_external ? '<span class="external-tool-badge" title="外部MCP工具">外部</span>' : '';
+        const externalBadge = toolState.is_external ? '<span class="external-tool-badge" title="外部MCP工具">外部</span>' : '';
         
         toolItem.innerHTML = `
-            <input type="checkbox" id="tool-${tool.name}" ${tool.enabled ? 'checked' : ''} ${tool.is_external ? 'data-external="true"' : ''} onchange="updateToolsStats()" />
+            <input type="checkbox" id="tool-${tool.name}" ${toolState.enabled ? 'checked' : ''} ${toolState.is_external ? 'data-external="true"' : ''} onchange="handleToolCheckboxChange('${tool.name}', this.checked)" />
             <div class="tool-item-info">
                 <div class="tool-item-name">
                     ${escapeHtml(tool.name)}
@@ -1932,10 +1976,40 @@ function renderToolsPagination() {
     toolsList.appendChild(pagination);
 }
 
+// 处理工具checkbox状态变化
+function handleToolCheckboxChange(toolName, enabled) {
+    // 更新全局状态映射
+    const toolItem = document.querySelector(`.tool-item[data-tool-name="${toolName}"]`);
+    if (toolItem) {
+        const isExternal = toolItem.dataset.isExternal === 'true';
+        const externalMcp = toolItem.dataset.externalMcp || '';
+        toolStateMap.set(toolName, {
+            enabled: enabled,
+            is_external: isExternal,
+            external_mcp: externalMcp
+        });
+    }
+    updateToolsStats();
+}
+
 // 全选工具
 function selectAllTools() {
     document.querySelectorAll('#tools-list input[type="checkbox"]').forEach(checkbox => {
         checkbox.checked = true;
+        // 更新全局状态映射
+        const toolItem = checkbox.closest('.tool-item');
+        if (toolItem) {
+            const toolName = toolItem.dataset.toolName;
+            const isExternal = toolItem.dataset.isExternal === 'true';
+            const externalMcp = toolItem.dataset.externalMcp || '';
+            if (toolName) {
+                toolStateMap.set(toolName, {
+                    enabled: true,
+                    is_external: isExternal,
+                    external_mcp: externalMcp
+                });
+            }
+        }
     });
     updateToolsStats();
 }
@@ -1944,6 +2018,20 @@ function selectAllTools() {
 function deselectAllTools() {
     document.querySelectorAll('#tools-list input[type="checkbox"]').forEach(checkbox => {
         checkbox.checked = false;
+        // 更新全局状态映射
+        const toolItem = checkbox.closest('.tool-item');
+        if (toolItem) {
+            const toolName = toolItem.dataset.toolName;
+            const isExternal = toolItem.dataset.isExternal === 'true';
+            const externalMcp = toolItem.dataset.externalMcp || '';
+            if (toolName) {
+                toolStateMap.set(toolName, {
+                    enabled: false,
+                    is_external: isExternal,
+                    external_mcp: externalMcp
+                });
+            }
+        }
     });
     updateToolsStats();
 }
@@ -1980,6 +2068,9 @@ async function updateToolsStats() {
     const statsEl = document.getElementById('tools-stats');
     if (!statsEl) return;
     
+    // 先保存当前页的状态到全局映射
+    saveCurrentPageToolStates();
+    
     // 计算当前页的启用工具数
     const currentPageEnabled = Array.from(document.querySelectorAll('#tools-list input[type="checkbox"]:checked')).length;
     const currentPageTotal = document.querySelectorAll('#tools-list input[type="checkbox"]').length;
@@ -1993,22 +2084,32 @@ async function updateToolsStats() {
         if (toolsSearchKeyword) {
             totalTools = allTools.length;
             totalEnabled = allTools.filter(tool => {
+                // 优先使用全局状态映射，否则使用checkbox状态，最后使用服务器返回的状态
+                const savedState = toolStateMap.get(tool.name);
+                if (savedState !== undefined) {
+                    return savedState.enabled;
+                }
                 const checkbox = document.getElementById(`tool-${tool.name}`);
                 return checkbox ? checkbox.checked : tool.enabled;
             }).length;
         } else {
             // 没有搜索时，需要获取所有工具的状态
-            // 先使用当前已知的工具状态
-            const toolStateMap = new Map();
+            // 先使用全局状态映射和当前页的checkbox状态
+            const localStateMap = new Map();
             
-            // 从当前页的checkbox获取状态
+            // 从当前页的checkbox获取状态（如果全局映射中没有）
             allTools.forEach(tool => {
-                const checkbox = document.getElementById(`tool-${tool.name}`);
-                if (checkbox) {
-                    toolStateMap.set(tool.name, checkbox.checked);
+                const savedState = toolStateMap.get(tool.name);
+                if (savedState !== undefined) {
+                    localStateMap.set(tool.name, savedState.enabled);
                 } else {
-                    // 如果checkbox不存在（不在当前页），使用工具原始状态
-                    toolStateMap.set(tool.name, tool.enabled);
+                    const checkbox = document.getElementById(`tool-${tool.name}`);
+                    if (checkbox) {
+                        localStateMap.set(tool.name, checkbox.checked);
+                    } else {
+                        // 如果checkbox不存在（不在当前页），使用工具原始状态
+                        localStateMap.set(tool.name, tool.enabled);
+                    }
                 }
             });
             
@@ -2026,9 +2127,10 @@ async function updateToolsStats() {
                     
                     const pageResult = await pageResponse.json();
                     pageResult.tools.forEach(tool => {
-                        // 如果工具不在当前页，使用服务器返回的状态
-                        if (!toolStateMap.has(tool.name)) {
-                            toolStateMap.set(tool.name, tool.enabled);
+                        // 优先使用全局状态映射，否则使用服务器返回的状态
+                        if (!localStateMap.has(tool.name)) {
+                            const savedState = toolStateMap.get(tool.name);
+                            localStateMap.set(tool.name, savedState ? savedState.enabled : tool.enabled);
                         }
                     });
                     
@@ -2041,7 +2143,7 @@ async function updateToolsStats() {
             }
             
             // 计算启用的工具数
-            totalEnabled = Array.from(toolStateMap.values()).filter(enabled => enabled).length;
+            totalEnabled = Array.from(localStateMap.values()).filter(enabled => enabled).length;
         }
     } catch (error) {
         console.warn('获取工具统计失败，使用当前页数据', error);
@@ -2112,22 +2214,8 @@ async function applySettings() {
         };
         
         // 收集工具启用状态
-        // 由于使用分页，需要先获取所有工具的状态
-        // 先获取当前页的工具状态
-        const currentPageTools = new Map();
-        document.querySelectorAll('#tools-list .tool-item').forEach(item => {
-            const checkbox = item.querySelector('input[type="checkbox"]');
-            const toolName = item.dataset.toolName;
-            const isExternal = item.dataset.isExternal === 'true';
-            const externalMcp = item.dataset.externalMcp || '';
-            if (toolName) {
-                currentPageTools.set(toolName, {
-                    enabled: checkbox.checked,
-                    is_external: isExternal,
-                    external_mcp: externalMcp
-                });
-            }
-        });
+        // 先保存当前页的状态到全局映射
+        saveCurrentPageToolStates();
         
         // 获取所有工具列表以获取完整状态（遍历所有页面）
         // 注意：无论是否在搜索状态下，都要获取所有工具的状态，以确保完整保存
@@ -2148,16 +2236,15 @@ async function applySettings() {
                 
                 const pageResult = await pageResponse.json();
                 
-                // 将当前页的工具添加到映射中
-                // 如果工具在当前显示的页面中（匹配搜索且在当前页），使用当前页的修改
-                // 否则使用服务器返回的状态
+                // 将工具添加到映射中
+                // 优先使用全局状态映射中的状态（用户修改过的），否则使用服务器返回的状态
                 pageResult.tools.forEach(tool => {
-                    const currentPageTool = currentPageTools.get(tool.name);
+                    const savedState = toolStateMap.get(tool.name);
                     allToolsMap.set(tool.name, {
                         name: tool.name,
-                        enabled: currentPageTool ? currentPageTool.enabled : tool.enabled,
-                        is_external: currentPageTool ? currentPageTool.is_external : (tool.is_external || false),
-                        external_mcp: currentPageTool ? currentPageTool.external_mcp : (tool.external_mcp || '')
+                        enabled: savedState ? savedState.enabled : tool.enabled,
+                        is_external: savedState ? savedState.is_external : (tool.is_external || false),
+                        external_mcp: savedState ? savedState.external_mcp : (tool.external_mcp || '')
                     });
                 });
                 
@@ -2179,9 +2266,9 @@ async function applySettings() {
                 });
             });
         } catch (error) {
-            console.warn('获取所有工具列表失败，仅使用当前页工具状态', error);
-            // 如果获取失败，只使用当前页的工具
-            currentPageTools.forEach((toolData, toolName) => {
+            console.warn('获取所有工具列表失败，仅使用全局状态映射', error);
+            // 如果获取失败，使用全局状态映射
+            toolStateMap.forEach((toolData, toolName) => {
                 config.tools.push({
                     name: toolName,
                     enabled: toolData.enabled,
@@ -2457,8 +2544,9 @@ function renderMonitorStats(statsMap = {}, lastFetchedAt = null) {
         </div>
     `;
 
-    // 显示最多前4个工具的统计
+    // 显示最多前4个工具的统计（过滤掉 totalCalls 为 0 的工具）
     const topTools = entries
+        .filter(tool => (tool.totalCalls || 0) > 0)
         .slice()
         .sort((a, b) => (b.totalCalls || 0) - (a.totalCalls || 0))
         .slice(0, 4);
@@ -2518,6 +2606,7 @@ function renderMonitorExecutions(executions = [], statusFilter = 'all') {
                     <td>
                         <div class="monitor-execution-actions">
                             <button class="btn-secondary" onclick="showMCPDetail('${executionId}')">查看详情</button>
+                            <button class="btn-secondary btn-delete" onclick="deleteExecution('${executionId}')" title="删除此执行记录">删除</button>
                         </div>
                     </td>
                 </tr>
@@ -2525,6 +2614,12 @@ function renderMonitorExecutions(executions = [], statusFilter = 'all') {
         })
         .join('');
 
+    // 先移除旧的表格容器（保留分页控件）
+    const oldTableContainer = container.querySelector('.monitor-table-container');
+    if (oldTableContainer) {
+        oldTableContainer.remove();
+    }
+    
     // 创建表格容器
     const tableContainer = document.createElement('div');
     tableContainer.className = 'monitor-table-container';
@@ -2543,9 +2638,13 @@ function renderMonitorExecutions(executions = [], statusFilter = 'all') {
         </table>
     `;
     
-    // 清空容器并添加表格
-    container.innerHTML = '';
-    container.appendChild(tableContainer);
+    // 在分页控件之前插入表格（如果存在分页控件）
+    const existingPagination = container.querySelector('.monitor-pagination');
+    if (existingPagination) {
+        container.insertBefore(tableContainer, existingPagination);
+    } else {
+        container.appendChild(tableContainer);
+    }
 }
 
 // 渲染监控面板分页控件
@@ -2588,6 +2687,37 @@ function renderMonitorPagination() {
     container.appendChild(pagination);
 }
 
+// 删除执行记录
+async function deleteExecution(executionId) {
+    if (!executionId) {
+        return;
+    }
+    
+    // 确认删除
+    if (!confirm('确定要删除此执行记录吗？此操作不可恢复。')) {
+        return;
+    }
+    
+    try {
+        const response = await apiFetch(`/api/monitor/execution/${executionId}`, {
+            method: 'DELETE'
+        });
+        
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.error || '删除执行记录失败');
+        }
+        
+        // 删除成功后刷新当前页面
+        const currentPage = monitorState.pagination.page;
+        await refreshMonitorPanel(currentPage);
+        
+        alert('执行记录已删除');
+    } catch (error) {
+        console.error('删除执行记录失败:', error);
+        alert('删除执行记录失败: ' + error.message);
+    }
+}
 
 function formatExecutionDuration(start, end) {
     if (!start) {

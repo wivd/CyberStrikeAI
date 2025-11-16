@@ -1842,6 +1842,24 @@ header {
     border-color: var(--accent-color);
 }
 
+.btn-danger {
+    padding: 10px 20px;
+    background: rgba(220, 53, 69, 0.08);
+    color: var(--error-color, #dc3545);
+    border: 1px solid rgba(220, 53, 69, 0.3);
+    border-radius: 6px;
+    font-size: 0.9375rem;
+    font-weight: 500;
+    cursor: pointer;
+    transition: all 0.2s;
+}
+
+.btn-danger:hover {
+    background: rgba(220, 53, 69, 0.15);
+    border-color: var(--error-color, #dc3545);
+    color: #c82333;
+}
+
 .monitor-modal-content {
     max-width: 1080px;
     width: 95%;
@@ -2003,6 +2021,16 @@ header {
 .monitor-execution-actions button {
     padding: 6px 12px;
     font-size: 0.75rem;
+}
+
+.monitor-execution-actions .btn-delete {
+    color: var(--error-color, #dc3545);
+}
+
+.monitor-execution-actions .btn-delete:hover {
+    background: rgba(220, 53, 69, 0.1);
+    border-color: rgba(220, 53, 69, 0.4);
+    color: #c82333;
 }
 
 .monitor-vuln-container {

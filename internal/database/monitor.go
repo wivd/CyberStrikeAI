@@ -232,6 +232,17 @@ func (db *DB) GetToolExecution(id string) (*mcp.ToolExecution, error) {
 	return &exec, nil
 }
 
+// DeleteToolExecution 删除工具执行记录
+func (db *DB) DeleteToolExecution(id string) error {
+	query := `DELETE FROM tool_executions WHERE id = ?`
+	_, err := db.Exec(query, id)
+	if err != nil {
+		db.logger.Error("删除工具执行记录失败", zap.Error(err), zap.String("executionId", id))
+		return err
+	}
+	return nil
+}
+
 // SaveToolStats 保存工具统计信息
 func (db *DB) SaveToolStats(toolName string, stats *mcp.ToolStats) error {
 	var lastCallTime sql.NullTime
@@ -328,6 +339,49 @@ func (db *DB) UpdateToolStats(toolName string, totalCalls, successCalls, failedC
 	if err != nil {
 		db.logger.Error("更新工具统计信息失败", zap.Error(err), zap.String("toolName", toolName))
 		return err
+	}
+
+	return nil
+}
+
+// DecreaseToolStats 减少工具统计信息（用于删除执行记录时）
+// 如果统计信息变为0，则删除该统计记录
+func (db *DB) DecreaseToolStats(toolName string, totalCalls, successCalls, failedCalls int) error {
+	// 先更新统计信息
+	query := `
+		UPDATE tool_stats SET
+			total_calls = CASE WHEN total_calls - ? < 0 THEN 0 ELSE total_calls - ? END,
+			success_calls = CASE WHEN success_calls - ? < 0 THEN 0 ELSE success_calls - ? END,
+			failed_calls = CASE WHEN failed_calls - ? < 0 THEN 0 ELSE failed_calls - ? END,
+			updated_at = ?
+		WHERE tool_name = ?
+	`
+
+	_, err := db.Exec(query, totalCalls, totalCalls, successCalls, successCalls, failedCalls, failedCalls, time.Now(), toolName)
+	if err != nil {
+		db.logger.Error("减少工具统计信息失败", zap.Error(err), zap.String("toolName", toolName))
+		return err
+	}
+
+	// 检查更新后的 total_calls 是否为 0，如果是则删除该统计记录
+	checkQuery := `SELECT total_calls FROM tool_stats WHERE tool_name = ?`
+	var newTotalCalls int
+	err = db.QueryRow(checkQuery, toolName).Scan(&newTotalCalls)
+	if err != nil {
+		// 如果查询失败（记录不存在），直接返回
+		return nil
+	}
+
+	// 如果 total_calls 为 0，删除该统计记录
+	if newTotalCalls == 0 {
+		deleteQuery := `DELETE FROM tool_stats WHERE tool_name = ?`
+		_, err = db.Exec(deleteQuery, toolName)
+		if err != nil {
+			db.logger.Warn("删除零统计记录失败", zap.Error(err), zap.String("toolName", toolName))
+			// 不返回错误，因为主要操作（更新统计）已成功
+		} else {
+			db.logger.Info("已删除零统计记录", zap.String("toolName", toolName))
+		}
 	}
 
 	return nil

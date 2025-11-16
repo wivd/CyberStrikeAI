@@ -220,4 +220,59 @@ func (h *MonitorHandler) GetStats(c *gin.Context) {
 	c.JSON(http.StatusOK, stats)
 }
 
+// DeleteExecution 删除执行记录
+func (h *MonitorHandler) DeleteExecution(c *gin.Context) {
+	id := c.Param("id")
+	if id == "" {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "执行记录ID不能为空"})
+		return
+	}
+
+	// 如果使用数据库，先获取执行记录信息，然后删除并更新统计
+	if h.db != nil {
+		// 先获取执行记录信息（用于更新统计）
+		exec, err := h.db.GetToolExecution(id)
+		if err != nil {
+			// 如果找不到记录，可能已经被删除，直接返回成功
+			h.logger.Warn("执行记录不存在，可能已被删除", zap.String("executionId", id), zap.Error(err))
+			c.JSON(http.StatusOK, gin.H{"message": "执行记录不存在或已被删除"})
+			return
+		}
+
+		// 删除执行记录
+		err = h.db.DeleteToolExecution(id)
+		if err != nil {
+			h.logger.Error("删除执行记录失败", zap.Error(err), zap.String("executionId", id))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "删除执行记录失败: " + err.Error()})
+			return
+		}
+
+		// 更新统计信息（减少相应的计数）
+		totalCalls := 1
+		successCalls := 0
+		failedCalls := 0
+		if exec.Status == "failed" {
+			failedCalls = 1
+		} else if exec.Status == "completed" {
+			successCalls = 1
+		}
+
+		if exec.ToolName != "" {
+			if err := h.db.DecreaseToolStats(exec.ToolName, totalCalls, successCalls, failedCalls); err != nil {
+				h.logger.Warn("更新统计信息失败", zap.Error(err), zap.String("toolName", exec.ToolName))
+				// 不返回错误，因为记录已经删除成功
+			}
+		}
+
+		h.logger.Info("执行记录已从数据库删除", zap.String("executionId", id), zap.String("toolName", exec.ToolName))
+		c.JSON(http.StatusOK, gin.H{"message": "执行记录已删除"})
+		return
+	}
+
+	// 如果不使用数据库，尝试从内存中删除（内部MCP服务器）
+	// 注意：内存中的记录可能已经被清理，所以这里只记录日志
+	h.logger.Info("尝试删除内存中的执行记录", zap.String("executionId", id))
+	c.JSON(http.StatusOK, gin.H{"message": "执行记录已删除（如果存在）"})
+}
+
 
