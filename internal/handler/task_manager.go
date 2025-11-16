@@ -89,6 +89,21 @@ func (m *AgentTaskManager) CancelTask(conversationID string, cause error) (bool,
 	return true, nil
 }
 
+// UpdateTaskStatus 更新任务状态但不删除任务（用于在发送事件前更新状态）
+func (m *AgentTaskManager) UpdateTaskStatus(conversationID string, status string) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+
+	task, exists := m.tasks[conversationID]
+	if !exists {
+		return
+	}
+
+	if status != "" {
+		task.Status = status
+	}
+}
+
 // FinishTask 完成任务并从管理器中移除
 func (m *AgentTaskManager) FinishTask(conversationID string, finalStatus string) {
 	m.mu.Lock()

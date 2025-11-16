@@ -558,6 +558,9 @@ function integrateProgressToMCPSection(progressId, assistantMessageId) {
     // 获取时间线内容
     const hasContent = timelineHTML.trim().length > 0;
     
+    // 检查时间线中是否有错误项
+    const hasError = timeline && timeline.querySelector('.timeline-item-error');
+    
     // 确保按钮容器存在
     let buttonsContainer = mcpSection.querySelector('.mcp-call-buttons');
     if (!buttonsContainer) {
@@ -582,18 +585,24 @@ function integrateProgressToMCPSection(progressId, assistantMessageId) {
         }
     }
     
-    // 设置详情内容（默认折叠状态）
+    // 设置详情内容（如果有错误，默认折叠；否则默认折叠）
     detailsContainer.innerHTML = `
         <div class="process-details-content">
             ${hasContent ? `<div class="progress-timeline" id="${detailsId}-timeline">${timelineHTML}</div>` : '<div class="progress-timeline-empty">暂无过程详情</div>'}
         </div>
     `;
     
-    // 确保初始状态是折叠的
+    // 确保初始状态是折叠的（默认折叠）
     if (hasContent) {
         const timeline = document.getElementById(detailsId + '-timeline');
         if (timeline) {
             timeline.classList.remove('expanded');
+        }
+        
+        // 更新按钮文本为"展开详情"（因为默认折叠）
+        const processDetailBtn = buttonsContainer.querySelector('.process-detail-btn');
+        if (processDetailBtn) {
+            processDetailBtn.innerHTML = '<span>展开详情</span>';
         }
     }
     
@@ -717,13 +726,21 @@ function convertProgressToDetails(progressId, assistantMessageId) {
     // 获取时间线HTML内容
     const hasContent = timelineHTML.trim().length > 0;
     
+    // 检查时间线中是否有错误项
+    const hasError = timeline && timeline.querySelector('.timeline-item-error');
+    
+    // 如果有错误，默认折叠；否则默认展开
+    const shouldExpand = !hasError;
+    const expandedClass = shouldExpand ? 'expanded' : '';
+    const toggleText = shouldExpand ? '收起详情' : '展开详情';
+    
     // 总是显示详情组件，即使没有内容也显示
     bubble.innerHTML = `
         <div class="progress-header">
             <span class="progress-title">📋 渗透测试详情</span>
-            ${hasContent ? `<button class="progress-toggle" onclick="toggleProgressDetails('${detailsId}')">收起详情</button>` : ''}
+            ${hasContent ? `<button class="progress-toggle" onclick="toggleProgressDetails('${detailsId}')">${toggleText}</button>` : ''}
         </div>
-        ${hasContent ? `<div class="progress-timeline expanded" id="${detailsId}-timeline">${timelineHTML}</div>` : '<div class="progress-timeline-empty">暂无过程详情（可能执行过快或未触发详细事件）</div>'}
+        ${hasContent ? `<div class="progress-timeline ${expandedClass}" id="${detailsId}-timeline">${timelineHTML}</div>` : '<div class="progress-timeline-empty">暂无过程详情（可能执行过快或未触发详细事件）</div>'}
     `;
     
     contentWrapper.appendChild(bubble);
@@ -877,6 +894,41 @@ function handleStreamEvent(event, progressElement, progressId,
                 message: event.message,
                 data: event.data
             });
+            
+            // 如果错误事件包含messageId，说明有助手消息，需要显示错误内容
+            if (event.data && event.data.messageId) {
+                // 检查助手消息是否已存在
+                let assistantId = event.data.messageId;
+                let assistantElement = document.getElementById(assistantId);
+                
+                // 如果助手消息不存在，创建它
+                if (!assistantElement) {
+                    assistantId = addMessage('assistant', event.message, null, progressId);
+                    setAssistantId(assistantId);
+                    assistantElement = document.getElementById(assistantId);
+                } else {
+                    // 如果已存在，更新内容
+                    const bubble = assistantElement.querySelector('.message-bubble');
+                    if (bubble) {
+                        bubble.innerHTML = escapeHtml(event.message).replace(/\n/g, '<br>');
+                    }
+                }
+                
+                // 将进度详情集成到工具调用区域（如果还没有）
+                if (assistantElement) {
+                    const detailsId = 'process-details-' + assistantId;
+                    if (!document.getElementById(detailsId)) {
+                        integrateProgressToMCPSection(progressId, assistantId);
+                    }
+                    // 立即折叠详情（错误时应该默认折叠）
+                    setTimeout(() => {
+                        collapseAllProgressDetails(assistantId, progressId);
+                    }, 100);
+                }
+            }
+            
+            // 立即刷新任务状态（执行失败时任务状态会更新）
+            loadActiveTasks();
             break;
             
         case 'done':
@@ -894,7 +946,18 @@ function handleStreamEvent(event, progressElement, progressId,
             if (progressTaskState.has(progressId)) {
                 finalizeProgressTask(progressId, '已完成');
             }
+            
+            // 检查时间线中是否有错误项
+            const hasError = timeline && timeline.querySelector('.timeline-item-error');
+            
+            // 立即刷新任务状态（确保任务状态同步）
             loadActiveTasks();
+            
+            // 延迟再次刷新任务状态（确保后端已完成状态更新）
+            setTimeout(() => {
+                loadActiveTasks();
+            }, 200);
+            
             // 完成时自动折叠所有详情（延迟一下确保response事件已处理）
             setTimeout(() => {
                 const assistantIdFromDone = getAssistantId();
@@ -903,6 +966,14 @@ function handleStreamEvent(event, progressElement, progressId,
                 } else {
                     // 如果无法获取助手ID，尝试折叠所有详情
                     collapseAllProgressDetails(null, progressId);
+                }
+                
+                // 如果有错误，确保详情是折叠的（错误时应该默认折叠）
+                if (hasError) {
+                    // 再次确保折叠（延迟一点确保DOM已更新）
+                    setTimeout(() => {
+                        collapseAllProgressDetails(assistantIdFromDone || null, progressId);
+                    }, 200);
                 }
             }, 500);
             break;
@@ -1646,22 +1717,39 @@ function renderActiveTasks(tasks) {
             ? startedTime.toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' })
             : '';
 
+        // 根据任务状态显示不同的文本
+        const statusMap = {
+            'running': '执行中',
+            'cancelling': '取消中',
+            'failed': '执行失败',
+            'timeout': '执行超时',
+            'cancelled': '已取消',
+            'completed': '已完成'
+        };
+        const statusText = statusMap[task.status] || '执行中';
+        const isFinalStatus = ['failed', 'timeout', 'cancelled', 'completed'].includes(task.status);
+
         item.innerHTML = `
             <div class="active-task-info">
-                <span class="active-task-status">${task.status === 'cancelling' ? '取消中' : '执行中'}</span>
+                <span class="active-task-status">${statusText}</span>
                 <span class="active-task-message">${escapeHtml(task.message || '未命名任务')}</span>
             </div>
             <div class="active-task-actions">
                 ${timeText ? `<span class="active-task-time">${timeText}</span>` : ''}
-                <button class="active-task-cancel">停止任务</button>
+                ${!isFinalStatus ? '<button class="active-task-cancel">停止任务</button>' : ''}
             </div>
         `;
 
-        const cancelBtn = item.querySelector('.active-task-cancel');
-        cancelBtn.onclick = () => cancelActiveTask(task.conversationId, cancelBtn);
-        if (task.status === 'cancelling') {
-            cancelBtn.disabled = true;
-            cancelBtn.textContent = '取消中...';
+        // 只有非最终状态的任务才显示停止按钮
+        if (!isFinalStatus) {
+            const cancelBtn = item.querySelector('.active-task-cancel');
+            if (cancelBtn) {
+                cancelBtn.onclick = () => cancelActiveTask(task.conversationId, cancelBtn);
+                if (task.status === 'cancelling') {
+                    cancelBtn.disabled = true;
+                    cancelBtn.textContent = '取消中...';
+                }
+            }
         }
 
         bar.appendChild(item);

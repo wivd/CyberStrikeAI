@@ -10,6 +10,7 @@ import (
 
 	"cyberstrike-ai/internal/agent"
 	"cyberstrike-ai/internal/database"
+
 	"github.com/gin-gonic/gin"
 	"go.uber.org/zap"
 )
@@ -318,6 +319,10 @@ func (h *AgentHandler) AgentLoopStream(c *gin.Context) {
 		case errors.Is(cause, ErrTaskCancelled):
 			taskStatus = "cancelled"
 			cancelMsg := "任务已被用户取消，后续操作已停止。"
+
+			// 在发送事件前更新任务状态，确保前端能及时看到状态变化
+			h.tasks.UpdateTaskStatus(conversationID, taskStatus)
+
 			if assistantMessageID != "" {
 				if _, updateErr := h.db.Exec(
 					"UPDATE messages SET content = ? WHERE id = ?",
@@ -339,6 +344,10 @@ func (h *AgentHandler) AgentLoopStream(c *gin.Context) {
 		case errors.Is(err, context.DeadlineExceeded) || errors.Is(cause, context.DeadlineExceeded):
 			taskStatus = "timeout"
 			timeoutMsg := "任务执行超时，已自动终止。"
+
+			// 在发送事件前更新任务状态，确保前端能及时看到状态变化
+			h.tasks.UpdateTaskStatus(conversationID, taskStatus)
+
 			if assistantMessageID != "" {
 				if _, updateErr := h.db.Exec(
 					"UPDATE messages SET content = ? WHERE id = ?",
@@ -360,6 +369,10 @@ func (h *AgentHandler) AgentLoopStream(c *gin.Context) {
 		default:
 			taskStatus = "failed"
 			errorMsg := "执行失败: " + err.Error()
+
+			// 在发送事件前更新任务状态，确保前端能及时看到状态变化
+			h.tasks.UpdateTaskStatus(conversationID, taskStatus)
+
 			if assistantMessageID != "" {
 				if _, updateErr := h.db.Exec(
 					"UPDATE messages SET content = ? WHERE id = ?",
