@@ -290,15 +290,43 @@ func (h *AgentHandler) AgentLoopStream(c *gin.Context) {
 	defer cancelWithCause(nil)
 
 	if _, err := h.tasks.StartTask(conversationID, req.Message, cancelWithCause); err != nil {
+		var errorMsg string
 		if errors.Is(err, ErrTaskAlreadyRunning) {
-			sendEvent("error", "当前会话已有任务正在执行，请先停止后再尝试。", map[string]interface{}{
+			errorMsg = "⚠️ 当前会话已有任务正在执行中，请等待当前任务完成或点击「停止任务」按钮后再尝试。"
+			sendEvent("error", errorMsg, map[string]interface{}{
 				"conversationId": conversationID,
+				"errorType":      "task_already_running",
 			})
 		} else {
-			sendEvent("error", "无法启动任务: "+err.Error(), map[string]interface{}{
+			errorMsg = "❌ 无法启动任务: " + err.Error()
+			sendEvent("error", errorMsg, map[string]interface{}{
 				"conversationId": conversationID,
+				"errorType":      "task_start_failed",
 			})
 		}
+
+		// 更新助手消息内容并保存错误详情到数据库
+		if assistantMessageID != "" {
+			if _, updateErr := h.db.Exec(
+				"UPDATE messages SET content = ? WHERE id = ?",
+				errorMsg,
+				assistantMessageID,
+			); updateErr != nil {
+				h.logger.Warn("更新错误后的助手消息失败", zap.Error(updateErr))
+			}
+			// 保存错误详情到数据库
+			if err := h.db.AddProcessDetail(assistantMessageID, conversationID, "error", errorMsg, map[string]interface{}{
+				"errorType": func() string {
+					if errors.Is(err, ErrTaskAlreadyRunning) {
+						return "task_already_running"
+					}
+					return "task_start_failed"
+				}(),
+			}); err != nil {
+				h.logger.Warn("保存错误详情失败", zap.Error(err))
+			}
+		}
+
 		sendEvent("done", "", map[string]interface{}{
 			"conversationId": conversationID,
 		})

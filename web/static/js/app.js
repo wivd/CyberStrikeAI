@@ -478,15 +478,18 @@ function toggleProgressDetails(progressId) {
 // 折叠所有进度详情
 function collapseAllProgressDetails(assistantMessageId, progressId) {
     // 折叠集成到MCP区域的详情
-    const detailsId = 'process-details-' + assistantMessageId;
-    const detailsContainer = document.getElementById(detailsId);
-    if (detailsContainer) {
-        const timeline = detailsContainer.querySelector('.progress-timeline');
-        if (timeline && timeline.classList.contains('expanded')) {
-            timeline.classList.remove('expanded');
-            const btn = document.querySelector(`#${assistantMessageId} .process-detail-btn`);
-            if (btn) {
-                btn.innerHTML = '<span>展开详情</span>';
+    if (assistantMessageId) {
+        const detailsId = 'process-details-' + assistantMessageId;
+        const detailsContainer = document.getElementById(detailsId);
+        if (detailsContainer) {
+            const timeline = detailsContainer.querySelector('.progress-timeline');
+            if (timeline) {
+                // 确保移除expanded类（无论是否包含）
+                timeline.classList.remove('expanded');
+                const btn = document.querySelector(`#${assistantMessageId} .process-detail-btn`);
+                if (btn) {
+                    btn.innerHTML = '<span>展开详情</span>';
+                }
             }
         }
     }
@@ -497,7 +500,7 @@ function collapseAllProgressDetails(assistantMessageId, progressId) {
     allDetails.forEach(detail => {
         const timeline = detail.querySelector('.progress-timeline');
         const toggleBtn = detail.querySelector('.progress-toggle');
-        if (timeline && timeline.classList.contains('expanded')) {
+        if (timeline) {
             timeline.classList.remove('expanded');
             if (toggleBtn) {
                 toggleBtn.textContent = '展开详情';
@@ -509,7 +512,7 @@ function collapseAllProgressDetails(assistantMessageId, progressId) {
     if (progressId) {
         const progressTimeline = document.getElementById(progressId + '-timeline');
         const progressToggleBtn = document.querySelector(`#${progressId} .progress-toggle`);
-        if (progressTimeline && progressTimeline.classList.contains('expanded')) {
+        if (progressTimeline) {
             progressTimeline.classList.remove('expanded');
             if (progressToggleBtn) {
                 progressToggleBtn.textContent = '展开详情';
@@ -592,10 +595,11 @@ function integrateProgressToMCPSection(progressId, assistantMessageId) {
         </div>
     `;
     
-    // 确保初始状态是折叠的（默认折叠）
+    // 确保初始状态是折叠的（默认折叠，特别是错误时）
     if (hasContent) {
         const timeline = document.getElementById(detailsId + '-timeline');
         if (timeline) {
+            // 如果有错误，确保折叠；否则也默认折叠
             timeline.classList.remove('expanded');
         }
         
@@ -844,16 +848,74 @@ function handleStreamEvent(event, progressElement, progressId,
             break;
         
         case 'cancelled':
+            // 显示错误
             addTimelineItem(timeline, 'cancelled', {
                 title: '⛔ 任务已取消',
                 message: event.message,
                 data: event.data
             });
+            
+            // 更新进度标题为取消状态
             const cancelTitle = document.querySelector(`#${progressId} .progress-title`);
             if (cancelTitle) {
                 cancelTitle.textContent = '⛔ 任务已取消';
             }
-            finalizeProgressTask(progressId, '已取消');
+            
+            // 更新进度容器为已完成状态（添加completed类）
+            const cancelProgressContainer = document.querySelector(`#${progressId} .progress-container`);
+            if (cancelProgressContainer) {
+                cancelProgressContainer.classList.add('completed');
+            }
+            
+            // 完成进度任务（标记为已取消）
+            if (progressTaskState.has(progressId)) {
+                finalizeProgressTask(progressId, '已取消');
+            }
+            
+            // 如果取消事件包含messageId，说明有助手消息，需要显示取消内容
+            if (event.data && event.data.messageId) {
+                // 检查助手消息是否已存在
+                let assistantId = event.data.messageId;
+                let assistantElement = document.getElementById(assistantId);
+                
+                // 如果助手消息不存在，创建它
+                if (!assistantElement) {
+                    assistantId = addMessage('assistant', event.message, null, progressId);
+                    setAssistantId(assistantId);
+                    assistantElement = document.getElementById(assistantId);
+                } else {
+                    // 如果已存在，更新内容
+                    const bubble = assistantElement.querySelector('.message-bubble');
+                    if (bubble) {
+                        bubble.innerHTML = escapeHtml(event.message).replace(/\n/g, '<br>');
+                    }
+                }
+                
+                // 将进度详情集成到工具调用区域（如果还没有）
+                if (assistantElement) {
+                    const detailsId = 'process-details-' + assistantId;
+                    if (!document.getElementById(detailsId)) {
+                        integrateProgressToMCPSection(progressId, assistantId);
+                    }
+                    // 立即折叠详情（取消时应该默认折叠）
+                    setTimeout(() => {
+                        collapseAllProgressDetails(assistantId, progressId);
+                    }, 100);
+                }
+            } else {
+                // 如果没有messageId，创建助手消息并集成详情
+                const assistantId = addMessage('assistant', event.message, null, progressId);
+                setAssistantId(assistantId);
+                
+                // 将进度详情集成到工具调用区域
+                setTimeout(() => {
+                    integrateProgressToMCPSection(progressId, assistantId);
+                    // 确保详情默认折叠
+                    collapseAllProgressDetails(assistantId, progressId);
+                }, 100);
+            }
+            
+            // 立即刷新任务状态
             loadActiveTasks();
             break;
             
@@ -895,6 +957,23 @@ function handleStreamEvent(event, progressElement, progressId,
                 data: event.data
             });
             
+            // 更新进度标题为错误状态
+            const errorTitle = document.querySelector(`#${progressId} .progress-title`);
+            if (errorTitle) {
+                errorTitle.textContent = '❌ 执行失败';
+            }
+            
+            // 更新进度容器为已完成状态（添加completed类）
+            const progressContainer = document.querySelector(`#${progressId} .progress-container`);
+            if (progressContainer) {
+                progressContainer.classList.add('completed');
+            }
+            
+            // 完成进度任务（标记为失败）
+            if (progressTaskState.has(progressId)) {
+                finalizeProgressTask(progressId, '已失败');
+            }
+            
             // 如果错误事件包含messageId，说明有助手消息，需要显示错误内容
             if (event.data && event.data.messageId) {
                 // 检查助手消息是否已存在
@@ -925,6 +1004,17 @@ function handleStreamEvent(event, progressElement, progressId,
                         collapseAllProgressDetails(assistantId, progressId);
                     }, 100);
                 }
+            } else {
+                // 如果没有messageId（比如任务已运行时的错误），创建助手消息并集成详情
+                const assistantId = addMessage('assistant', event.message, null, progressId);
+                setAssistantId(assistantId);
+                
+                // 将进度详情集成到工具调用区域
+                setTimeout(() => {
+                    integrateProgressToMCPSection(progressId, assistantId);
+                    // 确保详情默认折叠
+                    collapseAllProgressDetails(assistantId, progressId);
+                }, 100);
             }
             
             // 立即刷新任务状态（执行失败时任务状态会更新）
@@ -1301,6 +1391,8 @@ function renderProcessDetails(messageId, processDetails) {
             itemTitle = `${statusIcon} 工具 ${escapeHtml(toolName)} 执行${success ? '完成' : '失败'}`;
         } else if (eventType === 'error') {
             itemTitle = '❌ 错误';
+        } else if (eventType === 'cancelled') {
+            itemTitle = '⛔ 任务已取消';
         }
         
         addTimelineItem(timeline, eventType, {
@@ -1309,6 +1401,20 @@ function renderProcessDetails(messageId, processDetails) {
             data: data
         });
     });
+    
+    // 检查是否有错误或取消事件，如果有，确保详情默认折叠
+    const hasErrorOrCancelled = processDetails.some(d => 
+        d.eventType === 'error' || d.eventType === 'cancelled'
+    );
+    if (hasErrorOrCancelled) {
+        // 确保时间线是折叠的
+        timeline.classList.remove('expanded');
+        // 更新按钮文本为"展开详情"
+        const processDetailBtn = messageElement.querySelector('.process-detail-btn');
+        if (processDetailBtn) {
+            processDetailBtn.innerHTML = '<span>展开详情</span>';
+        }
+    }
 }
 
 // 移除消息
@@ -1608,12 +1714,32 @@ async function loadConversation(conversationId) {
         // 加载消息
         if (conversation.messages && conversation.messages.length > 0) {
             conversation.messages.forEach(msg => {
-                const messageId = addMessage(msg.role, msg.content, msg.mcpExecutionIds || []);
+                // 检查消息内容是否为"处理中..."，如果是，检查processDetails中是否有错误或取消事件
+                let displayContent = msg.content;
+                if (msg.role === 'assistant' && msg.content === '处理中...' && msg.processDetails && msg.processDetails.length > 0) {
+                    // 查找最后一个error或cancelled事件
+                    for (let i = msg.processDetails.length - 1; i >= 0; i--) {
+                        const detail = msg.processDetails[i];
+                        if (detail.eventType === 'error' || detail.eventType === 'cancelled') {
+                            displayContent = detail.message || msg.content;
+                            break;
+                        }
+                    }
+                }
+                
+                const messageId = addMessage(msg.role, displayContent, msg.mcpExecutionIds || []);
                 // 如果有过程详情，显示它们
                 if (msg.processDetails && msg.processDetails.length > 0 && msg.role === 'assistant') {
                     // 延迟一下，确保消息已经渲染
                     setTimeout(() => {
                         renderProcessDetails(messageId, msg.processDetails);
+                        // 检查是否有错误或取消事件，如果有，确保详情默认折叠
+                        const hasErrorOrCancelled = msg.processDetails.some(d => 
+                            d.eventType === 'error' || d.eventType === 'cancelled'
+                        );
+                        if (hasErrorOrCancelled) {
+                            collapseAllProgressDetails(messageId, null);
+                        }
                     }, 100);
                 }
             });
