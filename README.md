@@ -18,7 +18,6 @@
   <img src="./img/外部MCP接入.png" alt="Preview" width="600">
 
 - Attack Chain Visualization   
-  <img src="./img/攻击链.png" alt="Preview" width="600">  
   <img src="./img/攻击链.jpg" alt="Preview" width="600">
 
 ## Changelog
