@@ -78,7 +78,10 @@
                 <div id="active-tasks-bar" class="active-tasks-bar"></div>
                 <div id="chat-messages" class="chat-messages"></div>
                 <div class="chat-input-container">
-                    <textarea id="chat-input" placeholder="输入测试目标或命令... (Shift+Enter 换行，Enter 发送)" rows="1"></textarea>
+                    <div class="chat-input-field">
+                        <textarea id="chat-input" placeholder="输入测试目标或命令... (Shift+Enter 换行，Enter 发送)" rows="1"></textarea>
+                        <div id="mention-suggestions" class="mention-suggestions" role="listbox" aria-label="工具提及候选"></div>
+                    </div>
                     <button onclick="sendMessage()">发送</button>
                 </div>
             </div>

@@ -1,5 +1,18 @@
 let currentConversationId = null;
 
+// @ 提及相关状态
+let mentionTools = [];
+let mentionToolsLoaded = false;
+let mentionToolsLoadingPromise = null;
+let mentionSuggestionsEl = null;
+let mentionFilteredTools = [];
+const mentionState = {
+    active: false,
+    startIndex: -1,
+    query: '',
+    selectedIndex: 0,
+};
+
 // 发送消息
 async function sendMessage() {
     const input = document.getElementById('chat-input');
@@ -86,6 +99,389 @@ async function sendMessage() {
     }
 }
 
+function setupMentionSupport() {
+    mentionSuggestionsEl = document.getElementById('mention-suggestions');
+    if (mentionSuggestionsEl) {
+        mentionSuggestionsEl.style.display = 'none';
+        mentionSuggestionsEl.addEventListener('mousedown', (event) => {
+            // 防止点击候选项时输入框失焦
+            event.preventDefault();
+        });
+    }
+    ensureMentionToolsLoaded().catch(() => {
+        // 忽略加载错误，稍后可重试
+    });
+}
+
+function ensureMentionToolsLoaded() {
+    if (mentionToolsLoaded) {
+        return Promise.resolve(mentionTools);
+    }
+    if (mentionToolsLoadingPromise) {
+        return mentionToolsLoadingPromise;
+    }
+    mentionToolsLoadingPromise = fetchMentionTools().finally(() => {
+        mentionToolsLoadingPromise = null;
+    });
+    return mentionToolsLoadingPromise;
+}
+
+async function fetchMentionTools() {
+    const pageSize = 100;
+    let page = 1;
+    let totalPages = 1;
+    const seen = new Set();
+    const collected = [];
+
+    try {
+        while (page <= totalPages && page <= 20) {
+            const response = await apiFetch(`/api/config/tools?page=${page}&page_size=${pageSize}`);
+            if (!response.ok) {
+                break;
+            }
+            const result = await response.json();
+            const tools = Array.isArray(result.tools) ? result.tools : [];
+            tools.forEach(tool => {
+                if (!tool || !tool.name || seen.has(tool.name)) {
+                    return;
+                }
+                seen.add(tool.name);
+                collected.push({
+                    name: tool.name,
+                    description: tool.description || '',
+                    enabled: tool.enabled !== false,
+                    isExternal: !!tool.is_external,
+                    externalMcp: tool.external_mcp || '',
+                });
+            });
+            totalPages = result.total_pages || 1;
+            page += 1;
+            if (page > totalPages) {
+                break;
+            }
+        }
+        mentionTools = collected;
+        mentionToolsLoaded = true;
+    } catch (error) {
+        console.warn('加载工具列表失败，@提及功能可能不可用:', error);
+    }
+    return mentionTools;
+}
+
+function handleChatInputInput(event) {
+    updateMentionStateFromInput(event.target);
+}
+
+function handleChatInputClick(event) {
+    updateMentionStateFromInput(event.target);
+}
+
+function handleChatInputKeydown(event) {
+    if (mentionState.active && mentionSuggestionsEl && mentionSuggestionsEl.style.display !== 'none') {
+        if (event.key === 'ArrowDown') {
+            event.preventDefault();
+            moveMentionSelection(1);
+            return;
+        }
+        if (event.key === 'ArrowUp') {
+            event.preventDefault();
+            moveMentionSelection(-1);
+            return;
+        }
+        if (event.key === 'Enter' || event.key === 'Tab') {
+            event.preventDefault();
+            applyMentionSelection();
+            return;
+        }
+        if (event.key === 'Escape') {
+            event.preventDefault();
+            deactivateMentionState();
+            return;
+        }
+    }
+
+    if (event.key === 'Enter' && !event.shiftKey) {
+        event.preventDefault();
+        sendMessage();
+    }
+}
+
+function updateMentionStateFromInput(textarea) {
+    if (!textarea) {
+        deactivateMentionState();
+        return;
+    }
+    const caret = textarea.selectionStart || 0;
+    const textBefore = textarea.value.slice(0, caret);
+    const atIndex = textBefore.lastIndexOf('@');
+
+    if (atIndex === -1) {
+        deactivateMentionState();
+        return;
+    }
+
+    // 限制触发字符之前必须是空白或起始位置
+    if (atIndex > 0) {
+        const boundaryChar = textBefore[atIndex - 1];
+        if (boundaryChar && !/\s/.test(boundaryChar) && !'([{，。,.;:!?'.includes(boundaryChar)) {
+            deactivateMentionState();
+            return;
+        }
+    }
+
+    const querySegment = textBefore.slice(atIndex + 1);
+
+    if (querySegment.includes(' ') || querySegment.includes('\n') || querySegment.includes('\t') || querySegment.includes('@')) {
+        deactivateMentionState();
+        return;
+    }
+
+    if (querySegment.length > 60) {
+        deactivateMentionState();
+        return;
+    }
+
+    mentionState.active = true;
+    mentionState.startIndex = atIndex;
+    mentionState.query = querySegment.toLowerCase();
+    mentionState.selectedIndex = 0;
+
+    if (!mentionToolsLoaded) {
+        renderMentionSuggestions({ showLoading: true });
+    } else {
+        updateMentionCandidates();
+        renderMentionSuggestions();
+    }
+
+    ensureMentionToolsLoaded().then(() => {
+        if (mentionState.active) {
+            updateMentionCandidates();
+            renderMentionSuggestions();
+        }
+    });
+}
+
+function updateMentionCandidates() {
+    if (!mentionState.active) {
+        mentionFilteredTools = [];
+        return;
+    }
+    const normalizedQuery = (mentionState.query || '').trim().toLowerCase();
+    let filtered = mentionTools;
+
+    if (normalizedQuery) {
+        filtered = mentionTools.filter(tool => {
+            const nameMatch = tool.name.toLowerCase().includes(normalizedQuery);
+            const descMatch = tool.description && tool.description.toLowerCase().includes(normalizedQuery);
+            return nameMatch || descMatch;
+        });
+    }
+
+    filtered = filtered.slice().sort((a, b) => {
+        if (normalizedQuery) {
+            const aStarts = a.name.toLowerCase().startsWith(normalizedQuery);
+            const bStarts = b.name.toLowerCase().startsWith(normalizedQuery);
+            if (aStarts !== bStarts) {
+                return aStarts ? -1 : 1;
+            }
+        }
+        if (a.enabled !== b.enabled) {
+            return a.enabled ? -1 : 1;
+        }
+        return a.name.localeCompare(b.name, 'zh-CN');
+    });
+
+    mentionFilteredTools = filtered;
+    if (mentionFilteredTools.length === 0) {
+        mentionState.selectedIndex = 0;
+    } else if (mentionState.selectedIndex >= mentionFilteredTools.length) {
+        mentionState.selectedIndex = 0;
+    }
+}
+
+function renderMentionSuggestions({ showLoading = false } = {}) {
+    if (!mentionSuggestionsEl || !mentionState.active) {
+        hideMentionSuggestions();
+        return;
+    }
+
+    const currentQuery = mentionState.query || '';
+    const existingList = mentionSuggestionsEl.querySelector('.mention-suggestions-list');
+    const canPreserveScroll = !showLoading &&
+        existingList &&
+        mentionSuggestionsEl.dataset.lastMentionQuery === currentQuery;
+    const previousScrollTop = canPreserveScroll ? existingList.scrollTop : 0;
+
+    if (showLoading) {
+        mentionSuggestionsEl.innerHTML = '<div class="mention-empty">正在加载工具...</div>';
+        mentionSuggestionsEl.style.display = 'block';
+        delete mentionSuggestionsEl.dataset.lastMentionQuery;
+        return;
+    }
+
+    if (!mentionFilteredTools.length) {
+        mentionSuggestionsEl.innerHTML = '<div class="mention-empty">没有匹配的工具</div>';
+        mentionSuggestionsEl.style.display = 'block';
+        mentionSuggestionsEl.dataset.lastMentionQuery = currentQuery;
+        return;
+    }
+
+    const itemsHtml = mentionFilteredTools.map((tool, index) => {
+        const activeClass = index === mentionState.selectedIndex ? 'active' : '';
+        const disabledClass = tool.enabled ? '' : 'disabled';
+        const badge = tool.isExternal ? '<span class="mention-item-badge">外部</span>' : '<span class="mention-item-badge internal">内置</span>';
+        const nameHtml = escapeHtml(tool.name);
+        const description = tool.description && tool.description.length > 0 ? escapeHtml(tool.description) : '暂无描述';
+        const descHtml = `<div class="mention-item-desc">${description}</div>`;
+        const statusLabel = tool.enabled ? '可用' : '已禁用';
+        const statusClass = tool.enabled ? 'enabled' : 'disabled';
+        const originLabel = tool.isExternal
+            ? (tool.externalMcp ? `来源：${escapeHtml(tool.externalMcp)}` : '来源：外部MCP')
+            : '来源：内置工具';
+
+        return `
+            <button type="button" class="mention-item ${activeClass} ${disabledClass}" data-index="${index}">
+                <div class="mention-item-name">
+                    <span class="mention-item-icon">🔧</span>
+                    <span class="mention-item-text">@${nameHtml}</span>
+                    ${badge}
+                </div>
+                ${descHtml}
+                <div class="mention-item-meta">
+                    <span class="mention-status ${statusClass}">${statusLabel}</span>
+                    <span class="mention-origin">${originLabel}</span>
+                </div>
+            </button>
+        `;
+    }).join('');
+
+    const listWrapper = document.createElement('div');
+    listWrapper.className = 'mention-suggestions-list';
+    listWrapper.innerHTML = itemsHtml;
+
+    mentionSuggestionsEl.innerHTML = '';
+    mentionSuggestionsEl.appendChild(listWrapper);
+    mentionSuggestionsEl.style.display = 'block';
+    mentionSuggestionsEl.dataset.lastMentionQuery = currentQuery;
+
+    if (canPreserveScroll) {
+        listWrapper.scrollTop = previousScrollTop;
+    }
+
+    listWrapper.querySelectorAll('.mention-item').forEach(item => {
+        item.addEventListener('mousedown', (event) => {
+            event.preventDefault();
+            const idx = parseInt(item.dataset.index, 10);
+            if (!Number.isNaN(idx)) {
+                mentionState.selectedIndex = idx;
+            }
+            applyMentionSelection();
+        });
+    });
+
+    scrollMentionSelectionIntoView();
+}
+
+function hideMentionSuggestions() {
+    if (mentionSuggestionsEl) {
+        mentionSuggestionsEl.style.display = 'none';
+        mentionSuggestionsEl.innerHTML = '';
+        delete mentionSuggestionsEl.dataset.lastMentionQuery;
+    }
+}
+
+function deactivateMentionState() {
+    mentionState.active = false;
+    mentionState.startIndex = -1;
+    mentionState.query = '';
+    mentionState.selectedIndex = 0;
+    mentionFilteredTools = [];
+    hideMentionSuggestions();
+}
+
+function moveMentionSelection(direction) {
+    if (!mentionFilteredTools.length) {
+        return;
+    }
+    const max = mentionFilteredTools.length - 1;
+    let nextIndex = mentionState.selectedIndex + direction;
+    if (nextIndex < 0) {
+        nextIndex = max;
+    } else if (nextIndex > max) {
+        nextIndex = 0;
+    }
+    mentionState.selectedIndex = nextIndex;
+    updateMentionActiveHighlight();
+}
+
+function updateMentionActiveHighlight() {
+    if (!mentionSuggestionsEl) {
+        return;
+    }
+    const items = mentionSuggestionsEl.querySelectorAll('.mention-item');
+    if (!items.length) {
+        return;
+    }
+    items.forEach(item => item.classList.remove('active'));
+
+    let targetIndex = mentionState.selectedIndex;
+    if (targetIndex < 0) {
+        targetIndex = 0;
+    }
+    if (targetIndex >= items.length) {
+        targetIndex = items.length - 1;
+        mentionState.selectedIndex = targetIndex;
+    }
+
+    const activeItem = items[targetIndex];
+    if (activeItem) {
+        activeItem.classList.add('active');
+        scrollMentionSelectionIntoView(activeItem);
+    }
+}
+
+function scrollMentionSelectionIntoView(targetItem = null) {
+    if (!mentionSuggestionsEl) {
+        return;
+    }
+    const activeItem = targetItem || mentionSuggestionsEl.querySelector('.mention-item.active');
+    if (activeItem && typeof activeItem.scrollIntoView === 'function') {
+        activeItem.scrollIntoView({
+            block: 'nearest',
+            inline: 'nearest',
+            behavior: 'auto'
+        });
+    }
+}
+
+function applyMentionSelection() {
+    const textarea = document.getElementById('chat-input');
+    if (!textarea || mentionState.startIndex === -1 || !mentionFilteredTools.length) {
+        deactivateMentionState();
+        return;
+    }
+
+    const selectedTool = mentionFilteredTools[mentionState.selectedIndex] || mentionFilteredTools[0];
+    if (!selectedTool) {
+        deactivateMentionState();
+        return;
+    }
+
+    const caret = textarea.selectionStart || 0;
+    const before = textarea.value.slice(0, mentionState.startIndex);
+    const after = textarea.value.slice(caret);
+    const mentionText = `@${selectedTool.name}`;
+    const needsSpace = after.length === 0 || !/^\s/.test(after);
+    const insertText = mentionText + (needsSpace ? ' ' : '');
+
+    textarea.value = before + insertText + after;
+    const newCaret = before.length + insertText.length;
+    textarea.focus();
+    textarea.setSelectionRange(newCaret, newCaret);
+
+    deactivateMentionState();
+}
+
 function initializeChatUI() {
     const chatInputEl = document.getElementById('chat-input');
     if (chatInputEl) {
@@ -103,6 +499,7 @@ function initializeChatUI() {
         clearInterval(activeTaskInterval);
     }
     activeTaskInterval = setInterval(() => loadActiveTasks(), ACTIVE_TASK_REFRESH_INTERVAL);
+    setupMentionSupport();
 }
 
 // 消息计数器，确保ID唯一
@@ -385,15 +782,21 @@ function removeMessage(id) {
     }
 }
 
-// 回车发送消息，Shift+Enter 换行
+// 输入框事件绑定（回车发送 / @提及）
 const chatInput = document.getElementById('chat-input');
-chatInput.addEventListener('keydown', function(e) {
-    if (e.key === 'Enter' && !e.shiftKey) {
-        e.preventDefault();
-        sendMessage();
-    }
-    // Shift+Enter 允许默认行为（换行）
-});
+if (chatInput) {
+    chatInput.addEventListener('keydown', handleChatInputKeydown);
+    chatInput.addEventListener('input', handleChatInputInput);
+    chatInput.addEventListener('click', handleChatInputClick);
+    chatInput.addEventListener('focus', handleChatInputClick);
+    chatInput.addEventListener('blur', () => {
+        setTimeout(() => {
+            if (!chatInput.matches(':focus')) {
+                deactivateMentionState();
+            }
+        }, 120);
+    });
+}
 
 // 显示MCP调用详情
 async function showMCPDetail(executionId) {
@@ -462,119 +865,192 @@ function startNewConversation() {
     loadConversations();
 }
 
-// 加载对话列表
+// 加载对话列表（按时间分组）
 async function loadConversations() {
     try {
         const response = await apiFetch('/api/conversations?limit=50');
         const conversations = await response.json();
-        
+
         const listContainer = document.getElementById('conversations-list');
-        listContainer.innerHTML = '';
-        
-        if (conversations.length === 0) {
-            listContainer.innerHTML = '<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.875rem;">暂无历史对话</div>';
+        if (!listContainer) {
             return;
         }
-        
+
+        const emptyStateHtml = '<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.875rem;">暂无历史对话</div>';
+        listContainer.innerHTML = '';
+
+        if (!Array.isArray(conversations) || conversations.length === 0) {
+            listContainer.innerHTML = emptyStateHtml;
+            return;
+        }
+
+        const now = new Date();
+        const todayStart = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+        const weekday = todayStart.getDay() === 0 ? 7 : todayStart.getDay();
+        const startOfWeek = new Date(todayStart);
+        startOfWeek.setDate(todayStart.getDate() - (weekday - 1));
+        const yesterdayStart = new Date(todayStart);
+        yesterdayStart.setDate(todayStart.getDate() - 1);
+
+        const groups = {
+            today: [],
+            yesterday: [],
+            thisWeek: [],
+            earlier: [],
+        };
+
         conversations.forEach(conv => {
-            const item = document.createElement('div');
-            item.className = 'conversation-item';
-            item.dataset.conversationId = conv.id;
-            if (conv.id === currentConversationId) {
-                item.classList.add('active');
-            }
-            
-            // 创建内容容器
-            const contentWrapper = document.createElement('div');
-            contentWrapper.className = 'conversation-content';
-            
-            const title = document.createElement('div');
-            title.className = 'conversation-title';
-            title.textContent = conv.title || '未命名对话';
-            contentWrapper.appendChild(title);
-            
-            const time = document.createElement('div');
-            time.className = 'conversation-time';
-            // 解析时间，支持多种格式
-            let dateObj;
-            if (conv.updatedAt) {
-                dateObj = new Date(conv.updatedAt);
-                // 检查日期是否有效
-                if (isNaN(dateObj.getTime())) {
-                    // 如果解析失败，尝试其他格式
-                    console.warn('时间解析失败:', conv.updatedAt);
-                    dateObj = new Date();
-                }
-            } else {
-                dateObj = new Date();
-            }
-            
-            // 格式化时间显示
-            const now = new Date();
-            const today = new Date(now.getFullYear(), now.getMonth(), now.getDate());
-            const yesterday = new Date(today);
-            yesterday.setDate(yesterday.getDate() - 1);
-            const messageDate = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
-            
-            let timeText;
-            if (messageDate.getTime() === today.getTime()) {
-                // 今天：只显示时间
-                timeText = dateObj.toLocaleTimeString('zh-CN', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-            } else if (messageDate.getTime() === yesterday.getTime()) {
-                // 昨天
-                timeText = '昨天 ' + dateObj.toLocaleTimeString('zh-CN', {
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-            } else if (now.getFullYear() === dateObj.getFullYear()) {
-                // 今年：显示月日和时间
-                timeText = dateObj.toLocaleString('zh-CN', {
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-            } else {
-                // 去年或更早：显示完整日期和时间
-                timeText = dateObj.toLocaleString('zh-CN', {
-                    year: 'numeric',
-                    month: 'short',
-                    day: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                });
-            }
-            
-            time.textContent = timeText;
-            contentWrapper.appendChild(time);
-            
-            item.appendChild(contentWrapper);
-            
-            // 创建删除按钮
-            const deleteBtn = document.createElement('button');
-            deleteBtn.className = 'conversation-delete-btn';
-            deleteBtn.innerHTML = `
-                <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
-                    <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14zM10 11v6M14 11v6" 
-                          stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
-                </svg>
-            `;
-            deleteBtn.title = '删除对话';
-            deleteBtn.onclick = (e) => {
-                e.stopPropagation(); // 阻止触发对话加载
-                deleteConversation(conv.id);
-            };
-            item.appendChild(deleteBtn);
-            
-            item.onclick = () => loadConversation(conv.id);
-            listContainer.appendChild(item);
+            const dateObj = conv.updatedAt ? new Date(conv.updatedAt) : new Date();
+            const validDate = isNaN(dateObj.getTime()) ? new Date() : dateObj;
+            const groupKey = getConversationGroup(validDate, todayStart, startOfWeek, yesterdayStart);
+            groups[groupKey].push({
+                ...conv,
+                _time: validDate,
+                _timeText: formatConversationTimestamp(validDate, todayStart, yesterdayStart),
+            });
         });
+
+        const groupOrder = [
+            { key: 'today', label: '今天' },
+            { key: 'yesterday', label: '昨天' },
+            { key: 'thisWeek', label: '本周' },
+            { key: 'earlier', label: '更早' },
+        ];
+
+        const fragment = document.createDocumentFragment();
+        let rendered = false;
+
+        groupOrder.forEach(({ key, label }) => {
+            const items = groups[key];
+            if (!items || items.length === 0) {
+                return;
+            }
+            rendered = true;
+
+            const section = document.createElement('div');
+            section.className = 'conversation-group';
+
+            const title = document.createElement('div');
+            title.className = 'conversation-group-title';
+            title.textContent = label;
+            section.appendChild(title);
+
+            items.forEach(itemData => {
+                section.appendChild(createConversationListItem(itemData));
+            });
+
+            fragment.appendChild(section);
+        });
+
+        if (!rendered) {
+            listContainer.innerHTML = emptyStateHtml;
+            return;
+        }
+
+        listContainer.appendChild(fragment);
+        updateActiveConversation();
     } catch (error) {
         console.error('加载对话列表失败:', error);
     }
+}
+
+function createConversationListItem(conversation) {
+    const item = document.createElement('div');
+    item.className = 'conversation-item';
+    item.dataset.conversationId = conversation.id;
+    if (conversation.id === currentConversationId) {
+        item.classList.add('active');
+    }
+
+    const contentWrapper = document.createElement('div');
+    contentWrapper.className = 'conversation-content';
+
+    const title = document.createElement('div');
+    title.className = 'conversation-title';
+    title.textContent = conversation.title || '未命名对话';
+    contentWrapper.appendChild(title);
+
+    const time = document.createElement('div');
+    time.className = 'conversation-time';
+    time.textContent = conversation._timeText || formatConversationTimestamp(conversation._time || new Date());
+    contentWrapper.appendChild(time);
+
+    item.appendChild(contentWrapper);
+
+    const deleteBtn = document.createElement('button');
+    deleteBtn.className = 'conversation-delete-btn';
+    deleteBtn.innerHTML = `
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14zM10 11v6M14 11v6" 
+                  stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+        </svg>
+    `;
+    deleteBtn.title = '删除对话';
+    deleteBtn.onclick = (e) => {
+        e.stopPropagation();
+        deleteConversation(conversation.id);
+    };
+    item.appendChild(deleteBtn);
+
+    item.onclick = () => loadConversation(conversation.id);
+    return item;
+}
+
+function formatConversationTimestamp(dateObj, todayStart, yesterdayStart) {
+    if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) {
+        return '';
+    }
+    const referenceToday = todayStart || new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+    const referenceYesterday = yesterdayStart || new Date(referenceToday.getTime() - 24 * 60 * 60 * 1000);
+    const messageDate = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+
+    if (messageDate.getTime() === referenceToday.getTime()) {
+        return dateObj.toLocaleTimeString('zh-CN', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+    if (messageDate.getTime() === referenceYesterday.getTime()) {
+        return '昨天 ' + dateObj.toLocaleTimeString('zh-CN', {
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+    if (dateObj.getFullYear() === referenceToday.getFullYear()) {
+        return dateObj.toLocaleString('zh-CN', {
+            month: 'short',
+            day: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+        });
+    }
+    return dateObj.toLocaleString('zh-CN', {
+        year: 'numeric',
+        month: 'short',
+        day: 'numeric',
+        hour: '2-digit',
+        minute: '2-digit'
+    });
+}
+
+function getConversationGroup(dateObj, todayStart, startOfWeek, yesterdayStart) {
+    if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) {
+        return 'earlier';
+    }
+    const today = new Date(todayStart.getFullYear(), todayStart.getMonth(), todayStart.getDate());
+    const yesterday = new Date(yesterdayStart.getFullYear(), yesterdayStart.getMonth(), yesterdayStart.getDate());
+    const messageDay = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+
+    if (messageDay.getTime() === today.getTime() || messageDay > today) {
+        return 'today';
+    }
+    if (messageDay.getTime() === yesterday.getTime()) {
+        return 'yesterday';
+    }
+    if (messageDay >= startOfWeek && messageDay < today) {
+        return 'thisWeek';
+    }
+    return 'earlier';
 }
 
 // 加载对话
