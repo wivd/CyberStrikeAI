@@ -79,6 +79,8 @@ CyberStrikeAI 是一款 **AI 原生渗透测试协同体**，以 Go 编写，内
    chmod +x run.sh && ./run.sh
    # 或
    go run cmd/server/main.go
+   # 或
+   go build -o cyberstrike-ai cmd/server/main.go
    ```
 5. **浏览器访问** http://localhost:8080 ，使用日志中提示的密码登录并开始对话。
 
