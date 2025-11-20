@@ -79,6 +79,8 @@ CyberStrikeAI ships with 100+ curated tools covering the whole kill chain:
    chmod +x run.sh && ./run.sh
    # or
    go run cmd/server/main.go
+   # or
+   go build -o cyberstrike-ai cmd/server/main.go
    ```
 5. **Open the console** at http://localhost:8080, log in with the generated password, and start chatting.
 
