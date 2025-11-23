@@ -21,7 +21,7 @@ description: |
   - **XXE漏洞验证**：通过外部实体引用触发DNS查询
     - 示例：`<!ENTITY xxe SYSTEM "http://xxx.dnslog.cn">`
   - **命令注入测试**：在命令注入payload中使用DNS查询
-    - 示例：`ping -c 1 xxx.dnslog.cn` 或 `curl http://xxx.dnslog.cn`
+    - 示例：`nslookup xxx.dnslog.cn` 或 `ping xxx.dnslog.cn`
   - **无回显漏洞验证**：任何需要确认目标是否执行了特定操作的情况
 
   **工作流程：**
