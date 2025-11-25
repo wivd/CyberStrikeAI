@@ -237,32 +237,55 @@
                 <span class="modal-close" onclick="closeMCPDetail()">&times;</span>
             </div>
             <div class="modal-body">
-                <div class="detail-section">
-                    <h3>执行信息</h3>
-                    <div class="detail-item">
-                        <strong>工具:</strong> <span id="detail-tool-name"></span>
+                <div class="detail-section detail-section-overview">
+                    <div class="detail-section-header">
+                        <h3>执行信息</h3>
                     </div>
-                    <div class="detail-item">
-                        <strong>状态:</strong> <span id="detail-status"></span>
-                    </div>
-                    <div class="detail-item">
-                        <strong>时间:</strong> <span id="detail-time"></span>
-                    </div>
-                    <div class="detail-item">
-                        <strong>ID:</strong> <span id="detail-execution-id" style="font-family: monospace; font-size: 0.8125rem; color: var(--text-secondary);"></span>
+                    <div class="detail-info-grid">
+                        <div class="detail-item">
+                            <strong>工具</strong>
+                            <span id="detail-tool-name"></span>
+                        </div>
+                        <div class="detail-item">
+                            <strong>状态</strong>
+                            <span id="detail-status" class="status-chip status-unknown"></span>
+                        </div>
+                        <div class="detail-item">
+                            <strong>时间</strong>
+                            <span id="detail-time"></span>
+                        </div>
+                        <div class="detail-item">
+                            <strong>执行 ID</strong>
+                            <span id="detail-execution-id" class="mono-text"></span>
+                        </div>
                     </div>
                 </div>
                 <div class="detail-section">
-                    <h3>请求参数</h3>
-                    <pre id="detail-request" class="code-block"></pre>
+                    <div class="detail-section-header">
+                        <h3>请求参数</h3>
+                        <button class="btn-ghost" type="button" onclick="copyDetailBlock('detail-request', this)">复制 JSON</button>
+                    </div>
+                    <div class="detail-code-card">
+                        <pre id="detail-request" class="code-block"></pre>
+                    </div>
                 </div>
                 <div class="detail-section">
-                    <h3>响应结果</h3>
-                    <pre id="detail-response" class="code-block"></pre>
+                    <div class="detail-section-header">
+                        <h3>响应结果</h3>
+                        <button class="btn-ghost" type="button" onclick="copyDetailBlock('detail-response', this)">复制内容</button>
+                    </div>
+                    <div class="detail-code-card">
+                        <pre id="detail-response" class="code-block"></pre>
+                    </div>
                 </div>
-                <div class="detail-section" id="detail-error-section" style="display: none;">
-                    <h3>错误信息</h3>
-                    <pre id="detail-error" class="code-block error"></pre>
+                <div class="detail-section detail-error-wrapper" id="detail-error-section" style="display: none;">
+                    <div class="detail-section-header">
+                        <h3>错误信息</h3>
+                        <button class="btn-ghost" type="button" onclick="copyDetailBlock('detail-error', this)">复制错误</button>
+                    </div>
+                    <div class="detail-code-card">
+                        <pre id="detail-error" class="code-block error"></pre>
+                    </div>
                 </div>
             </div>
         </div>

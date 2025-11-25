@@ -829,8 +829,13 @@ async function showMCPDetail(executionId) {
             // 填充模态框内容
             document.getElementById('detail-tool-name').textContent = exec.toolName || 'Unknown';
             document.getElementById('detail-execution-id').textContent = exec.id || 'N/A';
-            document.getElementById('detail-status').textContent = getStatusText(exec.status);
-            document.getElementById('detail-time').textContent = new Date(exec.startTime).toLocaleString('zh-CN');
+            const statusEl = document.getElementById('detail-status');
+            const normalizedStatus = (exec.status || 'unknown').toLowerCase();
+            statusEl.textContent = getStatusText(exec.status);
+            statusEl.className = `status-chip status-${normalizedStatus}`;
+            document.getElementById('detail-time').textContent = exec.startTime
+                ? new Date(exec.startTime).toLocaleString('zh-CN')
+                : '—';
             
             // 请求参数
             const requestData = {
@@ -872,6 +877,75 @@ async function showMCPDetail(executionId) {
 // 关闭MCP详情模态框
 function closeMCPDetail() {
     document.getElementById('mcp-detail-modal').style.display = 'none';
+}
+
+// 复制详情面板中的内容
+function copyDetailBlock(elementId, triggerBtn = null) {
+    const target = document.getElementById(elementId);
+    if (!target) {
+        return;
+    }
+    const text = target.textContent || '';
+    if (!text.trim()) {
+        return;
+    }
+
+    const originalLabel = triggerBtn ? (triggerBtn.dataset.originalLabel || triggerBtn.textContent.trim()) : '';
+    if (triggerBtn && !triggerBtn.dataset.originalLabel) {
+        triggerBtn.dataset.originalLabel = originalLabel;
+    }
+
+    const showCopiedState = () => {
+        if (!triggerBtn) {
+            return;
+        }
+        triggerBtn.textContent = '已复制';
+        triggerBtn.disabled = true;
+        setTimeout(() => {
+            triggerBtn.disabled = false;
+            triggerBtn.textContent = triggerBtn.dataset.originalLabel || originalLabel || '复制';
+        }, 1200);
+    };
+
+    const fallbackCopy = (value) => {
+        return new Promise((resolve, reject) => {
+            const textarea = document.createElement('textarea');
+            textarea.value = value;
+            textarea.style.position = 'fixed';
+            textarea.style.opacity = '0';
+            document.body.appendChild(textarea);
+            textarea.focus();
+            textarea.select();
+            try {
+                const successful = document.execCommand('copy');
+                document.body.removeChild(textarea);
+                if (successful) {
+                    resolve();
+                } else {
+                    reject(new Error('execCommand failed'));
+                }
+            } catch (err) {
+                document.body.removeChild(textarea);
+                reject(err);
+            }
+        });
+    };
+
+    const copyPromise = (navigator.clipboard && typeof navigator.clipboard.writeText === 'function')
+        ? navigator.clipboard.writeText(text)
+        : fallbackCopy(text);
+
+    copyPromise
+        .then(() => {
+            showCopiedState();
+        })
+        .catch(() => {
+            if (triggerBtn) {
+                triggerBtn.disabled = false;
+                triggerBtn.textContent = triggerBtn.dataset.originalLabel || originalLabel || '复制';
+            }
+            alert('复制失败，请手动选择文本复制。');
+        });
 }
 
 
