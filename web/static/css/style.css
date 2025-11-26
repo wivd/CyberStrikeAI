@@ -590,14 +590,16 @@ header {
 .message.user .message-bubble {
     background: var(--accent-color);
     color: white;
-    border-bottom-right-radius: 2px;
+    border-bottom-right-radius: 8px;
+    border-top-right-radius: 2px;
 }
 
 .message.assistant .message-bubble {
     background: var(--bg-primary);
     color: var(--text-primary);
     border: 1px solid var(--border-color);
-    border-bottom-left-radius: 2px;
+    border-bottom-left-radius: 8px;
+    border-top-left-radius: 2px;
 }
 
 .message.assistant .message-bubble pre {
