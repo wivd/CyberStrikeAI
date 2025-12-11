@@ -1,5 +1,5 @@
 <div align="center">
-  <img src="web/static/logo.png" alt="CyberStrikeAI Logo" width="200">
+  <img src="web/static/logo.png" alt="CyberStrikeAI Logo" width="300">
 </div>
 
 # CyberStrikeAI
@@ -10,7 +10,7 @@ CyberStrikeAI 是一款 **AI 原生渗透测试协同体**，以 Go 编写，内
 
 <div align="center">
   <a href="https://zc.tencent.com/competition/competitionHackathon?code=cha004" target="_blank">
-    <img src="./img/tch.png" alt="TCH 顶级智能渗透测试项目" width="600">
+    <img src="./img/tch.png" alt="TCH Top-Ranked Intelligent Pentest Project" width="300">
   </a>
 </div>
 
