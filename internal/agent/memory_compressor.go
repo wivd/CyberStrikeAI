@@ -17,7 +17,6 @@ import (
 )
 
 const (
-	DefaultMaxTotalTokens   = 120_000
 	DefaultMinRecentMessage = 10
 	defaultChunkSize        = 10
 	defaultMaxImages        = 3
@@ -86,9 +85,8 @@ func NewMemoryCompressor(cfg MemoryCompressorConfig) (*MemoryCompressor, error) 
 		cfg.Logger = zap.NewNop()
 	}
 
-	if cfg.MaxTotalTokens <= 0 {
-		cfg.MaxTotalTokens = DefaultMaxTotalTokens
-	}
+	// 如果没有显式配置 MaxTotalTokens，则后续逻辑会根据模型的最大上下文长度进行控制；
+	// 优先推荐在 config.yaml 的 openai.max_total_tokens 中统一配置。
 	if cfg.MinRecentMessage <= 0 {
 		cfg.MinRecentMessage = DefaultMinRecentMessage
 	}

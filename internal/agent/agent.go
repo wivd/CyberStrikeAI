@@ -98,9 +98,10 @@ func NewAgent(cfg *config.OpenAIConfig, agentCfg *config.AgentConfig, mcpServer 
 	var memoryCompressor *MemoryCompressor
 	if cfg != nil {
 		mc, err := NewMemoryCompressor(MemoryCompressorConfig{
-			OpenAIConfig: cfg,
-			HTTPClient:   httpClient,
-			Logger:       logger,
+			MaxTotalTokens: cfg.MaxTotalTokens,
+			OpenAIConfig:   cfg,
+			HTTPClient:     httpClient,
+			Logger:         logger,
 		})
 		if err != nil {
 			logger.Warn("初始化MemoryCompressor失败，将跳过上下文压缩", zap.Error(err))

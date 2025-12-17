@@ -12,15 +12,15 @@ import (
 )
 
 type Config struct {
-	Server      ServerConfig        `yaml:"server"`
-	Log         LogConfig           `yaml:"log"`
-	MCP         MCPConfig           `yaml:"mcp"`
-	OpenAI      OpenAIConfig        `yaml:"openai"`
-	Agent       AgentConfig         `yaml:"agent"`
-	Security    SecurityConfig      `yaml:"security"`
-	Database    DatabaseConfig      `yaml:"database"`
-	Auth        AuthConfig          `yaml:"auth"`
-	ExternalMCP ExternalMCPConfig   `yaml:"external_mcp,omitempty"`
+	Server      ServerConfig      `yaml:"server"`
+	Log         LogConfig         `yaml:"log"`
+	MCP         MCPConfig         `yaml:"mcp"`
+	OpenAI      OpenAIConfig      `yaml:"openai"`
+	Agent       AgentConfig       `yaml:"agent"`
+	Security    SecurityConfig    `yaml:"security"`
+	Database    DatabaseConfig    `yaml:"database"`
+	Auth        AuthConfig        `yaml:"auth"`
+	ExternalMCP ExternalMCPConfig `yaml:"external_mcp,omitempty"`
 }
 
 type ServerConfig struct {
@@ -40,9 +40,10 @@ type MCPConfig struct {
 }
 
 type OpenAIConfig struct {
-	APIKey  string `yaml:"api_key" json:"api_key"`
-	BaseURL string `yaml:"base_url" json:"base_url"`
-	Model   string `yaml:"model" json:"model"`
+	APIKey         string `yaml:"api_key" json:"api_key"`
+	BaseURL        string `yaml:"base_url" json:"base_url"`
+	Model          string `yaml:"model" json:"model"`
+	MaxTotalTokens int    `yaml:"max_total_tokens,omitempty" json:"max_total_tokens,omitempty"`
 }
 
 type SecurityConfig struct {
@@ -76,19 +77,19 @@ type ExternalMCPConfig struct {
 // ExternalMCPServerConfig 外部MCP服务器配置
 type ExternalMCPServerConfig struct {
 	// stdio模式配置
-	Command     string   `yaml:"command,omitempty" json:"command,omitempty"`
-	Args        []string `yaml:"args,omitempty" json:"args,omitempty"`
-	
+	Command string   `yaml:"command,omitempty" json:"command,omitempty"`
+	Args    []string `yaml:"args,omitempty" json:"args,omitempty"`
+
 	// HTTP模式配置
-	Transport   string   `yaml:"transport,omitempty" json:"transport,omitempty"` // "http" 或 "stdio"
-	URL         string   `yaml:"url,omitempty" json:"url,omitempty"`
-	
+	Transport string `yaml:"transport,omitempty" json:"transport,omitempty"` // "http" 或 "stdio"
+	URL       string `yaml:"url,omitempty" json:"url,omitempty"`
+
 	// 通用配置
-	Description      string `yaml:"description,omitempty" json:"description,omitempty"`
-	Timeout          int    `yaml:"timeout,omitempty" json:"timeout,omitempty"` // 超时时间（秒）
-	ExternalMCPEnable bool  `yaml:"external_mcp_enable,omitempty" json:"external_mcp_enable,omitempty"` // 是否启用外部MCP
-	ToolEnabled      map[string]bool `yaml:"tool_enabled,omitempty" json:"tool_enabled,omitempty"` // 每个工具的启用状态（工具名称 -> 是否启用）
-	
+	Description       string          `yaml:"description,omitempty" json:"description,omitempty"`
+	Timeout           int             `yaml:"timeout,omitempty" json:"timeout,omitempty"`                         // 超时时间（秒）
+	ExternalMCPEnable bool            `yaml:"external_mcp_enable,omitempty" json:"external_mcp_enable,omitempty"` // 是否启用外部MCP
+	ToolEnabled       map[string]bool `yaml:"tool_enabled,omitempty" json:"tool_enabled,omitempty"`               // 每个工具的启用状态（工具名称 -> 是否启用）
+
 	// 向后兼容字段（已废弃，保留用于读取旧配置）
 	Enabled  bool `yaml:"enabled,omitempty" json:"enabled,omitempty"`   // 已废弃，使用 external_mcp_enable
 	Disabled bool `yaml:"disabled,omitempty" json:"disabled,omitempty"` // 已废弃，使用 external_mcp_enable
@@ -386,8 +387,9 @@ func Default() *Config {
 			Port:    8081,
 		},
 		OpenAI: OpenAIConfig{
-			BaseURL: "https://api.openai.com/v1",
-			Model:   "gpt-4",
+			BaseURL:        "https://api.openai.com/v1",
+			Model:          "gpt-4",
+			MaxTotalTokens: 120000,
 		},
 		Agent: AgentConfig{
 			MaxIterations: 30, // 默认最大迭代次数
