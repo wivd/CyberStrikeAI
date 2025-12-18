@@ -305,6 +305,12 @@ func (b *Builder) buildChainGenerationPrompt(contextData *ContextData) (string, 
 **目标：让不懂渗透测试的同学可以通过这个攻击链路学习到知识，而不是无数个节点看花眼。**
 **即便某些工具执行或漏洞挖掘没有成功，只要它们提供了关键线索、错误提示或下一步思路，也要被保留下来。**
 
+**关键要求：**
+1. **节点标签必须简洁明了**：每个节点标签控制在15-25个汉字以内，使用简洁的动宾结构（如"扫描端口"、"发现SQL注入"、"验证漏洞"），避免冗长描述
+2. **严格控制节点数量**：优先保留关键步骤，避免生成过多细碎节点。理想情况下，单个目标的攻击链应控制在8-15个节点以内
+3. **确保DAG结构**：生成的图必须是有向无环图（DAG），不允许出现循环。边的方向必须符合时间顺序和逻辑关系（从早期步骤指向后期步骤）
+4. **层次清晰**：攻击链应该呈现清晰的层次结构：目标 → 信息收集 → 漏洞发现 → 漏洞利用 → 后续行动
+
 ## 任务要求
 
 1. **节点类型（简化，只保留3种）**：
@@ -314,7 +320,9 @@ func (b *Builder) buildChainGenerationPrompt(contextData *ContextData) (string, 
      - 不同目标的action节点之间**不应该**建立关联关系
    - **action（行动）**：**工具执行 + AI分析结果 = 一个action节点**
      - 将每个工具执行和AI对该工具结果的分析合并为一个action节点
-     - 节点标签应该清晰描述"做了什么"、"得到了什么结果或线索"（例如："使用Nmap扫描端口，发现22、80、443端口开放" 或 "尝试SQLmap，虽然失败但提示存在WAF拦截"）
+     - **节点标签必须简洁**：控制在15-25个汉字，使用动宾结构，突出关键信息
+       - 好的示例："扫描端口发现22/80/443"、"SQL注入验证成功"、"WAF拦截暴露厂商"
+       - 避免的示例："使用Nmap工具对目标192.168.1.1进行了全面的端口扫描，发现了22、80、443等多个端口开放"（过于冗长）
      - 默认关注成功的执行；但如果执行失败却提供了有价值的线索（错误信息、资产指纹、下一步建议等），也要保留，记为"带线索的失败"行动
      - **重要：action节点必须关联到正确的target节点（通过工具执行参数判断目标）**
    - **vulnerability（漏洞）**：从工具执行结果和AI分析中提取的**真实漏洞**（不是所有发现都是漏洞）。若验证失败但能明确表明某个漏洞利用方向不可行，可作为行动节点的线索描述，而不是漏洞节点。
@@ -327,13 +335,16 @@ func (b *Builder) buildChainGenerationPrompt(contextData *ContextData) (string, 
      - 用户特别关注的失败尝试
    - **保留策略**：只要行动节点能给后续测试提供启发，就保留；否则忽略
 
-3. **建立清晰的关联关系**：
+3. **建立清晰的关联关系（确保DAG结构）**：
    - target → action：目标指向属于它的所有行动（通过工具执行参数判断目标）
    - action → action：行动之间的逻辑顺序（按时间顺序，但只连接有逻辑关系的）
      - **重要：只连接属于同一目标的action节点，不同目标的action节点之间不应该连接**
+     - **必须确保无环**：只能从早期步骤指向后期步骤，不能形成循环（如A→B→C→A）
+     - 优先连接直接相关的步骤，避免过度连接导致图过于复杂
    - action → vulnerability：行动发现的漏洞
    - vulnerability → vulnerability：漏洞间的因果关系（如SQL注入 → 信息泄露）
      - **重要：只连接属于同一目标的漏洞，不同目标的漏洞之间不应该连接**
+     - **必须确保无环**：漏洞间的因果关系也必须是单向的，不能形成循环
 
 4. **节点属性**：
    - 每个节点需要：id, type, label, risk_score, metadata
@@ -488,10 +499,11 @@ func (b *Builder) buildChainGenerationPrompt(contextData *ContextData) (string, 
 
 ## 重要要求
 
-1. **节点合并**：
+1. **节点合并和标签优化**：
    - 每个工具执行和对应的AI分析必须合并为一个action节点
-   - action节点的label要清晰描述"做了什么"、"结果/线索是什么"
-   - 例如："使用Nmap扫描192.168.1.1，发现22、80、443端口开放" 或 "执行Sqlmap被WAF拦截，提示403并暴露防护厂商"
+   - **action节点的label必须简洁**：控制在15-25个汉字，使用动宾结构
+     - 好的示例："扫描端口发现22/80/443"、"验证SQL注入成功"、"WAF拦截暴露厂商"
+     - 避免冗长描述，关键信息放在metadata中详细说明
    - 若为失败但有线索的行动，请在metadata.status中标记为"failed_insight"，并在findings/hints里写清线索价值
 
 2. **过滤无效节点**：
@@ -504,13 +516,16 @@ func (b *Builder) buildChainGenerationPrompt(contextData *ContextData) (string, 
    - 不要创建discovery、decision等节点
    - 让攻击链清晰、有教育意义
 
-4. **关联关系**：
+4. **关联关系（确保DAG结构）**：
    - target → action：目标指向属于它的所有行动（通过工具执行参数判断目标）
    - action → action：按时间顺序连接，但只连接有逻辑关系的
      - **重要：只连接属于同一目标的action节点，不同目标的action节点之间不应该连接**
+     - **必须确保无环**：只能从早期步骤指向后期步骤，不能形成循环
+     - 优先连接直接相关的步骤，避免过度连接
    - action → vulnerability：行动发现的漏洞
    - vulnerability → vulnerability：漏洞间的因果关系
      - **重要：只连接属于同一目标的漏洞，不同目标的漏洞之间不应该连接**
+     - **必须确保无环**：漏洞间的因果关系也必须是单向的
 
 5. **多目标处理（重要！）**：
    - 如果对话中测试了多个不同的目标（如先测试A网页，后测试B网页），必须：
@@ -519,9 +534,16 @@ func (b *Builder) buildChainGenerationPrompt(contextData *ContextData) (string, 
      - 不同目标的节点之间**不应该**建立任何关联关系
      - 这样会形成多个独立的攻击链分支，每个分支对应一个测试目标
 
-6. **节点数量控制**：
-   - 如果节点太多（>20个），优先保留最重要的节点
+6. **节点数量控制和合并策略**：
+   - **严格控制节点数量**：单个目标的攻击链理想情况下应控制在8-15个节点以内
+   - 如果节点太多（>20个），优先保留最重要的节点，合并或删除次要节点
    - 合并相似的action节点（如同一工具的连续调用，如果结果相似）
+   - 对于同一类型的多个发现，考虑合并为一个节点（如"发现多个开放端口"而不是为每个端口创建节点）
+
+7. **DAG结构验证**：
+   - 生成后必须检查：确保图中不存在循环（即不存在路径A→B→...→A）
+   - 边的方向必须符合时间顺序：早期步骤指向后期步骤
+   - 如果发现循环，必须断开形成循环的边，保留最重要的连接
 
 只返回JSON，不要包含其他解释文字。`)
 
@@ -1440,9 +1462,12 @@ func (b *Builder) parseChainJSON(chainJSON string, executions []*mcp.ToolExecuti
 		}
 	}
 
+	// 验证和优化DAG结构
+	optimizedEdges := b.optimizeDAGStructure(nodes, filteredEdges)
+
 	return &Chain{
 		Nodes: nodes,
-		Edges: filteredEdges,
+		Edges: optimizedEdges,
 	}, nil
 }
 
@@ -1598,6 +1623,142 @@ func (b *Builder) shouldFilterNode(n struct {
 
 	// 默认保留（已经通过了所有检查）
 	return false
+}
+
+// optimizeDAGStructure 优化DAG结构，检测并修复循环
+func (b *Builder) optimizeDAGStructure(nodes []Node, edges []Edge) []Edge {
+	// 构建邻接表
+	adjList := make(map[string][]string) // nodeID -> []targetNodeIDs
+	nodeSet := make(map[string]bool)
+	for _, node := range nodes {
+		nodeSet[node.ID] = true
+	}
+
+	// 构建邻接表
+	for _, edge := range edges {
+		if nodeSet[edge.Source] && nodeSet[edge.Target] {
+			adjList[edge.Source] = append(adjList[edge.Source], edge.Target)
+		}
+	}
+
+	// 检测循环
+	cycles := b.detectCycles(adjList, nodeSet)
+	if len(cycles) == 0 {
+		// 没有循环，直接返回
+		return edges
+	}
+
+	b.logger.Warn("检测到攻击链中存在循环，正在修复",
+		zap.Int("cycleCount", len(cycles)))
+
+	// 构建边映射，方便删除
+	edgeMap := make(map[string]Edge) // "source:target" -> Edge
+	for _, edge := range edges {
+		key := edge.Source + ":" + edge.Target
+		edgeMap[key] = edge
+	}
+
+	// 删除形成循环的边（保留权重较低的边，通常权重低的边重要性较低）
+	removedEdges := make(map[string]bool)
+	for _, cycle := range cycles {
+		// 找到循环中权重最低的边并删除
+		minWeight := 999
+		var edgeToRemove string
+		for i := 0; i < len(cycle); i++ {
+			source := cycle[i]
+			target := cycle[(i+1)%len(cycle)]
+			key := source + ":" + target
+			if edge, exists := edgeMap[key]; exists {
+				if edge.Weight < minWeight {
+					minWeight = edge.Weight
+					edgeToRemove = key
+				}
+			}
+		}
+		if edgeToRemove != "" {
+			removedEdges[edgeToRemove] = true
+			b.logger.Info("删除形成循环的边",
+				zap.String("edge", edgeToRemove),
+				zap.Int("weight", minWeight))
+		}
+	}
+
+	// 重新构建边列表，排除已删除的边
+	optimizedEdges := make([]Edge, 0, len(edges))
+	for _, edge := range edges {
+		key := edge.Source + ":" + edge.Target
+		if !removedEdges[key] {
+			optimizedEdges = append(optimizedEdges, edge)
+		}
+	}
+
+	// 再次验证（递归处理，最多3次）
+	if len(optimizedEdges) < len(edges) {
+		// 重新构建邻接表
+		newAdjList := make(map[string][]string)
+		for _, edge := range optimizedEdges {
+			newAdjList[edge.Source] = append(newAdjList[edge.Source], edge.Target)
+		}
+		newCycles := b.detectCycles(newAdjList, nodeSet)
+		if len(newCycles) > 0 && len(removedEdges) < 10 { // 防止无限循环
+			// 递归优化
+			return b.optimizeDAGStructure(nodes, optimizedEdges)
+		}
+	}
+
+	return optimizedEdges
+}
+
+// detectCycles 检测图中的循环（使用DFS）
+func (b *Builder) detectCycles(adjList map[string][]string, nodeSet map[string]bool) [][]string {
+	visited := make(map[string]bool)
+	recStack := make(map[string]bool)
+	cycles := make([][]string, 0)
+
+	var dfs func(node string, path []string) bool
+	dfs = func(node string, path []string) bool {
+		if !nodeSet[node] {
+			return false
+		}
+
+		visited[node] = true
+		recStack[node] = true
+		currentPath := append(path, node)
+
+		for _, neighbor := range adjList[node] {
+			if !visited[neighbor] {
+				if dfs(neighbor, currentPath) {
+					return true
+				}
+			} else if recStack[neighbor] {
+				// 找到循环：从neighbor到node的路径
+				cycleStart := -1
+				for i, n := range currentPath {
+					if n == neighbor {
+						cycleStart = i
+						break
+					}
+				}
+				if cycleStart >= 0 {
+					cycle := append(currentPath[cycleStart:], neighbor)
+					cycles = append(cycles, cycle)
+				}
+				return true
+			}
+		}
+
+		recStack[node] = false
+		return false
+	}
+
+	// 对所有节点进行DFS
+	for node := range nodeSet {
+		if !visited[node] {
+			dfs(node, []string{})
+		}
+	}
+
+	return cycles
 }
 
 func hasInsightfulFailure(metadata map[string]interface{}) bool {

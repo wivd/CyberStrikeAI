@@ -1592,7 +1592,30 @@ function renderAttackChain(chainData) {
     // 计算图的复杂度（用于动态调整布局和样式）
     const nodeCount = chainData.nodes.length;
     const edgeCount = chainData.edges.length;
-    const isComplexGraph = nodeCount > 20 || edgeCount > 30;
+    const isComplexGraph = nodeCount > 15 || edgeCount > 25;
+    
+    // 优化节点标签：智能截断和换行
+    chainData.nodes.forEach(node => {
+        if (node.label) {
+            // 智能截断：优先在标点符号、空格处截断
+            const maxLength = isComplexGraph ? 18 : 22;
+            if (node.label.length > maxLength) {
+                let truncated = node.label.substring(0, maxLength);
+                // 尝试在最后一个标点符号或空格处截断
+                const lastPunct = Math.max(
+                    truncated.lastIndexOf('，'),
+                    truncated.lastIndexOf('。'),
+                    truncated.lastIndexOf('、'),
+                    truncated.lastIndexOf(' '),
+                    truncated.lastIndexOf('/')
+                );
+                if (lastPunct > maxLength * 0.6) { // 如果标点符号位置合理
+                    truncated = truncated.substring(0, lastPunct + 1);
+                }
+                node.label = truncated + '...';
+            }
+        }
+    });
     
     // 准备Cytoscape数据
     const elements = [];
@@ -1667,8 +1690,8 @@ function renderAttackChain(chainData) {
                 style: {
                     'label': 'data(label)',
                     // 统一节点大小，减少布局混乱（根据复杂度调整）
-                    'width': nodeCount > 20 ? 60 : 'mapData(riskScore, 0, 100, 45, 75)',
-                    'height': nodeCount > 20 ? 60 : 'mapData(riskScore, 0, 100, 45, 75)',
+                    'width': isComplexGraph ? 70 : 'mapData(riskScore, 0, 100, 50, 80)',
+                    'height': isComplexGraph ? 70 : 'mapData(riskScore, 0, 100, 50, 80)',
                     'shape': function(ele) {
                         const type = ele.data('type');
                         if (type === 'vulnerability') return 'diamond';
@@ -1685,12 +1708,13 @@ function renderAttackChain(chainData) {
                     },
                     // 使用预计算的颜色数据
                     'color': 'data(textColor)',
-                    'font-size': nodeCount > 20 ? '11px' : '12px',  // 复杂图使用更小字体
+                    'font-size': isComplexGraph ? '11px' : '13px',  // 复杂图使用更小字体
                     'font-weight': 'bold',
                     'text-valign': 'center',
                     'text-halign': 'center',
                     'text-wrap': 'wrap',
-                    'text-max-width': nodeCount > 20 ? '80px' : '100px',  // 复杂图限制文本宽度
+                    'text-max-width': isComplexGraph ? '90px' : '110px',  // 复杂图限制文本宽度
+                    'text-overflow-wrap': 'anywhere',  // 允许在任何位置换行
                     'border-width': 2,
                     'border-color': 'data(borderColor)',
                     'overlay-padding': '4px',
@@ -1746,25 +1770,29 @@ function renderAttackChain(chainData) {
     let layoutOptions = {
         name: 'breadthfirst',
         directed: true,
-        spacingFactor: isComplexGraph ? 2.5 : 2.0,
-        padding: 30
+        spacingFactor: isComplexGraph ? 3.0 : 2.5,
+        padding: 40
     };
     
     if (typeof cytoscape !== 'undefined' && typeof cytoscapeDagre !== 'undefined') {
         try {
             cytoscape.use(cytoscapeDagre);
             layoutName = 'dagre';
-            // 根据图的复杂度调整布局参数
+            // 根据图的复杂度调整布局参数，优化可读性
             layoutOptions = {
                 name: 'dagre',
                 rankDir: 'TB',  // 从上到下
-                spacingFactor: isComplexGraph ? 2.5 : 2.0,  // 增加整体间距
-                nodeSep: isComplexGraph ? 80 : 60,  // 增加节点间距
-                edgeSep: isComplexGraph ? 40 : 30,  // 增加边间距
-                rankSep: isComplexGraph ? 120 : 100,  // 增加层级间距
+                spacingFactor: isComplexGraph ? 3.0 : 2.5,  // 增加整体间距
+                nodeSep: isComplexGraph ? 100 : 80,  // 增加节点间距，提高可读性
+                edgeSep: isComplexGraph ? 50 : 40,  // 增加边间距
+                rankSep: isComplexGraph ? 140 : 120,  // 增加层级间距，让层次更清晰
                 nodeDimensionsIncludeLabels: true,  // 考虑标签大小
                 animate: false,
-                padding: 40  // 增加边距
+                padding: 50,  // 增加边距
+                // 优化边的路由，减少交叉
+                edgeRouting: 'polyline',
+                // 对齐方式：居中对齐，让图更整齐
+                align: 'UL'  // 上左对齐
             };
         } catch (e) {
             console.warn('dagre布局注册失败，使用默认布局:', e);
@@ -1777,7 +1805,13 @@ function renderAttackChain(chainData) {
     attackChainCytoscape.layout(layoutOptions).run();
     
     // 布局完成后，调整视图以适应所有节点
-    attackChainCytoscape.fit(undefined, 50);  // 50px padding
+    // 使用更大的padding，让图更易读
+    attackChainCytoscape.fit(undefined, 60);  // 60px padding
+    
+    // 如果图太复杂，稍微缩小视图以便看到全貌
+    if (isComplexGraph && nodeCount > 20) {
+        attackChainCytoscape.zoom(0.85);
+    }
     
     // 添加点击事件
     attackChainCytoscape.on('tap', 'node', function(evt) {
@@ -1795,6 +1829,175 @@ function renderAttackChain(chainData) {
         const node = evt.target;
         node.style('opacity', 1);
     });
+    
+    // 保存原始数据用于过滤
+    window.attackChainOriginalData = chainData;
+}
+
+// 过滤攻击链节点（按搜索关键词）
+function filterAttackChainNodes(searchText) {
+    if (!attackChainCytoscape || !window.attackChainOriginalData) {
+        return;
+    }
+    
+    const searchLower = searchText.toLowerCase().trim();
+    if (searchLower === '') {
+        // 重置所有节点可见性
+        attackChainCytoscape.nodes().style('display', 'element');
+        attackChainCytoscape.edges().style('display', 'element');
+        // 恢复默认边框
+        attackChainCytoscape.nodes().style('border-width', 2);
+        return;
+    }
+    
+    // 过滤节点
+    attackChainCytoscape.nodes().forEach(node => {
+        const label = (node.data('label') || '').toLowerCase();
+        const type = (node.data('type') || '').toLowerCase();
+        const matches = label.includes(searchLower) || type.includes(searchLower);
+        
+        if (matches) {
+            node.style('display', 'element');
+            // 高亮匹配的节点
+            node.style('border-width', 4);
+            node.style('border-color', '#0066ff');
+        } else {
+            node.style('display', 'none');
+        }
+    });
+    
+    // 隐藏没有可见源节点或目标节点的边
+    attackChainCytoscape.edges().forEach(edge => {
+        const sourceVisible = edge.source().style('display') !== 'none';
+        const targetVisible = edge.target().style('display') !== 'none';
+        if (sourceVisible && targetVisible) {
+            edge.style('display', 'element');
+        } else {
+            edge.style('display', 'none');
+        }
+    });
+    
+    // 重新调整视图
+    attackChainCytoscape.fit(undefined, 60);
+}
+
+// 按类型过滤攻击链节点
+function filterAttackChainByType(type) {
+    if (!attackChainCytoscape || !window.attackChainOriginalData) {
+        return;
+    }
+    
+    if (type === 'all') {
+        attackChainCytoscape.nodes().style('display', 'element');
+        attackChainCytoscape.edges().style('display', 'element');
+        attackChainCytoscape.nodes().style('border-width', 2);
+        attackChainCytoscape.fit(undefined, 60);
+        return;
+    }
+    
+    // 过滤节点
+    attackChainCytoscape.nodes().forEach(node => {
+        const nodeType = node.data('type') || '';
+        if (nodeType === type) {
+            node.style('display', 'element');
+        } else {
+            node.style('display', 'none');
+        }
+    });
+    
+    // 隐藏没有可见源节点或目标节点的边
+    attackChainCytoscape.edges().forEach(edge => {
+        const sourceVisible = edge.source().style('display') !== 'none';
+        const targetVisible = edge.target().style('display') !== 'none';
+        if (sourceVisible && targetVisible) {
+            edge.style('display', 'element');
+        } else {
+            edge.style('display', 'none');
+        }
+    });
+    
+    // 重新调整视图
+    attackChainCytoscape.fit(undefined, 60);
+}
+
+// 按风险等级过滤攻击链节点
+function filterAttackChainByRisk(riskLevel) {
+    if (!attackChainCytoscape || !window.attackChainOriginalData) {
+        return;
+    }
+    
+    if (riskLevel === 'all') {
+        attackChainCytoscape.nodes().style('display', 'element');
+        attackChainCytoscape.edges().style('display', 'element');
+        attackChainCytoscape.nodes().style('border-width', 2);
+        attackChainCytoscape.fit(undefined, 60);
+        return;
+    }
+    
+    // 定义风险范围
+    const riskRanges = {
+        'high': [80, 100],
+        'medium-high': [60, 79],
+        'medium': [40, 59],
+        'low': [0, 39]
+    };
+    
+    const [minRisk, maxRisk] = riskRanges[riskLevel] || [0, 100];
+    
+    // 过滤节点
+    attackChainCytoscape.nodes().forEach(node => {
+        const riskScore = node.data('riskScore') || 0;
+        if (riskScore >= minRisk && riskScore <= maxRisk) {
+            node.style('display', 'element');
+        } else {
+            node.style('display', 'none');
+        }
+    });
+    
+    // 隐藏没有可见源节点或目标节点的边
+    attackChainCytoscape.edges().forEach(edge => {
+        const sourceVisible = edge.source().style('display') !== 'none';
+        const targetVisible = edge.target().style('display') !== 'none';
+        if (sourceVisible && targetVisible) {
+            edge.style('display', 'element');
+        } else {
+            edge.style('display', 'none');
+        }
+    });
+    
+    // 重新调整视图
+    attackChainCytoscape.fit(undefined, 60);
+}
+
+// 重置攻击链筛选
+function resetAttackChainFilters() {
+    // 重置搜索框
+    const searchInput = document.getElementById('attack-chain-search');
+    if (searchInput) {
+        searchInput.value = '';
+    }
+    
+    // 重置类型筛选
+    const typeFilter = document.getElementById('attack-chain-type-filter');
+    if (typeFilter) {
+        typeFilter.value = 'all';
+    }
+    
+    // 重置风险筛选
+    const riskFilter = document.getElementById('attack-chain-risk-filter');
+    if (riskFilter) {
+        riskFilter.value = 'all';
+    }
+    
+    // 重置所有节点可见性
+    if (attackChainCytoscape) {
+        attackChainCytoscape.nodes().forEach(node => {
+            node.style('display', 'element');
+            node.style('border-width', 2); // 恢复默认边框
+        });
+        attackChainCytoscape.edges().style('display', 'element');
+        attackChainCytoscape.fit(undefined, 60);
+    }
 }
 
 // 显示节点详情

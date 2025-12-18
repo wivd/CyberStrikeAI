@@ -445,6 +445,32 @@
                     <div class="attack-chain-info">
                         <span id="attack-chain-stats">节点: 0 | 边: 0</span>
                     </div>
+                    <div class="attack-chain-filters" style="margin: 8px 0; display: flex; gap: 8px; align-items: center; flex-wrap: wrap;">
+                        <input type="text" id="attack-chain-search" placeholder="搜索节点..." 
+                               style="padding: 6px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.875rem; min-width: 200px;"
+                               oninput="filterAttackChainNodes(this.value)">
+                        <select id="attack-chain-type-filter" 
+                                style="padding: 6px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.875rem;"
+                                onchange="filterAttackChainByType(this.value)">
+                            <option value="all">所有类型</option>
+                            <option value="target">目标</option>
+                            <option value="action">行动</option>
+                            <option value="vulnerability">漏洞</option>
+                        </select>
+                        <select id="attack-chain-risk-filter"
+                                style="padding: 6px 12px; border: 1px solid #ddd; border-radius: 4px; font-size: 0.875rem;"
+                                onchange="filterAttackChainByRisk(this.value)">
+                            <option value="all">所有风险</option>
+                            <option value="high">高风险 (80-100)</option>
+                            <option value="medium-high">中高风险 (60-79)</option>
+                            <option value="medium">中风险 (40-59)</option>
+                            <option value="low">低风险 (0-39)</option>
+                        </select>
+                        <button class="btn-secondary" onclick="resetAttackChainFilters()" 
+                                style="padding: 6px 12px; font-size: 0.875rem;">
+                            重置筛选
+                        </button>
+                    </div>
                     <div class="attack-chain-legend">
                         <div class="legend-item">
                             <span class="legend-color" style="background: #ff4444;"></span>
