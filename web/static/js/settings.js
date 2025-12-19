@@ -17,6 +17,27 @@ let toolsPagination = {
     totalPages: 0
 };
 
+// 切换设置分类
+function switchSettingsSection(section) {
+    // 更新导航项状态
+    document.querySelectorAll('.settings-nav-item').forEach(item => {
+        item.classList.remove('active');
+    });
+    const activeNavItem = document.querySelector(`.settings-nav-item[data-section="${section}"]`);
+    if (activeNavItem) {
+        activeNavItem.classList.add('active');
+    }
+    
+    // 更新内容区域显示
+    document.querySelectorAll('.settings-section-content').forEach(content => {
+        content.classList.remove('active');
+    });
+    const activeContent = document.getElementById(`settings-section-${section}`);
+    if (activeContent) {
+        activeContent.classList.add('active');
+    }
+}
+
 // 打开设置
 async function openSettings() {
     // 切换到设置页面
@@ -34,6 +55,9 @@ async function openSettings() {
     document.querySelectorAll('.form-group input').forEach(input => {
         input.classList.remove('error');
     });
+    
+    // 默认显示基本设置
+    switchSettingsSection('basic');
 }
 
 // 关闭设置（保留函数以兼容旧代码，但现在不需要关闭功能）

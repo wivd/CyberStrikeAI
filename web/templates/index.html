@@ -238,63 +238,91 @@
                     <div class="page-header">
                         <h2>系统设置</h2>
                     </div>
-                    <div class="page-content settings-body">
-                        <!-- OpenAI配置 -->
-                        <div class="settings-section">
-                            <h3>OpenAI 配置</h3>
-                            <div class="settings-form">
-                                <div class="form-group">
-                                    <label for="openai-base-url">Base URL <span style="color: red;">*</span></label>
-                                    <input type="text" id="openai-base-url" placeholder="https://api.openai.com/v1" required />
+                    <div class="page-content settings-layout">
+                        <!-- 左侧导航栏 -->
+                        <aside class="settings-sidebar">
+                            <nav class="settings-nav">
+                                <div class="settings-nav-item active" data-section="basic" onclick="switchSettingsSection('basic')">
+                                    <span>基本设置</span>
                                 </div>
-                                <div class="form-group">
-                                    <label for="openai-api-key">API Key <span style="color: red;">*</span></label>
-                                    <input type="password" id="openai-api-key" placeholder="输入OpenAI API Key" required />
+                                <div class="settings-nav-item" data-section="security" onclick="switchSettingsSection('security')">
+                                    <span>安全设置</span>
                                 </div>
-                                <div class="form-group">
-                                    <label for="openai-model">模型 <span style="color: red;">*</span></label>
-                                    <input type="text" id="openai-model" placeholder="gpt-4" required />
+                            </nav>
+                        </aside>
+                        
+                        <!-- 右侧内容区域 -->
+                        <div class="settings-content">
+                            <!-- 基本设置 -->
+                            <div id="settings-section-basic" class="settings-section-content active">
+                                <div class="settings-section-header">
+                                    <h3>基本设置</h3>
+                                </div>
+                                
+                                <!-- OpenAI配置 -->
+                                <div class="settings-subsection">
+                                    <h4>OpenAI 配置</h4>
+                                    <div class="settings-form">
+                                        <div class="form-group">
+                                            <label for="openai-base-url">Base URL <span style="color: red;">*</span></label>
+                                            <input type="text" id="openai-base-url" placeholder="https://api.openai.com/v1" required />
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="openai-api-key">API Key <span style="color: red;">*</span></label>
+                                            <input type="password" id="openai-api-key" placeholder="输入OpenAI API Key" required />
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="openai-model">模型 <span style="color: red;">*</span></label>
+                                            <input type="text" id="openai-model" placeholder="gpt-4" required />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- Agent配置 -->
+                                <div class="settings-subsection">
+                                    <h4>Agent 配置</h4>
+                                    <div class="settings-form">
+                                        <div class="form-group">
+                                            <label for="agent-max-iterations">最大迭代次数</label>
+                                            <input type="number" id="agent-max-iterations" min="1" max="100" placeholder="30" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="settings-actions">
+                                    <button class="btn-primary" onclick="applySettings()">应用配置</button>
                                 </div>
                             </div>
-                        </div>
 
-                        <!-- Agent配置 -->
-                        <div class="settings-section">
-                            <h3>Agent 配置</h3>
-                            <div class="settings-form">
-                                <div class="form-group">
-                                    <label for="agent-max-iterations">最大迭代次数</label>
-                                    <input type="number" id="agent-max-iterations" min="1" max="100" placeholder="30" />
+                            <!-- 安全设置 -->
+                            <div id="settings-section-security" class="settings-section-content">
+                                <div class="settings-section-header">
+                                    <h3>安全设置</h3>
+                                </div>
+                                
+                                <div class="settings-subsection">
+                                    <h4>修改密码</h4>
+                                    <p class="settings-description">修改登录密码后，需要使用新密码重新登录。</p>
+                                    <div class="settings-form">
+                                        <div class="form-group">
+                                            <label for="auth-current-password">当前密码</label>
+                                            <input type="password" id="auth-current-password" placeholder="输入当前登录密码" autocomplete="current-password" />
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="auth-new-password">新密码</label>
+                                            <input type="password" id="auth-new-password" placeholder="设置新密码（至少 8 位）" autocomplete="new-password" />
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="auth-confirm-password">确认新密码</label>
+                                            <input type="password" id="auth-confirm-password" placeholder="再次输入新密码" autocomplete="new-password" />
+                                        </div>
+                                        <div class="form-actions">
+                                            <button class="btn-secondary" type="button" onclick="resetPasswordForm()">清空</button>
+                                            <button class="btn-primary change-password-submit" type="button" onclick="changePassword()">修改密码</button>
+                                        </div>
+                                    </div>
                                 </div>
                             </div>
-                        </div>
-
-                        <!-- 安全设置 -->
-                        <div class="settings-section">
-                            <h3>安全设置</h3>
-                            <div class="settings-form">
-                                <div class="form-group">
-                                    <label for="auth-current-password">当前密码</label>
-                                    <input type="password" id="auth-current-password" placeholder="输入当前登录密码" autocomplete="current-password" />
-                                </div>
-                                <div class="form-group">
-                                    <label for="auth-new-password">新密码</label>
-                                    <input type="password" id="auth-new-password" placeholder="设置新密码（至少 8 位）" autocomplete="new-password" />
-                                </div>
-                                <div class="form-group">
-                                    <label for="auth-confirm-password">确认新密码</label>
-                                    <input type="password" id="auth-confirm-password" placeholder="再次输入新密码" autocomplete="new-password" />
-                                </div>
-                                <div class="form-actions">
-                                    <button class="btn-secondary" type="button" onclick="resetPasswordForm()">清空</button>
-                                    <button class="btn-primary change-password-submit" type="button" onclick="changePassword()">修改密码</button>
-                                </div>
-                                <p class="password-hint">修改密码后，需要使用新密码重新登录。</p>
-                            </div>
-                        </div>
-
-                        <div class="settings-actions">
-                            <button class="btn-primary" onclick="applySettings()">应用配置</button>
                         </div>
                     </div>
                 </div>
