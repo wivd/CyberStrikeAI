@@ -20,7 +20,7 @@ CyberStrikeAI 是一款 **AI 原生渗透测试协同体**，以 Go 编写，内
   <img src="./img/mcp-stdio2.png" alt="Preview" width="560">
 - 外部 MCP 服务器 & 攻击链视图  
   <img src="./img/外部MCP接入.png" alt="Preview" width="560">   
-  <img src="./img/攻击链.jpg" alt="Preview" width="560">
+  <img src="./img/攻击链.png" alt="Preview" width="560">
 
 ## 特性速览
 
