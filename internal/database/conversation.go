@@ -205,6 +205,42 @@ func (db *DB) DeleteConversation(id string) error {
 	return nil
 }
 
+// SaveReActData 保存最后一轮ReAct的输入和输出
+func (db *DB) SaveReActData(conversationID, reactInput, reactOutput string) error {
+	_, err := db.Exec(
+		"UPDATE conversations SET last_react_input = ?, last_react_output = ?, updated_at = ? WHERE id = ?",
+		reactInput, reactOutput, time.Now(), conversationID,
+	)
+	if err != nil {
+		return fmt.Errorf("保存ReAct数据失败: %w", err)
+	}
+	return nil
+}
+
+// GetReActData 获取最后一轮ReAct的输入和输出
+func (db *DB) GetReActData(conversationID string) (reactInput, reactOutput string, err error) {
+	var input, output sql.NullString
+	err = db.QueryRow(
+		"SELECT last_react_input, last_react_output FROM conversations WHERE id = ?",
+		conversationID,
+	).Scan(&input, &output)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return "", "", fmt.Errorf("对话不存在")
+		}
+		return "", "", fmt.Errorf("获取ReAct数据失败: %w", err)
+	}
+
+	if input.Valid {
+		reactInput = input.String
+	}
+	if output.Valid {
+		reactOutput = output.String
+	}
+
+	return reactInput, reactOutput, nil
+}
+
 // AddMessage 添加消息
 func (db *DB) AddMessage(conversationID, role, content string, mcpExecutionIDs []string) (*Message, error) {
 	id := uuid.New().String()

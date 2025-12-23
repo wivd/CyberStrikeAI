@@ -292,6 +292,8 @@ func (fc *FunctionCall) UnmarshalJSON(data []byte) error {
 type AgentLoopResult struct {
 	Response        string
 	MCPExecutionIDs []string
+	LastReActInput  string // 最后一轮ReAct的输入（压缩前的完整messages）
+	LastReActOutput string // 最终大模型的输出
 }
 
 // ProgressCallback 进度回调函数类型
@@ -436,13 +438,47 @@ func (a *Agent) AgentLoopWithProgress(ctx context.Context, userInput string, his
 		MCPExecutionIDs: make([]string, 0),
 	}
 
+	// 用于保存当前的messages，以便在异常情况下也能保存ReAct输入
+	var currentReActInput string
+
 	maxIterations := a.maxIterations
 	for i := 0; i < maxIterations; i++ {
+		// 在压缩前保存messages，这样即使出现异常也能保存原始数据
+		messagesBeforeCompression := make([]ChatMessage, len(messages))
+		copy(messagesBeforeCompression, messages)
+		
 		// 每轮调用前先尝试压缩，防止历史消息持续膨胀
 		messages = a.applyMemoryCompression(ctx, messages)
 
 		// 检查是否是最后一次迭代
 		isLastIteration := (i == maxIterations-1)
+
+		// 每次迭代都保存压缩前的messages，以便在异常中断（取消、错误等）时也能保存最新的ReAct输入
+		// 这样无论何时中断，都能保存当前的上下文状态
+		messagesJSON, err := json.Marshal(messagesBeforeCompression)
+		if err != nil {
+			a.logger.Warn("序列化ReAct输入失败", zap.Error(err))
+		} else {
+			currentReActInput = string(messagesJSON)
+			// 更新result中的值，确保始终保存最新的ReAct输入
+			result.LastReActInput = currentReActInput
+		}
+
+		// 检查上下文是否已取消
+		select {
+		case <-ctx.Done():
+			// 上下文被取消（可能是用户主动暂停或其他原因）
+			a.logger.Info("检测到上下文取消，保存当前ReAct数据", zap.Error(ctx.Err()))
+			result.LastReActInput = currentReActInput
+			if ctx.Err() == context.Canceled {
+				result.Response = "任务已被取消。"
+			} else {
+				result.Response = fmt.Sprintf("任务执行中断: %v", ctx.Err())
+			}
+			result.LastReActOutput = result.Response
+			return result, ctx.Err()
+		default:
+		}
 
 		// 获取可用工具
 		tools := a.getAvailableTools()
@@ -511,7 +547,12 @@ func (a *Agent) AgentLoopWithProgress(ctx context.Context, userInput string, his
 		sendProgress("progress", "正在调用AI模型...", nil)
 		response, err := a.callOpenAI(ctx, messages, tools)
 		if err != nil {
-			result.Response = ""
+			// API调用失败，保存当前的ReAct输入和错误信息作为输出
+			result.LastReActInput = currentReActInput
+			errorMsg := fmt.Sprintf("调用OpenAI失败: %v", err)
+			result.Response = errorMsg
+			result.LastReActOutput = errorMsg
+			a.logger.Warn("OpenAI调用失败，已保存ReAct数据", zap.Error(err))
 			return result, fmt.Errorf("调用OpenAI失败: %w", err)
 		}
 
@@ -535,12 +576,20 @@ func (a *Agent) AgentLoopWithProgress(ctx context.Context, userInput string, his
 				)
 				continue
 			}
-			result.Response = ""
+			// OpenAI返回错误，保存当前的ReAct输入和错误信息作为输出
+			result.LastReActInput = currentReActInput
+			errorMsg := fmt.Sprintf("OpenAI错误: %s", response.Error.Message)
+			result.Response = errorMsg
+			result.LastReActOutput = errorMsg
 			return result, fmt.Errorf("OpenAI错误: %s", response.Error.Message)
 		}
 
 		if len(response.Choices) == 0 {
-			result.Response = ""
+			// 没有收到响应，保存当前的ReAct输入和错误信息作为输出
+			result.LastReActInput = currentReActInput
+			errorMsg := "没有收到响应"
+			result.Response = errorMsg
+			result.LastReActOutput = errorMsg
 			return result, fmt.Errorf("没有收到响应")
 		}
 
@@ -658,18 +707,19 @@ func (a *Agent) AgentLoopWithProgress(ctx context.Context, userInput string, his
 					Content: "这是最后一次迭代。请总结到目前为止的所有测试结果、发现的问题和已完成的工作。如果需要继续测试，请提供详细的下一步执行计划。请直接回复，不要调用工具。",
 				})
 				messages = a.applyMemoryCompression(ctx, messages)
-				// 立即调用OpenAI获取总结
-				summaryResponse, err := a.callOpenAI(ctx, messages, []Tool{}) // 不提供工具，强制AI直接回复
-				if err == nil && summaryResponse != nil && len(summaryResponse.Choices) > 0 {
-					summaryChoice := summaryResponse.Choices[0]
-					if summaryChoice.Message.Content != "" {
-						result.Response = summaryChoice.Message.Content
-						sendProgress("progress", "总结生成完成", nil)
-						return result, nil
-					}
+			// 立即调用OpenAI获取总结
+			summaryResponse, err := a.callOpenAI(ctx, messages, []Tool{}) // 不提供工具，强制AI直接回复
+			if err == nil && summaryResponse != nil && len(summaryResponse.Choices) > 0 {
+				summaryChoice := summaryResponse.Choices[0]
+				if summaryChoice.Message.Content != "" {
+					result.Response = summaryChoice.Message.Content
+					result.LastReActOutput = result.Response
+					sendProgress("progress", "总结生成完成", nil)
+					return result, nil
 				}
-				// 如果获取总结失败，跳出循环，让后续逻辑处理
-				break
+			}
+			// 如果获取总结失败，跳出循环，让后续逻辑处理
+			break
 			}
 
 			continue
@@ -703,6 +753,7 @@ func (a *Agent) AgentLoopWithProgress(ctx context.Context, userInput string, his
 				summaryChoice := summaryResponse.Choices[0]
 				if summaryChoice.Message.Content != "" {
 					result.Response = summaryChoice.Message.Content
+					result.LastReActOutput = result.Response
 					sendProgress("progress", "总结生成完成", nil)
 					return result, nil
 				}
@@ -710,6 +761,7 @@ func (a *Agent) AgentLoopWithProgress(ctx context.Context, userInput string, his
 			// 如果获取总结失败，使用当前回复作为结果
 			if choice.Message.Content != "" {
 				result.Response = choice.Message.Content
+				result.LastReActOutput = result.Response
 				return result, nil
 			}
 			// 如果都没有内容，跳出循环，让后续逻辑处理
@@ -720,6 +772,7 @@ func (a *Agent) AgentLoopWithProgress(ctx context.Context, userInput string, his
 		if choice.FinishReason == "stop" {
 			sendProgress("progress", "正在生成最终回复...", nil)
 			result.Response = choice.Message.Content
+			result.LastReActOutput = result.Response
 			return result, nil
 		}
 	}
@@ -739,6 +792,7 @@ func (a *Agent) AgentLoopWithProgress(ctx context.Context, userInput string, his
 		summaryChoice := summaryResponse.Choices[0]
 		if summaryChoice.Message.Content != "" {
 			result.Response = summaryChoice.Message.Content
+			result.LastReActOutput = result.Response
 			sendProgress("progress", "总结生成完成", nil)
 			return result, nil
 		}
@@ -746,6 +800,7 @@ func (a *Agent) AgentLoopWithProgress(ctx context.Context, userInput string, his
 
 	// 如果无法生成总结，返回友好的提示
 	result.Response = fmt.Sprintf("已达到最大迭代次数（%d轮）。系统已执行了多轮测试，但由于达到迭代上限，无法继续自动执行。建议您查看已执行的工具结果，或提出新的测试请求以继续测试。", a.maxIterations)
+	result.LastReActOutput = result.Response
 	return result, nil
 }
 

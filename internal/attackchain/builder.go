@@ -2,6 +2,8 @@ package attackchain
 
 import (
 	"context"
+	"crypto/sha256"
+	"encoding/hex"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -85,7 +87,7 @@ func NewBuilder(db *database.DB, openAIConfig *config.OpenAIConfig, logger *zap.
 func (b *Builder) BuildChainFromConversation(ctx context.Context, conversationID string) (*Chain, error) {
 	b.logger.Info("开始构建攻击链（简化版本）", zap.String("conversationId", conversationID))
 
-	// 1. 获取对话消息
+	// 0. 首先检查是否有实际的工具执行记录
 	messages, err := b.db.GetMessages(conversationID)
 	if err != nil {
 		return nil, fmt.Errorf("获取对话消息失败: %w", err)
@@ -96,31 +98,115 @@ func (b *Builder) BuildChainFromConversation(ctx context.Context, conversationID
 		return &Chain{Nodes: []Node{}, Edges: []Edge{}}, nil
 	}
 
-	// 2. 提取用户输入（最后一条user消息）
-	var userInput string
-	for i := len(messages) - 1; i >= 0; i-- {
-		if strings.EqualFold(messages[i].Role, "user") {
-			userInput = messages[i].Content
-			break
-		}
-	}
-
-	// 3. 提取最后一轮ReAct的输入（历史消息+当前用户输入）
-	// 最后一轮ReAct的输入 = 所有历史消息（包括当前用户输入）
-	reactInput := b.buildReActInput(messages)
-
-	// 4. 提取大模型最后的输出（最后一条assistant消息）
-	var modelOutput string
+	// 检查是否有实际的工具执行（通过检查assistant消息的mcp_execution_ids）
+	hasToolExecutions := false
 	for i := len(messages) - 1; i >= 0; i-- {
 		if strings.EqualFold(messages[i].Role, "assistant") {
-			modelOutput = messages[i].Content
+			if len(messages[i].MCPExecutionIDs) > 0 {
+				hasToolExecutions = true
+				break
+			}
+		}
+	}
+
+	// 检查任务是否被取消（通过检查最后一条assistant消息内容或process_details）
+	taskCancelled := false
+	for i := len(messages) - 1; i >= 0; i-- {
+		if strings.EqualFold(messages[i].Role, "assistant") {
+			content := strings.ToLower(messages[i].Content)
+			if strings.Contains(content, "取消") || strings.Contains(content, "cancelled") {
+				taskCancelled = true
+			}
 			break
 		}
 	}
 
-	// 5. 构建简化的prompt，一次性传递给大模型
-	prompt := b.buildSimplePrompt(userInput, reactInput, modelOutput)
+	// 如果任务被取消且没有实际工具执行，返回空攻击链
+	if taskCancelled && !hasToolExecutions {
+		b.logger.Info("任务已取消且没有实际工具执行，返回空攻击链",
+			zap.String("conversationId", conversationID),
+			zap.Bool("taskCancelled", taskCancelled),
+			zap.Bool("hasToolExecutions", hasToolExecutions))
+		return &Chain{Nodes: []Node{}, Edges: []Edge{}}, nil
+	}
 
+	// 如果没有实际工具执行，也返回空攻击链（避免AI编造）
+	if !hasToolExecutions {
+		b.logger.Info("没有实际工具执行记录，返回空攻击链",
+			zap.String("conversationId", conversationID))
+		return &Chain{Nodes: []Node{}, Edges: []Edge{}}, nil
+	}
+
+	// 1. 优先尝试从数据库获取保存的最后一轮ReAct输入和输出
+	reactInputJSON, modelOutput, err := b.db.GetReActData(conversationID)
+	if err != nil {
+		b.logger.Warn("获取保存的ReAct数据失败，将使用消息历史构建", zap.Error(err))
+		// 继续使用原来的逻辑
+		reactInputJSON = ""
+		modelOutput = ""
+	}
+
+	var userInput string
+	var reactInputFinal string
+	var dataSource string // 记录数据来源
+
+	// 如果成功获取到保存的ReAct数据，直接使用
+	if reactInputJSON != "" && modelOutput != "" {
+		// 计算 ReAct 输入的哈希值，用于追踪
+		hash := sha256.Sum256([]byte(reactInputJSON))
+		reactInputHash := hex.EncodeToString(hash[:])[:16] // 使用前16字符作为短标识
+
+		// 统计消息数量
+		var messageCount int
+		var tempMessages []interface{}
+		if json.Unmarshal([]byte(reactInputJSON), &tempMessages) == nil {
+			messageCount = len(tempMessages)
+		}
+
+		dataSource = "database_last_react_input"
+		b.logger.Info("使用保存的ReAct数据构建攻击链",
+			zap.String("conversationId", conversationID),
+			zap.String("dataSource", dataSource),
+			zap.Int("reactInputSize", len(reactInputJSON)),
+			zap.Int("messageCount", messageCount),
+			zap.String("reactInputHash", reactInputHash),
+			zap.Int("modelOutputSize", len(modelOutput)))
+
+		// 从保存的ReAct输入（JSON格式）中提取用户输入
+		userInput = b.extractUserInputFromReActInput(reactInputJSON)
+
+		// 将JSON格式的messages转换为可读格式
+		reactInputFinal = b.formatReActInputFromJSON(reactInputJSON)
+	} else {
+		// 2. 如果没有保存的ReAct数据，从对话消息构建
+		dataSource = "messages_table"
+		b.logger.Info("从消息历史构建ReAct数据",
+			zap.String("conversationId", conversationID),
+			zap.String("dataSource", dataSource),
+			zap.Int("messageCount", len(messages)))
+
+		// 提取用户输入（最后一条user消息）
+		for i := len(messages) - 1; i >= 0; i-- {
+			if strings.EqualFold(messages[i].Role, "user") {
+				userInput = messages[i].Content
+				break
+			}
+		}
+
+		// 提取最后一轮ReAct的输入（历史消息+当前用户输入）
+		reactInputFinal = b.buildReActInput(messages)
+
+		// 提取大模型最后的输出（最后一条assistant消息）
+		for i := len(messages) - 1; i >= 0; i-- {
+			if strings.EqualFold(messages[i].Role, "assistant") {
+				modelOutput = messages[i].Content
+				break
+			}
+		}
+	}
+
+	// 3. 构建简化的prompt，一次性传递给大模型
+	prompt := b.buildSimplePrompt(userInput, reactInputFinal, modelOutput)
 	// 6. 调用AI生成攻击链（一次性，不做任何处理）
 	chainJSON, err := b.callAIForChainGeneration(ctx, prompt)
 	if err != nil {
@@ -140,6 +226,7 @@ func (b *Builder) BuildChainFromConversation(ctx context.Context, conversationID
 
 	b.logger.Info("攻击链构建完成",
 		zap.String("conversationId", conversationID),
+		zap.String("dataSource", dataSource),
 		zap.Int("nodes", len(chainData.Nodes)),
 		zap.Int("edges", len(chainData.Edges)))
 
@@ -162,9 +249,66 @@ func (b *Builder) buildReActInput(messages []database.Message) string {
 	return builder.String()
 }
 
+// extractUserInputFromReActInput 从保存的ReAct输入（JSON格式的messages数组）中提取最后一条用户输入
+func (b *Builder) extractUserInputFromReActInput(reactInputJSON string) string {
+	// reactInputJSON是JSON格式的ChatMessage数组，需要解析
+	var messages []map[string]interface{}
+	if err := json.Unmarshal([]byte(reactInputJSON), &messages); err != nil {
+		b.logger.Warn("解析ReAct输入JSON失败", zap.Error(err))
+		return ""
+	}
+
+	// 从后往前查找最后一条user消息
+	for i := len(messages) - 1; i >= 0; i-- {
+		if role, ok := messages[i]["role"].(string); ok && strings.EqualFold(role, "user") {
+			if content, ok := messages[i]["content"].(string); ok {
+				return content
+			}
+		}
+	}
+
+	return ""
+}
+
+// formatReActInputFromJSON 将JSON格式的messages数组转换为可读的字符串格式
+func (b *Builder) formatReActInputFromJSON(reactInputJSON string) string {
+	var messages []map[string]interface{}
+	if err := json.Unmarshal([]byte(reactInputJSON), &messages); err != nil {
+		b.logger.Warn("解析ReAct输入JSON失败", zap.Error(err))
+		return reactInputJSON // 如果解析失败，返回原始JSON
+	}
+
+	var builder strings.Builder
+	for _, msg := range messages {
+		role, _ := msg["role"].(string)
+		content, _ := msg["content"].(string)
+
+		// 如果content为空但存在tool_calls，标记为工具调用消息
+		if content == "" {
+			if toolCalls, ok := msg["tool_calls"].([]interface{}); ok && len(toolCalls) > 0 {
+				content = fmt.Sprintf("[工具调用: %d个]", len(toolCalls))
+			}
+		}
+
+		builder.WriteString(fmt.Sprintf("[%s]: %s\n\n", role, content))
+	}
+
+	return builder.String()
+}
+
 // buildSimplePrompt 构建简化的prompt
 func (b *Builder) buildSimplePrompt(userInput, reactInput, modelOutput string) string {
 	return fmt.Sprintf(`你是一个专业的安全测试分析师。请根据以下信息生成攻击链图。
+
+## ⚠️ 重要原则 - 严禁杜撰
+
+**严格禁止编造或推测任何内容！** 你必须：
+1. **只使用实际发生的信息**：仅基于ReAct输入中实际执行的工具调用和实际返回的结果
+2. **不要推测**：如果没有实际执行工具或发现漏洞，不要编造
+3. **不要假设**：不能仅根据URL、目标名称等推断漏洞类型
+4. **基于事实**：每个节点和边都必须有实际依据，来自工具执行结果或模型的实际输出
+
+如果ReAct输入中没有实际的工具执行记录，或者模型输出中明确表示任务未完成/被取消，必须返回空的攻击链（空的nodes和edges数组）。
 
 ## 用户输入
 %s
@@ -177,10 +321,15 @@ func (b *Builder) buildSimplePrompt(userInput, reactInput, modelOutput string) s
 
 ## 任务要求
 
-请根据上述信息，生成一个清晰的攻击链图。攻击链应该包含：
-1. **target（目标）**：从用户输入中提取的测试目标
-2. **action（行动）**：从ReAct输入和模型输出中提取的关键测试步骤
-3. **vulnerability（漏洞）**：从模型输出中提取的发现的漏洞
+请根据上述信息，**仅基于实际执行的数据**生成一个清晰的攻击链图。攻击链应该包含：
+1. **target（目标）**：从用户输入中提取的实际测试目标（必须是用户明确提供的）
+2. **action（行动）**：从ReAct输入中提取的**实际执行的**工具调用和测试步骤（必须有tool_calls证据）
+3. **vulnerability（漏洞）**：从模型输出中提取的**实际发现的**漏洞（必须在输出中明确提及，不能推测）
+
+**关键检查点：**
+- 如果ReAct输入中没有tool_calls，说明没有实际执行工具 → 只能生成target节点
+- 如果模型输出中没有明确提到发现的漏洞，不要编造vulnerability节点
+- 如果任务被取消或未完成，返回空攻击链
 
 ## 输出格式
 
@@ -194,8 +343,8 @@ func (b *Builder) buildSimplePrompt(userInput, reactInput, modelOutput string) s
        "risk_score": 0-100,
        "metadata": {
          "target": "目标（target节点）",
-         "tool_name": "工具名称（action节点）",
-         "description": "描述（vulnerability节点）"
+         "tool_name": "工具名称（action节点，必须是实际调用的工具）",
+         "description": "描述（vulnerability节点，必须是实际发现的漏洞）"
        }
      }
    ],
@@ -208,6 +357,8 @@ func (b *Builder) buildSimplePrompt(userInput, reactInput, modelOutput string) s
      }
    ]
 }
+
+**再次强调：如果没有实际数据，返回空的nodes和edges数组。严禁杜撰！**
 
 只返回JSON，不要包含其他解释文字。`, userInput, reactInput, modelOutput)
 }

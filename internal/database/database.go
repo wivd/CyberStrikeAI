@@ -3,6 +3,7 @@ package database
 import (
 	"database/sql"
 	"fmt"
+	"strings"
 
 	_ "github.com/mattn/go-sqlite3"
 	"go.uber.org/zap"
@@ -46,7 +47,9 @@ func (db *DB) initTables() error {
 		id TEXT PRIMARY KEY,
 		title TEXT NOT NULL,
 		created_at DATETIME NOT NULL,
-		updated_at DATETIME NOT NULL
+		updated_at DATETIME NOT NULL,
+		last_react_input TEXT,
+		last_react_output TEXT
 	);`
 
 	// 创建消息表
@@ -199,7 +202,55 @@ func (db *DB) initTables() error {
 		return fmt.Errorf("创建索引失败: %w", err)
 	}
 
+	// 为已有表添加新字段（如果不存在）
+	if err := db.migrateConversationsTable(); err != nil {
+		db.logger.Warn("迁移conversations表失败", zap.Error(err))
+		// 不返回错误，允许继续运行
+	}
+
 	db.logger.Info("数据库表初始化完成")
+	return nil
+}
+
+// migrateConversationsTable 迁移conversations表，添加新字段
+func (db *DB) migrateConversationsTable() error {
+	// 检查last_react_input字段是否存在
+	var count int
+	err := db.QueryRow("SELECT COUNT(*) FROM pragma_table_info('conversations') WHERE name='last_react_input'").Scan(&count)
+	if err != nil {
+		// 如果查询失败，尝试添加字段
+		if _, addErr := db.Exec("ALTER TABLE conversations ADD COLUMN last_react_input TEXT"); addErr != nil {
+			// 如果字段已存在，忽略错误（SQLite错误信息可能不同）
+			errMsg := strings.ToLower(addErr.Error())
+			if !strings.Contains(errMsg, "duplicate column") && !strings.Contains(errMsg, "already exists") {
+				db.logger.Warn("添加last_react_input字段失败", zap.Error(addErr))
+			}
+		}
+	} else if count == 0 {
+		// 字段不存在，添加它
+		if _, err := db.Exec("ALTER TABLE conversations ADD COLUMN last_react_input TEXT"); err != nil {
+			db.logger.Warn("添加last_react_input字段失败", zap.Error(err))
+		}
+	}
+
+	// 检查last_react_output字段是否存在
+	err = db.QueryRow("SELECT COUNT(*) FROM pragma_table_info('conversations') WHERE name='last_react_output'").Scan(&count)
+	if err != nil {
+		// 如果查询失败，尝试添加字段
+		if _, addErr := db.Exec("ALTER TABLE conversations ADD COLUMN last_react_output TEXT"); addErr != nil {
+			// 如果字段已存在，忽略错误
+			errMsg := strings.ToLower(addErr.Error())
+			if !strings.Contains(errMsg, "duplicate column") && !strings.Contains(errMsg, "already exists") {
+				db.logger.Warn("添加last_react_output字段失败", zap.Error(addErr))
+			}
+		}
+	} else if count == 0 {
+		// 字段不存在，添加它
+		if _, err := db.Exec("ALTER TABLE conversations ADD COLUMN last_react_output TEXT"); err != nil {
+			db.logger.Warn("添加last_react_output字段失败", zap.Error(err))
+		}
+	}
+
 	return nil
 }
 
