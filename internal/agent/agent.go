@@ -292,7 +292,7 @@ func (fc *FunctionCall) UnmarshalJSON(data []byte) error {
 type AgentLoopResult struct {
 	Response        string
 	MCPExecutionIDs []string
-	LastReActInput  string // 最后一轮ReAct的输入（压缩前的完整messages）
+	LastReActInput  string // 最后一轮ReAct的输入（压缩后的messages，JSON格式）
 	LastReActOutput string // 最终大模型的输出
 }
 
@@ -397,17 +397,20 @@ func (a *Agent) AgentLoopWithProgress(ctx context.Context, userInput string, his
 		},
 	}
 
-	// 添加历史消息（数据库只保存user和assistant消息）
+	// 添加历史消息（保留所有字段，包括ToolCalls和ToolCallID）
 	a.logger.Info("处理历史消息",
 		zap.Int("count", len(historyMessages)),
 	)
 	addedCount := 0
 	for i, msg := range historyMessages {
-		// 只添加有内容的消息
-		if msg.Content != "" {
+		// 对于tool消息，即使content为空也要添加（因为tool消息可能只有ToolCallID）
+		// 对于其他消息，只添加有内容的消息
+		if msg.Role == "tool" || msg.Content != "" {
 			messages = append(messages, ChatMessage{
-				Role:    msg.Role,
-				Content: msg.Content,
+				Role:       msg.Role,
+				Content:    msg.Content,
+				ToolCalls:  msg.ToolCalls,
+				ToolCallID: msg.ToolCallID,
 			})
 			addedCount++
 			contentPreview := msg.Content
@@ -418,6 +421,8 @@ func (a *Agent) AgentLoopWithProgress(ctx context.Context, userInput string, his
 				zap.Int("index", i),
 				zap.String("role", msg.Role),
 				zap.String("content", contentPreview),
+				zap.Int("toolCalls", len(msg.ToolCalls)),
+				zap.String("toolCallID", msg.ToolCallID),
 			)
 		}
 	}
@@ -427,6 +432,14 @@ func (a *Agent) AgentLoopWithProgress(ctx context.Context, userInput string, his
 		zap.Int("addedMessages", addedCount),
 		zap.Int("totalMessages", len(messages)),
 	)
+
+	// 在添加当前用户消息之前，先修复可能存在的失配tool消息
+	// 这可以防止在继续对话时出现"messages with role 'tool' must be a response to a preceeding message with 'tool_calls'"错误
+	if len(messages) > 0 {
+		if fixed := a.repairOrphanToolMessages(&messages); fixed {
+			a.logger.Info("修复了历史消息中的失配tool消息")
+		}
+	}
 
 	// 添加当前用户消息
 	messages = append(messages, ChatMessage{
@@ -443,24 +456,20 @@ func (a *Agent) AgentLoopWithProgress(ctx context.Context, userInput string, his
 
 	maxIterations := a.maxIterations
 	for i := 0; i < maxIterations; i++ {
-		// 在压缩前保存messages，这样即使出现异常也能保存原始数据
-		messagesBeforeCompression := make([]ChatMessage, len(messages))
-		copy(messagesBeforeCompression, messages)
-		
 		// 每轮调用前先尝试压缩，防止历史消息持续膨胀
 		messages = a.applyMemoryCompression(ctx, messages)
 
 		// 检查是否是最后一次迭代
 		isLastIteration := (i == maxIterations-1)
 
-		// 每次迭代都保存压缩前的messages，以便在异常中断（取消、错误等）时也能保存最新的ReAct输入
-		// 这样无论何时中断，都能保存当前的上下文状态
-		messagesJSON, err := json.Marshal(messagesBeforeCompression)
+		// 每次迭代都保存压缩后的messages，以便在异常中断（取消、错误等）时也能保存最新的ReAct输入
+		// 保存压缩后的数据，这样后续使用时就不需要再考虑压缩了
+		messagesJSON, err := json.Marshal(messages)
 		if err != nil {
 			a.logger.Warn("序列化ReAct输入失败", zap.Error(err))
 		} else {
 			currentReActInput = string(messagesJSON)
-			// 更新result中的值，确保始终保存最新的ReAct输入
+			// 更新result中的值，确保始终保存最新的ReAct输入（压缩后的）
 			result.LastReActInput = currentReActInput
 		}
 
@@ -707,19 +716,19 @@ func (a *Agent) AgentLoopWithProgress(ctx context.Context, userInput string, his
 					Content: "这是最后一次迭代。请总结到目前为止的所有测试结果、发现的问题和已完成的工作。如果需要继续测试，请提供详细的下一步执行计划。请直接回复，不要调用工具。",
 				})
 				messages = a.applyMemoryCompression(ctx, messages)
-			// 立即调用OpenAI获取总结
-			summaryResponse, err := a.callOpenAI(ctx, messages, []Tool{}) // 不提供工具，强制AI直接回复
-			if err == nil && summaryResponse != nil && len(summaryResponse.Choices) > 0 {
-				summaryChoice := summaryResponse.Choices[0]
-				if summaryChoice.Message.Content != "" {
-					result.Response = summaryChoice.Message.Content
-					result.LastReActOutput = result.Response
-					sendProgress("progress", "总结生成完成", nil)
-					return result, nil
+				// 立即调用OpenAI获取总结
+				summaryResponse, err := a.callOpenAI(ctx, messages, []Tool{}) // 不提供工具，强制AI直接回复
+				if err == nil && summaryResponse != nil && len(summaryResponse.Choices) > 0 {
+					summaryChoice := summaryResponse.Choices[0]
+					if summaryChoice.Message.Content != "" {
+						result.Response = summaryChoice.Message.Content
+						result.LastReActOutput = result.Response
+						sendProgress("progress", "总结生成完成", nil)
+						return result, nil
+					}
 				}
-			}
-			// 如果获取总结失败，跳出循环，让后续逻辑处理
-			break
+				// 如果获取总结失败，跳出循环，让后续逻辑处理
+				break
 			}
 
 			continue
@@ -1368,7 +1377,8 @@ func (a *Agent) handleToolRoleError(errMsg string, messages *[]ChatMessage) bool
 	return true
 }
 
-// repairOrphanToolMessages 清理失去配对的tool消息，避免OpenAI报错
+// repairOrphanToolMessages 清理失去配对的tool消息和未完成的tool_calls，避免OpenAI报错
+// 同时确保历史消息中的tool_calls只作为上下文记忆，不会触发重新执行
 func (a *Agent) repairOrphanToolMessages(messages *[]ChatMessage) bool {
 	if messages == nil {
 		return false
@@ -1387,6 +1397,7 @@ func (a *Agent) repairOrphanToolMessages(messages *[]ChatMessage) bool {
 		switch strings.ToLower(msg.Role) {
 		case "assistant":
 			if len(msg.ToolCalls) > 0 {
+				// 记录所有tool_call IDs
 				for _, tc := range msg.ToolCalls {
 					if tc.ID != "" {
 						pending[tc.ID]++
@@ -1416,8 +1427,38 @@ func (a *Agent) repairOrphanToolMessages(messages *[]ChatMessage) bool {
 		}
 	}
 
+	// 如果还有未匹配的tool_calls（即assistant消息有tool_calls但没有对应的tool响应）
+	// 需要从最后的assistant消息中移除这些tool_calls，避免AI重新执行它们
+	if len(pending) > 0 {
+		// 从后往前查找最后一个assistant消息
+		for i := len(cleaned) - 1; i >= 0; i-- {
+			if strings.ToLower(cleaned[i].Role) == "assistant" && len(cleaned[i].ToolCalls) > 0 {
+				// 移除未匹配的tool_calls
+				originalCount := len(cleaned[i].ToolCalls)
+				validToolCalls := make([]ToolCall, 0)
+				for _, tc := range cleaned[i].ToolCalls {
+					if tc.ID != "" && pending[tc.ID] > 0 {
+						// 这个tool_call没有对应的tool响应，移除它
+						removed = true
+						delete(pending, tc.ID)
+					} else {
+						validToolCalls = append(validToolCalls, tc)
+					}
+				}
+				// 更新消息的ToolCalls
+				if len(validToolCalls) != originalCount {
+					cleaned[i].ToolCalls = validToolCalls
+					a.logger.Info("移除了未完成的tool_calls，避免重新执行",
+						zap.Int("removed_count", originalCount-len(validToolCalls)),
+					)
+				}
+				break
+			}
+		}
+	}
+
 	if removed {
-		a.logger.Warn("移除了失配的tool消息以修复对话历史",
+		a.logger.Warn("修复了对话历史中的tool消息和tool_calls",
 			zap.Int("original_messages", len(msgs)),
 			zap.Int("cleaned_messages", len(cleaned)),
 		)
