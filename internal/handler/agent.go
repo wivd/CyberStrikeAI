@@ -689,6 +689,7 @@ func (h *AgentHandler) ListAgentTasks(c *gin.Context) {
 }
 
 // loadHistoryFromReActData 从保存的ReAct数据恢复历史消息上下文
+// 采用与攻击链生成类似的拼接逻辑：优先使用保存的last_react_input和last_react_output，若不存在则回退到消息表
 func (h *AgentHandler) loadHistoryFromReActData(conversationID string) ([]agent.ChatMessage, error) {
 	// 获取保存的ReAct输入和输出
 	reactInputJSON, reactOutput, err := h.db.GetReActData(conversationID)
@@ -696,15 +697,29 @@ func (h *AgentHandler) loadHistoryFromReActData(conversationID string) ([]agent.
 		return nil, fmt.Errorf("获取ReAct数据失败: %w", err)
 	}
 
+	// 如果last_react_input为空，回退到使用消息表（与攻击链生成逻辑一致）
 	if reactInputJSON == "" {
-		return nil, fmt.Errorf("ReAct数据为空")
+		return nil, fmt.Errorf("ReAct数据为空，将使用消息表")
 	}
+
+	dataSource := "database_last_react_input"
 
 	// 解析JSON格式的messages数组
 	var messagesArray []map[string]interface{}
 	if err := json.Unmarshal([]byte(reactInputJSON), &messagesArray); err != nil {
 		return nil, fmt.Errorf("解析ReAct输入JSON失败: %w", err)
 	}
+
+	messageCount := len(messagesArray)
+
+	h.logger.Info("使用保存的ReAct数据恢复历史上下文",
+		zap.String("conversationId", conversationID),
+		zap.String("dataSource", dataSource),
+		zap.Int("reactInputSize", len(reactInputJSON)),
+		zap.Int("messageCount", messageCount),
+		zap.Int("reactOutputSize", len(reactOutput)),
+	)
+	// fmt.Println("messagesArray:", messagesArray)//debug
 
 	// 转换为Agent消息格式
 	agentMessages := make([]agent.ChatMessage, 0, len(messagesArray))
@@ -816,11 +831,13 @@ func (h *AgentHandler) loadHistoryFromReActData(conversationID string) ([]agent.
 		return nil, fmt.Errorf("从ReAct数据解析的消息为空")
 	}
 
-	h.logger.Info("从ReAct数据恢复历史消息",
+	h.logger.Info("从ReAct数据恢复历史消息完成",
 		zap.String("conversationId", conversationID),
-		zap.Int("messageCount", len(agentMessages)),
+		zap.String("dataSource", dataSource),
+		zap.Int("originalMessageCount", messageCount),
+		zap.Int("finalMessageCount", len(agentMessages)),
 		zap.Bool("hasReactOutput", reactOutput != ""),
 	)
-
+	fmt.Println("agentMessages:", agentMessages) //debug
 	return agentMessages, nil
 }
