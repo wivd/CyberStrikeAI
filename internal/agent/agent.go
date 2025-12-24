@@ -1377,6 +1377,13 @@ func (a *Agent) handleToolRoleError(errMsg string, messages *[]ChatMessage) bool
 	return true
 }
 
+// RepairOrphanToolMessages 清理失去配对的tool消息和未完成的tool_calls，避免OpenAI报错
+// 同时确保历史消息中的tool_calls只作为上下文记忆，不会触发重新执行
+// 这是一个公开方法，可以在恢复历史消息时调用
+func (a *Agent) RepairOrphanToolMessages(messages *[]ChatMessage) bool {
+	return a.repairOrphanToolMessages(messages)
+}
+
 // repairOrphanToolMessages 清理失去配对的tool消息和未完成的tool_calls，避免OpenAI报错
 // 同时确保历史消息中的tool_calls只作为上下文记忆，不会触发重新执行
 func (a *Agent) repairOrphanToolMessages(messages *[]ChatMessage) bool {

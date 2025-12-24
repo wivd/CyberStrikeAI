@@ -831,6 +831,16 @@ func (h *AgentHandler) loadHistoryFromReActData(conversationID string) ([]agent.
 		return nil, fmt.Errorf("从ReAct数据解析的消息为空")
 	}
 
+	// 修复可能存在的失配tool消息，避免OpenAI报错
+	// 这可以防止出现"messages with role 'tool' must be a response to a preceeding message with 'tool_calls'"错误
+	if h.agent != nil {
+		if fixed := h.agent.RepairOrphanToolMessages(&agentMessages); fixed {
+			h.logger.Info("修复了从ReAct数据恢复的历史消息中的失配tool消息",
+				zap.String("conversationId", conversationID),
+			)
+		}
+	}
+
 	h.logger.Info("从ReAct数据恢复历史消息完成",
 		zap.String("conversationId", conversationID),
 		zap.String("dataSource", dataSource),
