@@ -1161,7 +1161,7 @@ function copyDetailBlock(elementId, triggerBtn = null) {
 
 
 // 开始新对话
-function startNewConversation() {
+async function startNewConversation() {
     // 如果当前在分组详情页面，先退出分组详情
     if (currentGroupId) {
         const groupDetailPage = document.getElementById('group-detail-page');
@@ -1174,10 +1174,13 @@ function startNewConversation() {
     }
     
     currentConversationId = null;
+    currentConversationGroupId = null; // 新对话不属于任何分组
     document.getElementById('chat-messages').innerHTML = '';
     addMessage('assistant', '系统已就绪。请输入您的测试需求，系统将自动执行相应的安全测试。');
     addAttackChainButton(null);
     updateActiveConversation();
+    // 刷新分组列表，清除分组高亮
+    await loadGroups();
     // 刷新对话列表，确保显示最新的历史对话
     loadConversationsWithGroups();
     // 清除防抖定时器，防止恢复草稿时触发保存
@@ -1460,6 +1463,13 @@ async function loadConversation(conversationId) {
             // 刷新最近对话列表，显示所有对话（包括分组中的）
             loadConversationsWithGroups();
         }
+        
+        // 获取当前对话所属的分组ID（用于高亮显示）
+        // 确保分组映射已加载
+        if (Object.keys(conversationGroupMappingCache).length === 0) {
+            await loadConversationGroupMapping();
+        }
+        currentConversationGroupId = conversationGroupMappingCache[conversationId] || null;
         
         // 无论是否在分组详情页面，都刷新分组列表，确保高亮状态正确
         // 这样可以清除之前分组的高亮状态，确保UI状态一致
@@ -3647,7 +3657,8 @@ function exportAttackChain(format) {
 // ============================================
 
 // 分组数据管理（使用API）
-let currentGroupId = null;
+let currentGroupId = null; // 当前正在查看的分组详情页面
+let currentConversationGroupId = null; // 当前对话所属的分组ID（用于高亮显示）
 let contextMenuConversationId = null;
 let contextMenuGroupId = null;
 let groupsCache = [];
@@ -3674,7 +3685,13 @@ async function loadGroups() {
             sortedGroups.forEach(group => {
             const groupItem = document.createElement('div');
             groupItem.className = 'group-item';
-            if (currentGroupId === group.id) {
+            // 高亮逻辑：
+            // 1. 如果当前在分组详情页面，只高亮当前分组（currentGroupId）
+            // 2. 如果不在分组详情页面，高亮当前对话所属的分组（currentConversationGroupId）
+            const shouldHighlight = currentGroupId 
+                ? (currentGroupId === group.id)
+                : (currentConversationGroupId === group.id);
+            if (shouldHighlight) {
                 groupItem.classList.add('active');
             }
             const isPinned = group.pinned || false;
@@ -4387,6 +4404,11 @@ async function moveConversationToGroup(convId, groupId) {
         const oldGroupId = conversationGroupMappingCache[convId];
         conversationGroupMappingCache[convId] = groupId;
         
+        // 如果移动的是当前对话，更新 currentConversationGroupId
+        if (currentConversationId === convId) {
+            currentConversationGroupId = groupId;
+        }
+        
         // 如果当前在分组详情页面，重新加载分组对话
         if (currentGroupId) {
             // 如果从当前分组移出，或者移动到当前分组，都需要重新加载
@@ -4396,6 +4418,9 @@ async function moveConversationToGroup(convId, groupId) {
         } else {
             loadConversationsWithGroups();
         }
+        
+        // 刷新分组列表，更新高亮状态
+        await loadGroups();
     } catch (error) {
         console.error('移动对话到分组失败:', error);
         alert('移动失败: ' + (error.message || '未知错误'));
@@ -4414,6 +4439,11 @@ async function removeConversationFromGroup(convId, groupId) {
         // 更新缓存 - 立即删除，确保后续加载时能正确识别
         delete conversationGroupMappingCache[convId];
         
+        // 如果移除的是当前对话，清除 currentConversationGroupId
+        if (currentConversationId === convId) {
+            currentConversationGroupId = null;
+        }
+        
         // 如果当前在分组详情页面，重新加载分组对话
         if (currentGroupId === groupId) {
             await loadGroupConversations(groupId);
@@ -4421,6 +4451,9 @@ async function removeConversationFromGroup(convId, groupId) {
         
         // 重新加载分组映射，确保缓存是最新的
         await loadConversationGroupMapping();
+        
+        // 刷新分组列表，更新高亮状态
+        await loadGroups();
         
         // 刷新最近对话列表，让移出的对话立即显示
         // 使用临时变量保存 currentGroupId，然后临时设置为 null，确保显示所有不在分组的对话
@@ -4728,6 +4761,9 @@ async function createGroup(event) {
 // 进入分组详情
 async function enterGroupDetail(groupId) {
     currentGroupId = groupId;
+    // 进入分组详情页面时，清除当前对话所属的分组ID，避免高亮冲突
+    // 因为此时用户是在查看分组详情，而不是在查看分组中的某个对话
+    currentConversationGroupId = null;
     
     try {
         const response = await apiFetch(`/api/groups/${groupId}`);
