@@ -292,9 +292,10 @@ func (db *DB) UpdateConversationPinned(id string, pinned bool) error {
 	if pinned {
 		pinnedValue = 1
 	}
+	// 注意：不更新 updated_at，因为置顶操作不应该改变对话的更新时间
 	_, err := db.Exec(
-		"UPDATE conversations SET pinned = ?, updated_at = ? WHERE id = ?",
-		pinnedValue, time.Now(), id,
+		"UPDATE conversations SET pinned = ? WHERE id = ?",
+		pinnedValue, id,
 	)
 	if err != nil {
 		return fmt.Errorf("更新对话置顶状态失败: %w", err)

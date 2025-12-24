@@ -200,9 +200,10 @@ func (db *DB) ListConversations(limit, offset int, search string) ([]*Conversati
 
 // UpdateConversationTitle 更新对话标题
 func (db *DB) UpdateConversationTitle(id, title string) error {
+	// 注意：不更新 updated_at，因为重命名操作不应该改变对话的更新时间
 	_, err := db.Exec(
-		"UPDATE conversations SET title = ?, updated_at = ? WHERE id = ?",
-		title, time.Now(), id,
+		"UPDATE conversations SET title = ? WHERE id = ?",
+		title, id,
 	)
 	if err != nil {
 		return fmt.Errorf("更新对话标题失败: %w", err)

@@ -448,8 +448,11 @@ function handleStreamEvent(event, progressElement, progressId,
                 updateActiveConversation();
                 addAttackChainButton(currentConversationId);
                 loadActiveTasks();
-                // 立即刷新对话列表，让新对话显示在历史记录中
-                loadConversations();
+                // 延迟刷新对话列表，确保用户消息已保存，updated_at已更新
+                // 这样新对话才能正确显示在最近对话列表的顶部
+                setTimeout(() => {
+                    loadConversations();
+                }, 200);
             }
             break;
         case 'iteration':
@@ -627,8 +630,10 @@ function handleStreamEvent(event, progressElement, progressId,
                 collapseAllProgressDetails(assistantId, progressId);
             }, 3000);
             
-            // 刷新对话列表
-            loadConversations();
+            // 延迟刷新对话列表，确保助手消息已保存，updated_at已更新
+            setTimeout(() => {
+                loadConversations();
+            }, 200);
             break;
             
         case 'error':
