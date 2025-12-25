@@ -33,6 +33,7 @@ CyberStrikeAI is an **AI-native penetration-testing copilot** built in Go. It co
 - 🔒 Password-protected web UI, audit logs, and SQLite persistence
 - 📚 Knowledge base with vector search and hybrid retrieval for security expertise
 - 📁 Conversation grouping with pinning, rename, and batch management
+- 🛡️ Vulnerability management with CRUD operations, severity tracking, status workflow, and statistics
 
 ## Tool Overview
 
@@ -107,6 +108,7 @@ CyberStrikeAI ships with 100+ curated tools covering the whole kill chain:
 - **Tool monitor** – Inspect running jobs, execution logs, and large-result attachments.
 - **History & audit** – Every conversation and tool invocation is stored in SQLite with replay.
 - **Conversation groups** – Organize conversations into groups, pin important groups, rename or delete groups via context menu.
+- **Vulnerability management** – Create, update, and track vulnerabilities discovered during testing. Filter by severity (critical/high/medium/low/info), status (open/confirmed/fixed/false_positive), and conversation. View statistics and export findings.
 - **Settings** – Tweak provider keys, MCP enablement, tool toggles, and agent iteration limits.
 
 ### Built-in Safeguards
@@ -215,8 +217,10 @@ CyberStrikeAI ships with 100+ curated tools covering the whole kill chain:
 - Each Markdown file becomes a knowledge item with automatic chunking for vector search.
 - The system supports incremental updates – modified files are re-indexed automatically.
 
+
 ### Automation Hooks
-- **REST APIs** – everything the UI uses (auth, conversations, tool runs, monitor) is available over JSON.
+- **REST APIs** – everything the UI uses (auth, conversations, tool runs, monitor, vulnerabilities) is available over JSON.
+- **Vulnerability APIs** – manage vulnerabilities via `/api/vulnerabilities` endpoints: `GET /api/vulnerabilities` (list with filters), `POST /api/vulnerabilities` (create), `GET /api/vulnerabilities/:id` (get), `PUT /api/vulnerabilities/:id` (update), `DELETE /api/vulnerabilities/:id` (delete), `GET /api/vulnerabilities/stats` (statistics).
 - **Task control** – pause/resume/stop long scans, re-run steps with new params, or stream transcripts.
 - **Audit & security** – rotate passwords via `/api/auth/change-password`, enforce short-lived sessions, and restrict MCP ports at the network layer when exposing the service.
 
@@ -314,6 +318,7 @@ Build an attack chain for the latest engagement and export the node list with se
 
 ## Changelog (Recent)
 
+- 2025-12-25 – Added vulnerability management feature: full CRUD operations for tracking vulnerabilities discovered during testing. Supports severity levels (critical/high/medium/low/info), status workflow (open/confirmed/fixed/false_positive), filtering by conversation/severity/status, and comprehensive statistics dashboard.
 - 2025-12-25 – Added conversation grouping feature: organize conversations into groups, pin groups to top, rename/delete groups via context menu. All group data is persisted in the database.
 - 2025-12-24 – Refactored attack chain generation logic, achieving 2x faster generation speed. Redesigned attack chain frontend visualization for improved user experience.
 - 2025-12-20 – Added knowledge base feature with vector search, hybrid retrieval, and automatic indexing. AI agent can now search security knowledge during conversations.
