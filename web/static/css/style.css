@@ -5309,6 +5309,7 @@ header {
     text-overflow: ellipsis;
     display: -webkit-box;
     -webkit-line-clamp: 1;
+    line-clamp: 1;
     -webkit-box-orient: vertical;
 }
 
@@ -5331,6 +5332,7 @@ header {
     text-overflow: ellipsis;
     display: -webkit-box;
     -webkit-line-clamp: 2;
+    line-clamp: 2;
     -webkit-box-orient: vertical;
     word-break: break-word;
 }
@@ -5784,8 +5786,6 @@ header {
 .vulnerability-header:hover {
     background-color: var(--bg-secondary);
     border-radius: 4px;
-    padding: 4px 8px;
-    margin: -4px -8px;
 }
 
 .vulnerability-title-section {
