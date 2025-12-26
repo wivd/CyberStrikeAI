@@ -335,6 +335,13 @@ CyberStrikeAI/
 
 CyberStrikeAI 现已加入 [404星链计划](https://github.com/knownsec/404StarLink)
 
+## TCH Top-Ranked Intelligent Pentest Project  
+<div align="left">
+  <a href="https://zc.tencent.com/competition/competitionHackathon?code=cha004" target="_blank">
+    <img src="./img/tch.png" alt="TCH Top-Ranked Intelligent Pentest Project" width="30%">
+  </a>
+</div>
+
 ---
 
 欢迎提交 Issue/PR 贡献新的工具模版或优化建议！
