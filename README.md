@@ -9,12 +9,6 @@
 
 CyberStrikeAI is an **AI-native penetration-testing copilot** built in Go. It combines hundreds of security tools, MCP-native orchestration, and an agent that reasons over findings so that a full engagement can be run from a single conversation.
 
-<div align="left">
-  <a href="https://zc.tencent.com/competition/competitionHackathon?code=cha004" target="_blank">
-    <img src="./img/tch.png" alt="TCH Top-Ranked Intelligent Pentest Project" width="300">
-  </a>
-</div>
-
 - Web console  
   <img src="./img/效果.png" alt="Preview" width="560">
 - MCP stdio mode  
@@ -337,6 +331,14 @@ Build an attack chain for the latest engagement and export the node list with se
 <img src="./img/404StarLinkLogo.png" width="30%">
 
 CyberStrikeAI has joined [404Starlink](https://github.com/knownsec/404StarLink)
+
+## TCH Top-Ranked Intelligent Pentest Project  
+<div align="left">
+  <a href="https://zc.tencent.com/competition/competitionHackathon?code=cha004" target="_blank">
+    <img src="./img/tch.png" alt="TCH Top-Ranked Intelligent Pentest Project" width="30%">
+  </a>
+</div>
+
 
 ---
 
