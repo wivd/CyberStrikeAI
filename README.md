@@ -334,7 +334,9 @@ Build an attack chain for the latest engagement and export the node list with se
 
 ## 404Starlink 
 
-![404StarLink](https://raw.githubusercontent.com/knownsec/404StarLink/master/Images/logo.png) CyberStrikeAI has joined [404Starlink](https://github.com/knownsec/404StarLink)
+<img lazysrc="https://github.com/knownsec/404StarLink-Project/raw/master/logo.png" width="30%">
+
+CyberStrikeAI has joined [404Starlink](https://github.com/knownsec/404StarLink)
 
 ---
 
