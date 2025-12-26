@@ -242,7 +242,7 @@ func New(cfg *config.Config, log *logger.Logger) (*App, error) {
 	attackChainHandler := handler.NewAttackChainHandler(db, &cfg.OpenAI, log.Logger)
 	vulnerabilityHandler := handler.NewVulnerabilityHandler(db, log.Logger)
 	configHandler := handler.NewConfigHandler(configPath, cfg, mcpServer, executor, agent, attackChainHandler, externalMCPMgr, log.Logger)
-	// 如果知识库已启用，设置知识库工具注册器，以便在ApplyConfig时重新注册知识库工具
+	// 如果知识库已启用，设置知识库工具注册器和检索器更新器
 	if cfg.Knowledge.Enabled && knowledgeRetriever != nil && knowledgeManager != nil {
 		// 创建闭包，捕获knowledgeRetriever和knowledgeManager的引用
 		registrar := func() error {
@@ -250,6 +250,8 @@ func New(cfg *config.Config, log *logger.Logger) (*App, error) {
 			return nil
 		}
 		configHandler.SetKnowledgeToolRegistrar(registrar)
+		// 设置检索器更新器，以便在ApplyConfig时更新检索器配置
+		configHandler.SetRetrieverUpdater(knowledgeRetriever)
 	}
 	externalMCPHandler := handler.NewExternalMCPHandler(externalMCPMgr, cfg, configPath, log.Logger)
 

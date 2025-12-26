@@ -157,26 +157,58 @@ func RegisterKnowledgeTool(
 		// 格式化结果
 		var resultText strings.Builder
 
+		// 先按混合分数排序，确保文档顺序是按混合分数的（混合检索的核心）
+		sort.Slice(results, func(i, j int) bool {
+			return results[i].Score > results[j].Score
+		})
+
 		// 按文档分组结果，以便更好地展示上下文
-		resultsByItem := make(map[string][]*RetrievalResult)
+		// 使用有序的slice来保持文档顺序（按最高混合分数）
+		type itemGroup struct {
+			itemID     string
+			results    []*RetrievalResult
+			maxScore   float64 // 该文档的最高混合分数
+		}
+		itemGroups := make([]*itemGroup, 0)
+		itemMap := make(map[string]*itemGroup)
+
 		for _, result := range results {
 			itemID := result.Item.ID
-			resultsByItem[itemID] = append(resultsByItem[itemID], result)
+			group, exists := itemMap[itemID]
+			if !exists {
+				group = &itemGroup{
+					itemID:  itemID,
+					results: make([]*RetrievalResult, 0),
+					maxScore: result.Score,
+				}
+				itemMap[itemID] = group
+				itemGroups = append(itemGroups, group)
+			}
+			group.results = append(group.results, result)
+			if result.Score > group.maxScore {
+				group.maxScore = result.Score
+			}
 		}
 
+		// 按最高混合分数排序文档组
+		sort.Slice(itemGroups, func(i, j int) bool {
+			return itemGroups[i].maxScore > itemGroups[j].maxScore
+		})
+
 		// 收集检索到的知识项ID（用于日志）
-		retrievedItemIDs := make([]string, 0, len(resultsByItem))
+		retrievedItemIDs := make([]string, 0, len(itemGroups))
 
 		resultText.WriteString(fmt.Sprintf("找到 %d 条相关知识（包含上下文扩展）：\n\n", len(results)))
 
 		resultIndex := 1
-		for itemID, itemResults := range resultsByItem {
-			// 找到相似度最高的作为主结果
+		for _, group := range itemGroups {
+			itemResults := group.results
+			// 找到混合分数最高的作为主结果（使用混合分数，而不是相似度）
 			mainResult := itemResults[0]
-			maxSimilarity := mainResult.Similarity
+			maxScore := mainResult.Score
 			for _, result := range itemResults {
-				if result.Similarity > maxSimilarity {
-					maxSimilarity = result.Similarity
+				if result.Score > maxScore {
+					maxScore = result.Score
 					mainResult = result
 				}
 			}
@@ -186,8 +218,9 @@ func RegisterKnowledgeTool(
 				return itemResults[i].Chunk.ChunkIndex < itemResults[j].Chunk.ChunkIndex
 			})
 
-			// 显示主结果（相似度最高的）
-			resultText.WriteString(fmt.Sprintf("--- 结果 %d (相似度: %.2f%%) ---\n", resultIndex, mainResult.Similarity*100))
+			// 显示主结果（混合分数最高的，同时显示相似度和混合分数）
+			resultText.WriteString(fmt.Sprintf("--- 结果 %d (相似度: %.2f%%, 混合分数: %.2f%%) ---\n", 
+				resultIndex, mainResult.Similarity*100, mainResult.Score*100))
 			resultText.WriteString(fmt.Sprintf("来源: [%s] %s (ID: %s)\n", mainResult.Item.Category, mainResult.Item.Title, mainResult.Item.ID))
 
 			// 按逻辑顺序显示所有chunk（包括主结果和扩展的chunk）
@@ -208,8 +241,8 @@ func RegisterKnowledgeTool(
 			}
 			resultText.WriteString("\n")
 
-			if !contains(retrievedItemIDs, itemID) {
-				retrievedItemIDs = append(retrievedItemIDs, itemID)
+			if !contains(retrievedItemIDs, group.itemID) {
+				retrievedItemIDs = append(retrievedItemIDs, group.itemID)
 			}
 			resultIndex++
 		}

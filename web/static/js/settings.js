@@ -146,7 +146,9 @@ async function loadConfig(loadTools = true) {
             
             const retrievalWeightInput = document.getElementById('knowledge-retrieval-hybrid-weight');
             if (retrievalWeightInput) {
-                retrievalWeightInput.value = knowledge.retrieval?.hybrid_weight || 0.7;
+                const hybridWeight = knowledge.retrieval?.hybrid_weight;
+                // 允许0.0值，只有undefined/null时才使用默认值
+                retrievalWeightInput.value = (hybridWeight !== undefined && hybridWeight !== null) ? hybridWeight : 0.7;
             }
         }
         
@@ -613,8 +615,14 @@ async function applySettings() {
             },
             retrieval: {
                 top_k: parseInt(document.getElementById('knowledge-retrieval-top-k')?.value) || 5,
-                similarity_threshold: parseFloat(document.getElementById('knowledge-retrieval-similarity-threshold')?.value) || 0.7,
-                hybrid_weight: parseFloat(document.getElementById('knowledge-retrieval-hybrid-weight')?.value) || 0.7
+                similarity_threshold: (() => {
+                    const val = parseFloat(document.getElementById('knowledge-retrieval-similarity-threshold')?.value);
+                    return isNaN(val) ? 0.7 : val;
+                })(),
+                hybrid_weight: (() => {
+                    const val = parseFloat(document.getElementById('knowledge-retrieval-hybrid-weight')?.value);
+                    return isNaN(val) ? 0.7 : val; // 允许0.0值，只有NaN时才使用默认值
+                })()
             }
         };
         
