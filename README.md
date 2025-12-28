@@ -9,6 +9,8 @@
 
 CyberStrikeAI is an **AI-native penetration-testing copilot** built in Go. It combines hundreds of security tools, MCP-native orchestration, and an agent that reasons over findings so that a full engagement can be run from a single conversation.
 
+
+## Interface & Integration Preview
 - Web console  
   <img src="./img/效果.png" alt="Preview" width="560">
 - MCP stdio mode  
