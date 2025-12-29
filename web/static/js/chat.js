@@ -1449,7 +1449,9 @@ function formatConversationTimestamp(dateObj, todayStart, yesterdayStart) {
     if (!(dateObj instanceof Date) || isNaN(dateObj.getTime())) {
         return '';
     }
-    const referenceToday = todayStart || new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
+    // 如果没有传入 todayStart，使用当前日期作为参考
+    const now = new Date();
+    const referenceToday = todayStart || new Date(now.getFullYear(), now.getMonth(), now.getDate());
     const referenceYesterday = yesterdayStart || new Date(referenceToday.getTime() - 24 * 60 * 60 * 1000);
     const messageDate = new Date(dateObj.getFullYear(), dateObj.getMonth(), dateObj.getDate());
 
