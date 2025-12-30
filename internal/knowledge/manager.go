@@ -639,7 +639,12 @@ func (m *Manager) UpdateItem(id, category, title, content string) (*KnowledgeIte
 		// 删除旧目录（如果为空）
 		oldDir := filepath.Dir(item.FilePath)
 		if entries, err := os.ReadDir(oldDir); err == nil && len(entries) == 0 {
-			os.Remove(oldDir)
+			// 只有当目录不是知识库根目录时才删除（避免删除根目录）
+			if oldDir != m.basePath {
+				if err := os.Remove(oldDir); err != nil {
+					m.logger.Warn("删除空目录失败", zap.String("dir", oldDir), zap.Error(err))
+				}
+			}
 		}
 	}
 
@@ -684,6 +689,17 @@ func (m *Manager) DeleteItem(id string) error {
 	_, err = m.db.Exec("DELETE FROM knowledge_base_items WHERE id = ?", id)
 	if err != nil {
 		return fmt.Errorf("删除知识项失败: %w", err)
+	}
+
+	// 删除空目录（如果为空）
+	dir := filepath.Dir(filePath)
+	if entries, err := os.ReadDir(dir); err == nil && len(entries) == 0 {
+		// 只有当目录不是知识库根目录时才删除（避免删除根目录）
+		if dir != m.basePath {
+			if err := os.Remove(dir); err != nil {
+				m.logger.Warn("删除空目录失败", zap.String("dir", dir), zap.Error(err))
+			}
+		}
 	}
 
 	return nil

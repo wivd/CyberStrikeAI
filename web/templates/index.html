@@ -248,7 +248,7 @@
                             <div id="chat-messages" class="chat-messages"></div>
                             <div class="chat-input-container">
                                 <div class="chat-input-field">
-                                    <textarea id="chat-input" placeholder="输入测试目标或命令... (Shift+Enter 换行，Enter 发送)" rows="1"></textarea>
+                                    <textarea id="chat-input" placeholder="输入测试目标或命令... (输入 @ 选择工具 | Shift+Enter 换行，Enter 发送)" rows="1"></textarea>
                                     <div id="mention-suggestions" class="mention-suggestions" role="listbox" aria-label="工具提及候选"></div>
                                 </div>
                                 <button onclick="sendMessage()">发送</button>
@@ -277,6 +277,10 @@
                                 <div class="section-header">
                                     <h3>最新执行记录</h3>
                                     <div class="section-actions">
+                                        <label>
+                                            工具搜索
+                                            <input type="text" id="monitor-tool-filter" placeholder="输入工具名称..." oninput="handleToolFilterInput()" onkeydown="if(event.key==='Enter') applyMonitorFilters()" />
+                                        </label>
                                         <label>
                                             状态筛选
                                             <select id="monitor-status-filter" onchange="applyMonitorFilters()">

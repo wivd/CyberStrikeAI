@@ -3772,6 +3772,7 @@ let contextMenuConversationId = null;
 let contextMenuGroupId = null;
 let groupsCache = [];
 let conversationGroupMappingCache = {};
+let pendingGroupMappings = {}; // 待保留的分组映射（用于处理后端API延迟的情况）
 
 // 加载分组列表
 async function loadGroups() {
@@ -3901,13 +3902,10 @@ async function loadConversationsWithGroups(searchQuery = '') {
             }
 
             // 如果没有搜索关键词，使用原有逻辑
-            // 如果对话在某个分组中，且当前不在分组详情页，则跳过
-            if (currentGroupId === null && conversationGroupMappingCache[conv.id]) {
-                return;
-            }
-            
-            // 如果当前在分组详情页，只显示该分组的对话
-            if (currentGroupId !== null && conversationGroupMappingCache[conv.id] !== currentGroupId) {
+            // "最近对话"列表应该只显示不在任何分组中的对话
+            // 无论是否在分组详情页，都不应该在"最近对话"中显示分组中的对话
+            if (conversationGroupMappingCache[conv.id]) {
+                // 对话在某个分组中，不应该显示在"最近对话"列表中
                 return;
             }
 
@@ -4050,8 +4048,12 @@ async function showConversationContextMenu(event) {
     if (convId) {
         try {
             let isPinned = false;
-            if (currentGroupId) {
-                // 如果在分组详情页面，获取分组内置顶状态
+            // 检查对话是否真的在当前分组中
+            const conversationGroupId = conversationGroupMappingCache[convId];
+            const isInCurrentGroup = currentGroupId && conversationGroupId === currentGroupId;
+            
+            if (isInCurrentGroup) {
+                // 对话在当前分组中，获取分组内置顶状态
                 const response = await apiFetch(`/api/groups/${currentGroupId}/conversations`);
                 if (response.ok) {
                     const groupConvs = await response.json();
@@ -4061,7 +4063,7 @@ async function showConversationContextMenu(event) {
                     }
                 }
             } else {
-                // 不在分组详情页面，获取全局置顶状态
+                // 不在分组详情页面，或者对话不在当前分组中，获取全局置顶状态
                 const response = await apiFetch(`/api/conversations/${convId}`);
                 if (response.ok) {
                     const conv = await response.json();
@@ -4316,8 +4318,14 @@ async function pinConversation() {
     if (!convId) return;
 
     try {
-        // 如果当前在分组详情页面，使用分组内置顶
-        if (currentGroupId) {
+        // 检查对话是否真的在当前分组中
+        // 如果对话已经从分组移出，conversationGroupMappingCache 中不会有该对话的映射
+        // 或者映射的分组ID不等于当前分组ID
+        const conversationGroupId = conversationGroupMappingCache[convId];
+        const isInCurrentGroup = currentGroupId && conversationGroupId === currentGroupId;
+        
+        // 如果当前在分组详情页面，且对话确实在当前分组中，使用分组内置顶
+        if (isInCurrentGroup) {
             // 获取当前对话在分组中的置顶状态
             const response = await apiFetch(`/api/groups/${currentGroupId}/conversations`);
             const groupConvs = await response.json();
@@ -4339,7 +4347,7 @@ async function pinConversation() {
             // 重新加载分组对话
             loadGroupConversations(currentGroupId);
         } else {
-            // 不在分组详情页面，使用全局置顶
+            // 不在分组详情页面，或者对话不在当前分组中，使用全局置顶
             const response = await apiFetch(`/api/conversations/${convId}`);
             const conv = await response.json();
             const newPinned = !conv.pinned;
@@ -4629,13 +4637,13 @@ async function moveConversationToGroup(convId, groupId) {
         const oldGroupId = conversationGroupMappingCache[convId];
         conversationGroupMappingCache[convId] = groupId;
         
+        // 将新移动的对话添加到待保留映射中，防止后端API延迟导致映射丢失
+        pendingGroupMappings[convId] = groupId;
+        
         // 如果移动的是当前对话，更新 currentConversationGroupId
         if (currentConversationId === convId) {
             currentConversationGroupId = groupId;
         }
-        
-        // 重新加载分组映射缓存，确保数据同步
-        await loadConversationGroupMapping();
         
         // 如果当前在分组详情页面，重新加载分组对话
         if (currentGroupId) {
@@ -4643,13 +4651,16 @@ async function moveConversationToGroup(convId, groupId) {
             if (currentGroupId === oldGroupId || currentGroupId === groupId) {
                 await loadGroupConversations(currentGroupId);
             }
-        } else {
-            // 如果不在分组详情页面，刷新最近对话列表
-            loadConversationsWithGroups();
         }
         
-        // 如果旧分组和新分组不同，且用户正在查看旧分组，也需要刷新旧分组
-        // 但上面的逻辑已经处理了这种情况（currentGroupId === oldGroupId）
+        // 无论是否在分组详情页面，都需要刷新最近对话列表
+        // 因为最近对话列表会根据分组映射缓存来过滤显示，需要立即更新
+        // loadConversationsWithGroups 内部会调用 loadConversationGroupMapping，
+        // loadConversationGroupMapping 会保留 pendingGroupMappings 中的映射
+        await loadConversationsWithGroups();
+        
+        // 注意：pendingGroupMappings 中的映射会在下次 loadConversationGroupMapping 
+        // 成功从后端加载时自动清理（在 loadConversationGroupMapping 中处理）
         
         // 刷新分组列表，更新高亮状态
         await loadGroups();
@@ -4670,6 +4681,8 @@ async function removeConversationFromGroup(convId, groupId) {
 
         // 更新缓存 - 立即删除，确保后续加载时能正确识别
         delete conversationGroupMappingCache[convId];
+        // 同时从待保留映射中移除
+        delete pendingGroupMappings[convId];
         
         // 如果移除的是当前对话，清除 currentConversationGroupId
         if (currentConversationId === convId) {
@@ -4719,6 +4732,9 @@ async function loadConversationGroupMapping() {
             groups = [];
         }
         
+        // 保存待保留的映射
+        const preservedMappings = { ...pendingGroupMappings };
+        
         conversationGroupMappingCache = {};
 
         for (const group of groups) {
@@ -4728,9 +4744,16 @@ async function loadConversationGroupMapping() {
             if (Array.isArray(conversations)) {
                 conversations.forEach(conv => {
                     conversationGroupMappingCache[conv.id] = group.id;
+                    // 如果这个对话在待保留映射中，从待保留映射中移除（因为已经从后端加载了）
+                    if (preservedMappings[conv.id] === group.id) {
+                        delete pendingGroupMappings[conv.id];
+                    }
                 });
             }
         }
+        
+        // 恢复待保留的映射（这些是后端API尚未同步的映射）
+        Object.assign(conversationGroupMappingCache, preservedMappings);
     } catch (error) {
         console.error('加载对话分组映射失败:', error);
     }

@@ -3,6 +3,7 @@ package handler
 import (
 	"net/http"
 	"strconv"
+	"strings"
 	"time"
 
 	"cyberstrike-ai/internal/database"
@@ -66,8 +67,10 @@ func (h *MonitorHandler) Monitor(c *gin.Context) {
 
 	// 解析状态筛选参数
 	status := c.Query("status")
+	// 解析工具筛选参数
+	toolName := c.Query("tool")
 
-	executions, total := h.loadExecutionsWithPagination(page, pageSize, status)
+	executions, total := h.loadExecutionsWithPagination(page, pageSize, status, toolName)
 	stats := h.loadStats()
 
 	totalPages := (total + pageSize - 1) / pageSize
@@ -87,18 +90,21 @@ func (h *MonitorHandler) Monitor(c *gin.Context) {
 }
 
 func (h *MonitorHandler) loadExecutions() []*mcp.ToolExecution {
-	executions, _ := h.loadExecutionsWithPagination(1, 1000, "")
+	executions, _ := h.loadExecutionsWithPagination(1, 1000, "", "")
 	return executions
 }
 
-func (h *MonitorHandler) loadExecutionsWithPagination(page, pageSize int, status string) ([]*mcp.ToolExecution, int) {
+func (h *MonitorHandler) loadExecutionsWithPagination(page, pageSize int, status, toolName string) ([]*mcp.ToolExecution, int) {
 	if h.db == nil {
 		allExecutions := h.mcpServer.GetAllExecutions()
-		// 如果指定了状态筛选，先进行筛选
-		if status != "" {
+		// 如果指定了状态筛选或工具筛选，先进行筛选
+		if status != "" || toolName != "" {
 			filtered := make([]*mcp.ToolExecution, 0)
 			for _, exec := range allExecutions {
-				if exec.Status == status {
+				matchStatus := status == "" || exec.Status == status
+				// 支持部分匹配（模糊搜索）
+				matchTool := toolName == "" || strings.Contains(strings.ToLower(exec.ToolName), strings.ToLower(toolName))
+				if matchStatus && matchTool {
 					filtered = append(filtered, exec)
 				}
 			}
@@ -117,15 +123,18 @@ func (h *MonitorHandler) loadExecutionsWithPagination(page, pageSize int, status
 	}
 
 	offset := (page - 1) * pageSize
-	executions, err := h.db.LoadToolExecutionsWithPagination(offset, pageSize, status)
+	executions, err := h.db.LoadToolExecutionsWithPagination(offset, pageSize, status, toolName)
 	if err != nil {
 		h.logger.Warn("从数据库加载执行记录失败，回退到内存数据", zap.Error(err))
 		allExecutions := h.mcpServer.GetAllExecutions()
-		// 如果指定了状态筛选，先进行筛选
-		if status != "" {
+		// 如果指定了状态筛选或工具筛选，先进行筛选
+		if status != "" || toolName != "" {
 			filtered := make([]*mcp.ToolExecution, 0)
 			for _, exec := range allExecutions {
-				if exec.Status == status {
+				matchStatus := status == "" || exec.Status == status
+				// 支持部分匹配（模糊搜索）
+				matchTool := toolName == "" || strings.Contains(strings.ToLower(exec.ToolName), strings.ToLower(toolName))
+				if matchStatus && matchTool {
 					filtered = append(filtered, exec)
 				}
 			}
@@ -143,8 +152,8 @@ func (h *MonitorHandler) loadExecutionsWithPagination(page, pageSize int, status
 		return allExecutions[offset:end], total
 	}
 
-	// 获取总数（考虑状态筛选）
-	total, err := h.db.CountToolExecutions(status)
+	// 获取总数（考虑状态筛选和工具筛选）
+	total, err := h.db.CountToolExecutions(status, toolName)
 	if err != nil {
 		h.logger.Warn("获取执行记录总数失败", zap.Error(err))
 		// 回退：使用已加载的记录数估算

@@ -3,9 +3,11 @@ package database
 import (
 	"database/sql"
 	"encoding/json"
+	"strings"
 	"time"
 
 	"cyberstrike-ai/internal/mcp"
+
 	"go.uber.org/zap"
 )
 
@@ -70,12 +72,24 @@ func (db *DB) SaveToolExecution(exec *mcp.ToolExecution) error {
 }
 
 // CountToolExecutions 统计工具执行记录总数
-func (db *DB) CountToolExecutions(status string) (int, error) {
+func (db *DB) CountToolExecutions(status, toolName string) (int, error) {
 	query := `SELECT COUNT(*) FROM tool_executions`
 	args := []interface{}{}
+	conditions := []string{}
 	if status != "" {
-		query += ` WHERE status = ?`
+		conditions = append(conditions, "status = ?")
 		args = append(args, status)
+	}
+	if toolName != "" {
+		// 支持部分匹配（模糊搜索），不区分大小写
+		conditions = append(conditions, "LOWER(tool_name) LIKE ?")
+		args = append(args, "%"+strings.ToLower(toolName)+"%")
+	}
+	if len(conditions) > 0 {
+		query += ` WHERE ` + conditions[0]
+		for i := 1; i < len(conditions); i++ {
+			query += ` AND ` + conditions[i]
+		}
 	}
 	var count int
 	err := db.QueryRow(query, args...).Scan(&count)
@@ -87,29 +101,42 @@ func (db *DB) CountToolExecutions(status string) (int, error) {
 
 // LoadToolExecutions 加载所有工具执行记录（支持分页）
 func (db *DB) LoadToolExecutions() ([]*mcp.ToolExecution, error) {
-	return db.LoadToolExecutionsWithPagination(0, 1000, "")
+	return db.LoadToolExecutionsWithPagination(0, 1000, "", "")
 }
 
 // LoadToolExecutionsWithPagination 分页加载工具执行记录
 // limit: 最大返回记录数，0 表示使用默认值 1000
 // offset: 跳过的记录数，用于分页
 // status: 状态筛选，空字符串表示不过滤
-func (db *DB) LoadToolExecutionsWithPagination(offset, limit int, status string) ([]*mcp.ToolExecution, error) {
+// toolName: 工具名称筛选，空字符串表示不过滤
+func (db *DB) LoadToolExecutionsWithPagination(offset, limit int, status, toolName string) ([]*mcp.ToolExecution, error) {
 	if limit <= 0 {
 		limit = 1000 // 默认限制
 	}
 	if limit > 10000 {
 		limit = 10000 // 最大限制，防止一次性加载过多数据
 	}
-	
+
 	query := `
 		SELECT id, tool_name, arguments, status, result, error, start_time, end_time, duration_ms
 		FROM tool_executions
 	`
 	args := []interface{}{}
+	conditions := []string{}
 	if status != "" {
-		query += ` WHERE status = ?`
+		conditions = append(conditions, "status = ?")
 		args = append(args, status)
+	}
+	if toolName != "" {
+		// 支持部分匹配（模糊搜索），不区分大小写
+		conditions = append(conditions, "LOWER(tool_name) LIKE ?")
+		args = append(args, "%"+strings.ToLower(toolName)+"%")
+	}
+	if len(conditions) > 0 {
+		query += ` WHERE ` + conditions[0]
+		for i := 1; i < len(conditions); i++ {
+			query += ` AND ` + conditions[i]
+		}
 	}
 	query += ` ORDER BY start_time DESC LIMIT ? OFFSET ?`
 	args = append(args, limit, offset)

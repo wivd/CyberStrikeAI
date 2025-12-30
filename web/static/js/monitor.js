@@ -974,12 +974,17 @@ async function refreshMonitorPanel(page = null) {
         
         // 获取当前的筛选条件
         const statusFilter = document.getElementById('monitor-status-filter');
-        const currentFilter = statusFilter ? statusFilter.value : 'all';
+        const toolFilter = document.getElementById('monitor-tool-filter');
+        const currentStatusFilter = statusFilter ? statusFilter.value : 'all';
+        const currentToolFilter = toolFilter ? (toolFilter.value.trim() || 'all') : 'all';
         
         // 构建请求 URL
         let url = `/api/monitor?page=${currentPage}&page_size=${pageSize}`;
-        if (currentFilter && currentFilter !== 'all') {
-            url += `&status=${encodeURIComponent(currentFilter)}`;
+        if (currentStatusFilter && currentStatusFilter !== 'all') {
+            url += `&status=${encodeURIComponent(currentStatusFilter)}`;
+        }
+        if (currentToolFilter && currentToolFilter !== 'all') {
+            url += `&tool=${encodeURIComponent(currentToolFilter)}`;
         }
         
         const response = await apiFetch(url, { method: 'GET' });
@@ -1003,7 +1008,7 @@ async function refreshMonitorPanel(page = null) {
         }
 
         renderMonitorStats(monitorState.stats, monitorState.lastFetchedAt);
-        renderMonitorExecutions(monitorState.executions, currentFilter);
+        renderMonitorExecutions(monitorState.executions, currentStatusFilter);
         renderMonitorPagination();
     } catch (error) {
         console.error('刷新监控面板失败:', error);
@@ -1016,14 +1021,30 @@ async function refreshMonitorPanel(page = null) {
     }
 }
 
-async function applyMonitorFilters() {
-    const statusFilter = document.getElementById('monitor-status-filter');
-    const status = statusFilter ? statusFilter.value : 'all';
-    // 当筛选条件改变时，从后端重新获取数据
-    await refreshMonitorPanelWithFilter(status);
+// 处理工具搜索输入（防抖）
+let toolFilterDebounceTimer = null;
+function handleToolFilterInput() {
+    // 清除之前的定时器
+    if (toolFilterDebounceTimer) {
+        clearTimeout(toolFilterDebounceTimer);
+    }
+    
+    // 设置新的定时器，500ms后执行筛选
+    toolFilterDebounceTimer = setTimeout(() => {
+        applyMonitorFilters();
+    }, 500);
 }
 
-async function refreshMonitorPanelWithFilter(statusFilter = 'all') {
+async function applyMonitorFilters() {
+    const statusFilter = document.getElementById('monitor-status-filter');
+    const toolFilter = document.getElementById('monitor-tool-filter');
+    const status = statusFilter ? statusFilter.value : 'all';
+    const tool = toolFilter ? (toolFilter.value.trim() || 'all') : 'all';
+    // 当筛选条件改变时，从后端重新获取数据
+    await refreshMonitorPanelWithFilter(status, tool);
+}
+
+async function refreshMonitorPanelWithFilter(statusFilter = 'all', toolFilter = 'all') {
     const statsContainer = document.getElementById('monitor-stats');
     const execContainer = document.getElementById('monitor-executions');
 
@@ -1035,6 +1056,9 @@ async function refreshMonitorPanelWithFilter(statusFilter = 'all') {
         let url = `/api/monitor?page=${currentPage}&page_size=${pageSize}`;
         if (statusFilter && statusFilter !== 'all') {
             url += `&status=${encodeURIComponent(statusFilter)}`;
+        }
+        if (toolFilter && toolFilter !== 'all') {
+            url += `&tool=${encodeURIComponent(toolFilter)}`;
         }
         
         const response = await apiFetch(url, { method: 'GET' });
@@ -1070,6 +1094,7 @@ async function refreshMonitorPanelWithFilter(statusFilter = 'all') {
         }
     }
 }
+
 
 function renderMonitorStats(statsMap = {}, lastFetchedAt = null) {
     const container = document.getElementById('monitor-stats');
@@ -1151,7 +1176,10 @@ function renderMonitorExecutions(executions = [], statusFilter = 'all') {
 
     if (!Array.isArray(executions) || executions.length === 0) {
         // 根据是否有筛选条件显示不同的提示
-        if (statusFilter && statusFilter !== 'all') {
+        const toolFilter = document.getElementById('monitor-tool-filter');
+        const currentToolFilter = toolFilter ? toolFilter.value : 'all';
+        const hasFilter = (statusFilter && statusFilter !== 'all') || (currentToolFilter && currentToolFilter !== 'all');
+        if (hasFilter) {
             container.innerHTML = '<div class="monitor-empty">当前筛选条件下暂无记录</div>';
         } else {
             container.innerHTML = '<div class="monitor-empty">暂无执行记录</div>';
