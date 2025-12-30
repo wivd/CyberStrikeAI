@@ -3,6 +3,9 @@ let activeTaskInterval = null;
 const ACTIVE_TASK_REFRESH_INTERVAL = 10000; // 10秒检查一次
 const TASK_FINAL_STATUSES = new Set(['failed', 'timeout', 'cancelled', 'completed']);
 
+// 存储工具调用ID到DOM元素的映射，用于更新执行状态
+const toolCallStatusMap = new Map();
+
 const conversationExecutionTracker = {
     activeConversations: new Set(),
     update(tasks = []) {
@@ -493,12 +496,26 @@ function handleStreamEvent(event, progressElement, progressId,
             const toolName = toolInfo.toolName || '未知工具';
             const index = toolInfo.index || 0;
             const total = toolInfo.total || 0;
-            addTimelineItem(timeline, 'tool_call', {
+            const toolCallId = toolInfo.toolCallId || null;
+            
+            // 添加工具调用项，并标记为执行中
+            const toolCallItemId = addTimelineItem(timeline, 'tool_call', {
                 title: `🔧 调用工具: ${escapeHtml(toolName)} (${index}/${total})`,
                 message: event.message,
                 data: toolInfo,
                 expanded: false
             });
+            
+            // 如果有toolCallId，存储映射关系以便后续更新状态
+            if (toolCallId && toolCallItemId) {
+                toolCallStatusMap.set(toolCallId, {
+                    itemId: toolCallItemId,
+                    timeline: timeline
+                });
+                
+                // 添加执行中状态指示器
+                updateToolCallStatus(toolCallId, 'running');
+            }
             break;
             
         case 'tool_result':
@@ -507,6 +524,15 @@ function handleStreamEvent(event, progressElement, progressId,
             const resultToolName = resultInfo.toolName || '未知工具';
             const success = resultInfo.success !== false;
             const statusIcon = success ? '✅' : '❌';
+            const resultToolCallId = resultInfo.toolCallId || null;
+            
+            // 如果有关联的toolCallId，更新工具调用项的状态
+            if (resultToolCallId && toolCallStatusMap.has(resultToolCallId)) {
+                updateToolCallStatus(resultToolCallId, success ? 'completed' : 'failed');
+                // 从映射中移除（已完成）
+                toolCallStatusMap.delete(resultToolCallId);
+            }
+            
             addTimelineItem(timeline, 'tool_result', {
                 title: `${statusIcon} 工具 ${escapeHtml(resultToolName)} 执行${success ? '完成' : '失败'}`,
                 message: event.message,
@@ -767,9 +793,46 @@ function handleStreamEvent(event, progressElement, progressId,
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
 }
 
+// 更新工具调用状态
+function updateToolCallStatus(toolCallId, status) {
+    const mapping = toolCallStatusMap.get(toolCallId);
+    if (!mapping) return;
+    
+    const item = document.getElementById(mapping.itemId);
+    if (!item) return;
+    
+    const titleElement = item.querySelector('.timeline-item-title');
+    if (!titleElement) return;
+    
+    // 移除之前的状态类
+    item.classList.remove('tool-call-running', 'tool-call-completed', 'tool-call-failed');
+    
+    // 根据状态更新样式和文本
+    let statusText = '';
+    if (status === 'running') {
+        item.classList.add('tool-call-running');
+        statusText = ' <span class="tool-status-badge tool-status-running">执行中...</span>';
+    } else if (status === 'completed') {
+        item.classList.add('tool-call-completed');
+        statusText = ' <span class="tool-status-badge tool-status-completed">✅ 已完成</span>';
+    } else if (status === 'failed') {
+        item.classList.add('tool-call-failed');
+        statusText = ' <span class="tool-status-badge tool-status-failed">❌ 执行失败</span>';
+    }
+    
+    // 更新标题（保留原有文本，追加状态）
+    const originalText = titleElement.innerHTML;
+    // 移除之前可能存在的状态标记
+    const cleanText = originalText.replace(/\s*<span class="tool-status-badge[^>]*>.*?<\/span>/g, '');
+    titleElement.innerHTML = cleanText + statusText;
+}
+
 // 添加时间线项目
 function addTimelineItem(timeline, type, options) {
     const item = document.createElement('div');
+    // 生成唯一ID
+    const itemId = 'timeline-item-' + Date.now() + '-' + Math.random().toString(36).substr(2, 9);
+    item.id = itemId;
     item.className = `timeline-item timeline-item-${type}`;
     
     const time = new Date().toLocaleTimeString('zh-CN', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
@@ -828,6 +891,9 @@ function addTimelineItem(timeline, type, options) {
     if (!expanded && (type === 'tool_call' || type === 'tool_result')) {
         // 对于工具调用和结果，默认显示摘要
     }
+    
+    // 返回item ID以便后续更新
+    return itemId;
 }
 
 // 加载活跃任务列表

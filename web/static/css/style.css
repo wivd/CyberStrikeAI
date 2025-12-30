@@ -2335,6 +2335,75 @@ header {
     color: var(--text-secondary);
 }
 
+/* 工具调用状态徽章 */
+.tool-status-badge {
+    display: inline-flex;
+    align-items: center;
+    gap: 6px;
+    padding: 4px 10px;
+    border-radius: 12px;
+    font-size: 0.75rem;
+    font-weight: 600;
+    margin-left: 8px;
+    white-space: nowrap;
+    vertical-align: middle;
+}
+
+.tool-status-badge.tool-status-running {
+    background: rgba(0, 102, 255, 0.12);
+    color: var(--accent-color);
+    border: 1px solid rgba(0, 102, 255, 0.3);
+}
+
+.tool-status-badge.tool-status-running::before {
+    content: '';
+    width: 8px;
+    height: 8px;
+    border-radius: 50%;
+    background: var(--accent-color);
+    display: inline-block;
+    animation: tool-running-pulse 1.5s infinite;
+}
+
+@keyframes tool-running-pulse {
+    0%, 100% {
+        opacity: 1;
+        transform: scale(1);
+    }
+    50% {
+        opacity: 0.5;
+        transform: scale(0.8);
+    }
+}
+
+.tool-status-badge.tool-status-completed {
+    background: rgba(40, 167, 69, 0.12);
+    color: var(--success-color);
+    border: 1px solid rgba(40, 167, 69, 0.3);
+}
+
+.tool-status-badge.tool-status-failed {
+    background: rgba(220, 53, 69, 0.12);
+    color: var(--error-color);
+    border: 1px solid rgba(220, 53, 69, 0.3);
+}
+
+/* 工具调用项状态样式 */
+.timeline-item-tool_call.tool-call-running {
+    border-left-color: var(--accent-color);
+    background: rgba(0, 102, 255, 0.08);
+}
+
+.timeline-item-tool_call.tool-call-completed {
+    border-left-color: var(--success-color);
+    background: rgba(40, 167, 69, 0.08);
+}
+
+.timeline-item-tool_call.tool-call-failed {
+    border-left-color: var(--error-color);
+    background: rgba(220, 53, 69, 0.08);
+}
+
 /* 活跃任务栏 */
 .active-tasks-bar {
     display: none;
@@ -4060,7 +4129,7 @@ header {
 .attack-chain-container {
     flex: 1;
     min-height: 0;
-    background: #ffffff;  // 使用纯白色背景，提高节点对比度
+    background: #ffffff; 
     border: none;
     position: relative;
     overflow: hidden;
