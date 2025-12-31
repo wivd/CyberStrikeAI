@@ -1008,7 +1008,11 @@ const monitorState = {
     lastFetchedAt: null,
     pagination: {
         page: 1,
-        pageSize: 20,
+        pageSize: (() => {
+            // 从 localStorage 读取保存的每页显示数量，默认为 20
+            const saved = localStorage.getItem('monitorPageSize');
+            return saved ? parseInt(saved, 10) : 20;
+        })(),
         total: 0,
         totalPages: 0
     }
@@ -1019,6 +1023,39 @@ function openMonitorPanel() {
     if (typeof switchPage === 'function') {
         switchPage('mcp-monitor');
     }
+    // 初始化每页显示数量选择器
+    initializeMonitorPageSize();
+}
+
+// 初始化每页显示数量选择器
+function initializeMonitorPageSize() {
+    const pageSizeSelect = document.getElementById('monitor-page-size');
+    if (pageSizeSelect) {
+        pageSizeSelect.value = monitorState.pagination.pageSize;
+    }
+}
+
+// 改变每页显示数量
+function changeMonitorPageSize() {
+    const pageSizeSelect = document.getElementById('monitor-page-size');
+    if (!pageSizeSelect) {
+        return;
+    }
+    
+    const newPageSize = parseInt(pageSizeSelect.value, 10);
+    if (isNaN(newPageSize) || newPageSize <= 0) {
+        return;
+    }
+    
+    // 保存到 localStorage
+    localStorage.setItem('monitorPageSize', newPageSize.toString());
+    
+    // 更新状态
+    monitorState.pagination.pageSize = newPageSize;
+    monitorState.pagination.page = 1; // 重置到第一页
+    
+    // 刷新数据
+    refreshMonitorPanel(1);
 }
 
 function closeMonitorPanel() {
@@ -1076,6 +1113,9 @@ async function refreshMonitorPanel(page = null) {
         renderMonitorStats(monitorState.stats, monitorState.lastFetchedAt);
         renderMonitorExecutions(monitorState.executions, currentStatusFilter);
         renderMonitorPagination();
+        
+        // 初始化每页显示数量选择器
+        initializeMonitorPageSize();
     } catch (error) {
         console.error('刷新监控面板失败:', error);
         if (statsContainer) {
@@ -1150,6 +1190,9 @@ async function refreshMonitorPanelWithFilter(statusFilter = 'all', toolFilter = 
         renderMonitorStats(monitorState.stats, monitorState.lastFetchedAt);
         renderMonitorExecutions(monitorState.executions, statusFilter);
         renderMonitorPagination();
+        
+        // 初始化每页显示数量选择器
+        initializeMonitorPageSize();
     } catch (error) {
         console.error('刷新监控面板失败:', error);
         if (statsContainer) {
@@ -1250,6 +1293,11 @@ function renderMonitorExecutions(executions = [], statusFilter = 'all') {
         } else {
             container.innerHTML = '<div class="monitor-empty">暂无执行记录</div>';
         }
+        // 隐藏批量操作栏
+        const batchActions = document.getElementById('monitor-batch-actions');
+        if (batchActions) {
+            batchActions.style.display = 'none';
+        }
         return;
     }
 
@@ -1266,6 +1314,9 @@ function renderMonitorExecutions(executions = [], statusFilter = 'all') {
             const executionId = escapeHtml(exec.id || '');
             return `
                 <tr>
+                    <td>
+                        <input type="checkbox" class="monitor-execution-checkbox" value="${executionId}" onchange="updateBatchActionsState()" />
+                    </td>
                     <td>${toolName}</td>
                     <td><span class="${statusClass}">${statusLabel}</span></td>
                     <td>${startTime}</td>
@@ -1299,6 +1350,9 @@ function renderMonitorExecutions(executions = [], statusFilter = 'all') {
         <table class="monitor-table">
             <thead>
                 <tr>
+                    <th style="width: 40px;">
+                        <input type="checkbox" id="monitor-select-all" onchange="toggleSelectAll(this)" />
+                    </th>
                     <th>工具</th>
                     <th>状态</th>
                     <th>开始时间</th>
@@ -1317,6 +1371,9 @@ function renderMonitorExecutions(executions = [], statusFilter = 'all') {
     } else {
         container.appendChild(tableContainer);
     }
+    
+    // 更新批量操作状态
+    updateBatchActionsState();
 }
 
 // 渲染监控面板分页控件
@@ -1342,7 +1399,16 @@ function renderMonitorPagination() {
     
     pagination.innerHTML = `
         <div class="pagination-info">
-            显示 ${startItem}-${endItem} / 共 ${total} 条记录
+            <span>显示 ${startItem}-${endItem} / 共 ${total} 条记录</span>
+            <label class="pagination-page-size">
+                每页显示
+                <select id="monitor-page-size" onchange="changeMonitorPageSize()">
+                    <option value="10" ${pageSize === 10 ? 'selected' : ''}>10</option>
+                    <option value="20" ${pageSize === 20 ? 'selected' : ''}>20</option>
+                    <option value="50" ${pageSize === 50 ? 'selected' : ''}>50</option>
+                    <option value="100" ${pageSize === 100 ? 'selected' : ''}>100</option>
+                </select>
+            </label>
         </div>
         <div class="pagination-controls">
             <button class="btn-secondary" onclick="refreshMonitorPanel(1)" ${page === 1 || total === 0 ? 'disabled' : ''}>首页</button>
@@ -1354,6 +1420,9 @@ function renderMonitorPagination() {
     `;
     
     container.appendChild(pagination);
+    
+    // 初始化每页显示数量选择器
+    initializeMonitorPageSize();
 }
 
 // 删除执行记录
@@ -1385,6 +1454,117 @@ async function deleteExecution(executionId) {
     } catch (error) {
         console.error('删除执行记录失败:', error);
         alert('删除执行记录失败: ' + error.message);
+    }
+}
+
+// 更新批量操作状态
+function updateBatchActionsState() {
+    const checkboxes = document.querySelectorAll('.monitor-execution-checkbox:checked');
+    const selectedCount = checkboxes.length;
+    const batchActions = document.getElementById('monitor-batch-actions');
+    const selectedCountSpan = document.getElementById('monitor-selected-count');
+    
+    if (selectedCount > 0) {
+        if (batchActions) {
+            batchActions.style.display = 'flex';
+        }
+        if (selectedCountSpan) {
+            selectedCountSpan.textContent = `已选择 ${selectedCount} 项`;
+        }
+    } else {
+        if (batchActions) {
+            batchActions.style.display = 'none';
+        }
+    }
+    
+    // 更新全选复选框状态
+    const selectAllCheckbox = document.getElementById('monitor-select-all');
+    if (selectAllCheckbox) {
+        const allCheckboxes = document.querySelectorAll('.monitor-execution-checkbox');
+        const allChecked = allCheckboxes.length > 0 && Array.from(allCheckboxes).every(cb => cb.checked);
+        selectAllCheckbox.checked = allChecked;
+        selectAllCheckbox.indeterminate = selectedCount > 0 && selectedCount < allCheckboxes.length;
+    }
+}
+
+// 切换全选
+function toggleSelectAll(checkbox) {
+    const checkboxes = document.querySelectorAll('.monitor-execution-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = checkbox.checked;
+    });
+    updateBatchActionsState();
+}
+
+// 全选
+function selectAllExecutions() {
+    const checkboxes = document.querySelectorAll('.monitor-execution-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = true;
+    });
+    const selectAllCheckbox = document.getElementById('monitor-select-all');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.checked = true;
+        selectAllCheckbox.indeterminate = false;
+    }
+    updateBatchActionsState();
+}
+
+// 取消全选
+function deselectAllExecutions() {
+    const checkboxes = document.querySelectorAll('.monitor-execution-checkbox');
+    checkboxes.forEach(cb => {
+        cb.checked = false;
+    });
+    const selectAllCheckbox = document.getElementById('monitor-select-all');
+    if (selectAllCheckbox) {
+        selectAllCheckbox.checked = false;
+        selectAllCheckbox.indeterminate = false;
+    }
+    updateBatchActionsState();
+}
+
+// 批量删除执行记录
+async function batchDeleteExecutions() {
+    const checkboxes = document.querySelectorAll('.monitor-execution-checkbox:checked');
+    if (checkboxes.length === 0) {
+        alert('请先选择要删除的执行记录');
+        return;
+    }
+    
+    const ids = Array.from(checkboxes).map(cb => cb.value);
+    const count = ids.length;
+    
+    // 确认删除
+    if (!confirm(`确定要删除选中的 ${count} 条执行记录吗？此操作不可恢复。`)) {
+        return;
+    }
+    
+    try {
+        const response = await apiFetch('/api/monitor/executions', {
+            method: 'DELETE',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ ids: ids })
+        });
+        
+        if (!response.ok) {
+            const error = await response.json().catch(() => ({}));
+            throw new Error(error.error || '批量删除执行记录失败');
+        }
+        
+        const result = await response.json().catch(() => ({}));
+        const deletedCount = result.deleted || count;
+        
+        // 删除成功后刷新当前页面
+        const currentPage = monitorState.pagination.page;
+        await refreshMonitorPanel(currentPage);
+        
+        alert(`成功删除 ${deletedCount} 条执行记录`);
+    } catch (error) {
+        console.error('批量删除执行记录失败:', error);
+        alert('批量删除执行记录失败: ' + error.message);
     }
 }
 

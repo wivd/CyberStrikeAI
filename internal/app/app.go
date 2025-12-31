@@ -448,6 +448,7 @@ func setupRoutes(
 		protected.GET("/monitor", monitorHandler.Monitor)
 		protected.GET("/monitor/execution/:id", monitorHandler.GetExecution)
 		protected.DELETE("/monitor/execution/:id", monitorHandler.DeleteExecution)
+		protected.DELETE("/monitor/executions", monitorHandler.DeleteExecutions)
 		protected.GET("/monitor/stats", monitorHandler.GetStats)
 
 		// 配置管理

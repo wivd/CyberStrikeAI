@@ -281,6 +281,117 @@ func (db *DB) DeleteToolExecution(id string) error {
 	return nil
 }
 
+// DeleteToolExecutions 批量删除工具执行记录
+func (db *DB) DeleteToolExecutions(ids []string) error {
+	if len(ids) == 0 {
+		return nil
+	}
+
+	// 构建 IN 查询的占位符
+	placeholders := make([]string, len(ids))
+	args := make([]interface{}, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	query := `DELETE FROM tool_executions WHERE id IN (` + strings.Join(placeholders, ",") + `)`
+	_, err := db.Exec(query, args...)
+	if err != nil {
+		db.logger.Error("批量删除工具执行记录失败", zap.Error(err), zap.Int("count", len(ids)))
+		return err
+	}
+	return nil
+}
+
+// GetToolExecutionsByIds 根据ID列表获取工具执行记录（用于批量删除前获取统计信息）
+func (db *DB) GetToolExecutionsByIds(ids []string) ([]*mcp.ToolExecution, error) {
+	if len(ids) == 0 {
+		return []*mcp.ToolExecution{}, nil
+	}
+
+	// 构建 IN 查询的占位符
+	placeholders := make([]string, len(ids))
+	args := make([]interface{}, len(ids))
+	for i, id := range ids {
+		placeholders[i] = "?"
+		args[i] = id
+	}
+
+	query := `
+		SELECT id, tool_name, arguments, status, result, error, start_time, end_time, duration_ms
+		FROM tool_executions
+		WHERE id IN (` + strings.Join(placeholders, ",") + `)
+	`
+
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, err
+	}
+	defer rows.Close()
+
+	var executions []*mcp.ToolExecution
+	for rows.Next() {
+		var exec mcp.ToolExecution
+		var argsJSON string
+		var resultJSON sql.NullString
+		var errorText sql.NullString
+		var endTime sql.NullTime
+		var durationMs sql.NullInt64
+
+		err := rows.Scan(
+			&exec.ID,
+			&exec.ToolName,
+			&argsJSON,
+			&exec.Status,
+			&resultJSON,
+			&errorText,
+			&exec.StartTime,
+			&endTime,
+			&durationMs,
+		)
+		if err != nil {
+			db.logger.Warn("加载执行记录失败", zap.Error(err))
+			continue
+		}
+
+		// 解析参数
+		if err := json.Unmarshal([]byte(argsJSON), &exec.Arguments); err != nil {
+			db.logger.Warn("解析执行参数失败", zap.Error(err))
+			exec.Arguments = make(map[string]interface{})
+		}
+
+		// 解析结果
+		if resultJSON.Valid && resultJSON.String != "" {
+			var result mcp.ToolResult
+			if err := json.Unmarshal([]byte(resultJSON.String), &result); err != nil {
+				db.logger.Warn("解析执行结果失败", zap.Error(err))
+			} else {
+				exec.Result = &result
+			}
+		}
+
+		// 设置错误
+		if errorText.Valid {
+			exec.Error = errorText.String
+		}
+
+		// 设置结束时间
+		if endTime.Valid {
+			exec.EndTime = &endTime.Time
+		}
+
+		// 设置持续时间
+		if durationMs.Valid {
+			exec.Duration = time.Duration(durationMs.Int64) * time.Millisecond
+		}
+
+		executions = append(executions, &exec)
+	}
+
+	return executions, nil
+}
+
 // SaveToolStats 保存工具统计信息
 func (db *DB) SaveToolStats(toolName string, stats *mcp.ToolStats) error {
 	var lastCallTime sql.NullTime

@@ -3036,6 +3036,9 @@ header {
 .pagination-info {
     font-size: 0.875rem;
     color: var(--text-secondary);
+    display: flex;
+    align-items: center;
+    gap: 16px;
 }
 
 .pagination-controls {
@@ -3054,6 +3057,36 @@ header {
 .pagination-btn.disabled {
     opacity: 0.5;
     cursor: not-allowed;
+}
+
+.pagination-page-size {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+    font-size: 0.875rem;
+    color: var(--text-secondary);
+}
+
+.pagination-page-size select {
+    padding: 4px 8px;
+    border-radius: 6px;
+    border: 1px solid var(--border-color);
+    background: var(--bg-secondary);
+    color: var(--text-primary);
+    font-size: 0.875rem;
+    cursor: pointer;
+    transition: all 0.2s;
+    min-width: 60px;
+}
+
+.pagination-page-size select:focus {
+    outline: none;
+    border-color: var(--accent-color);
+    box-shadow: 0 0 0 2px rgba(0, 102, 255, 0.1);
+}
+
+.pagination-page-size select:hover {
+    border-color: var(--accent-color);
 }
 
 .pagination-btn {
@@ -3412,6 +3445,50 @@ header {
     background: rgba(220, 53, 69, 0.1);
     border-color: rgba(220, 53, 69, 0.4);
     color: #c82333;
+}
+
+.monitor-batch-actions {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 12px 16px;
+    background: var(--bg-secondary);
+    border: 1px solid var(--border-color);
+    border-radius: 12px;
+    margin-bottom: 16px;
+    gap: 16px;
+}
+
+.monitor-batch-actions .batch-actions-info {
+    display: flex;
+    align-items: center;
+    color: var(--text-secondary);
+    font-size: 0.875rem;
+    font-weight: 500;
+}
+
+.monitor-batch-actions .batch-actions-buttons {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+}
+
+.monitor-batch-actions .batch-actions-buttons button {
+    padding: 6px 12px;
+    font-size: 0.75rem;
+}
+
+.monitor-execution-checkbox {
+    cursor: pointer;
+    width: 18px;
+    height: 18px;
+    accent-color: var(--accent-color);
+}
+
+.monitor-table th:first-child,
+.monitor-table td:first-child {
+    text-align: center;
+    width: 40px;
 }
 
 .monitor-vuln-container {

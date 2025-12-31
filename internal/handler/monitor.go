@@ -307,4 +307,79 @@ func (h *MonitorHandler) DeleteExecution(c *gin.Context) {
 	c.JSON(http.StatusOK, gin.H{"message": "执行记录已删除（如果存在）"})
 }
 
+// DeleteExecutions 批量删除执行记录
+func (h *MonitorHandler) DeleteExecutions(c *gin.Context) {
+	var request struct {
+		IDs []string `json:"ids"`
+	}
+
+	if err := c.ShouldBindJSON(&request); err != nil {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "请求参数无效: " + err.Error()})
+		return
+	}
+
+	if len(request.IDs) == 0 {
+		c.JSON(http.StatusBadRequest, gin.H{"error": "执行记录ID列表不能为空"})
+		return
+	}
+
+	// 如果使用数据库，先获取执行记录信息，然后删除并更新统计
+	if h.db != nil {
+		// 先获取执行记录信息（用于更新统计）
+		executions, err := h.db.GetToolExecutionsByIds(request.IDs)
+		if err != nil {
+			h.logger.Error("获取执行记录失败", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "获取执行记录失败: " + err.Error()})
+			return
+		}
+
+		// 按工具名称分组统计需要减少的数量
+		toolStats := make(map[string]struct {
+			totalCalls   int
+			successCalls int
+			failedCalls  int
+		})
+
+		for _, exec := range executions {
+			if exec.ToolName == "" {
+				continue
+			}
+
+			stats := toolStats[exec.ToolName]
+			stats.totalCalls++
+			if exec.Status == "failed" {
+				stats.failedCalls++
+			} else if exec.Status == "completed" {
+				stats.successCalls++
+			}
+			toolStats[exec.ToolName] = stats
+		}
+
+		// 批量删除执行记录
+		err = h.db.DeleteToolExecutions(request.IDs)
+		if err != nil {
+			h.logger.Error("批量删除执行记录失败", zap.Error(err), zap.Int("count", len(request.IDs)))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "批量删除执行记录失败: " + err.Error()})
+			return
+		}
+
+		// 更新统计信息（减少相应的计数）
+		for toolName, stats := range toolStats {
+			if err := h.db.DecreaseToolStats(toolName, stats.totalCalls, stats.successCalls, stats.failedCalls); err != nil {
+				h.logger.Warn("更新统计信息失败", zap.Error(err), zap.String("toolName", toolName))
+				// 不返回错误，因为记录已经删除成功
+			}
+		}
+
+		h.logger.Info("批量删除执行记录成功", zap.Int("count", len(request.IDs)))
+		c.JSON(http.StatusOK, gin.H{"message": "成功删除执行记录", "deleted": len(executions)})
+		return
+	}
+
+	// 如果不使用数据库，尝试从内存中删除（内部MCP服务器）
+	// 注意：内存中的记录可能已经被清理，所以这里只记录日志
+	h.logger.Info("尝试批量删除内存中的执行记录", zap.Int("count", len(request.IDs)))
+	c.JSON(http.StatusOK, gin.H{"message": "执行记录已删除（如果存在）"})
+}
+
 

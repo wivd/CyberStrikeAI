@@ -292,6 +292,16 @@
                                         </label>
                                     </div>
                                 </div>
+                                <div id="monitor-batch-actions" class="monitor-batch-actions" style="display: none;">
+                                    <div class="batch-actions-info">
+                                        <span id="monitor-selected-count">已选择 0 项</span>
+                                    </div>
+                                    <div class="batch-actions-buttons">
+                                        <button class="btn-secondary" onclick="selectAllExecutions()">全选</button>
+                                        <button class="btn-secondary" onclick="deselectAllExecutions()">取消全选</button>
+                                        <button class="btn-secondary btn-delete" onclick="batchDeleteExecutions()">批量删除</button>
+                                    </div>
+                                </div>
                                 <div id="monitor-executions" class="monitor-table-container">
                                     <div class="monitor-empty">加载中...</div>
                                 </div>
@@ -1005,7 +1015,7 @@
                 <span class="modal-close" onclick="closeCreateGroupModal()">&times;</span>
             </div>
             <div class="modal-body create-group-body">
-                <p class="create-group-description">分组功能可将对话集中归类管理,并支持自定义指令,让对话更加井然有序。</p>
+                <p class="create-group-description">分组功能可将对话集中归类管理,让对话更加井然有序。</p>
                 <div class="create-group-input-wrapper">
                     <span class="group-icon-input">😊</span>
                     <input type="text" id="create-group-name-input" placeholder="请输入分组名称" />
