@@ -1,6 +1,7 @@
 package handler
 
 import (
+	"context"
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
@@ -36,15 +37,17 @@ type BatchTaskQueue struct {
 
 // BatchTaskManager 批量任务管理器
 type BatchTaskManager struct {
-	db     *database.DB
-	queues map[string]*BatchTaskQueue
-	mu     sync.RWMutex
+	db            *database.DB
+	queues        map[string]*BatchTaskQueue
+	taskCancels   map[string]context.CancelFunc // 存储每个队列当前任务的取消函数
+	mu            sync.RWMutex
 }
 
 // NewBatchTaskManager 创建批量任务管理器
 func NewBatchTaskManager() *BatchTaskManager {
 	return &BatchTaskManager{
-		queues: make(map[string]*BatchTaskQueue),
+		queues:      make(map[string]*BatchTaskQueue),
+		taskCancels: make(map[string]context.CancelFunc),
 	}
 }
 
@@ -520,17 +523,29 @@ func (m *BatchTaskManager) MoveToNextTask(queueID string) {
 	}
 }
 
+// SetTaskCancel 设置当前任务的取消函数
+func (m *BatchTaskManager) SetTaskCancel(queueID string, cancel context.CancelFunc) {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if cancel != nil {
+		m.taskCancels[queueID] = cancel
+	} else {
+		delete(m.taskCancels, queueID)
+	}
+}
+
 // CancelQueue 取消队列
 func (m *BatchTaskManager) CancelQueue(queueID string) bool {
 	m.mu.Lock()
-	defer m.mu.Unlock()
 
 	queue, exists := m.queues[queueID]
 	if !exists {
+		m.mu.Unlock()
 		return false
 	}
 
 	if queue.Status == "completed" || queue.Status == "cancelled" {
+		m.mu.Unlock()
 		return false
 	}
 
@@ -549,6 +564,14 @@ func (m *BatchTaskManager) CancelQueue(queueID string) bool {
 			}
 		}
 	}
+
+	// 取消当前正在执行的任务
+	if cancel, exists := m.taskCancels[queueID]; exists {
+		cancel()
+		delete(m.taskCancels, queueID)
+	}
+
+	m.mu.Unlock()
 
 	// 同步队列状态到数据库
 	if m.db != nil {
@@ -569,6 +592,9 @@ func (m *BatchTaskManager) DeleteQueue(queueID string) bool {
 	if !exists {
 		return false
 	}
+
+	// 清理取消函数
+	delete(m.taskCancels, queueID)
 
 	// 从数据库删除
 	if m.db != nil {

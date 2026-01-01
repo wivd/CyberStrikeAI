@@ -543,8 +543,13 @@ func (h *AgentHandler) AgentLoopStream(c *gin.Context) {
 		h.logger.Error("Agent Loop执行失败", zap.Error(err))
 		cause := context.Cause(baseCtx)
 
+		// 检查是否是用户取消：context的cause是ErrTaskCancelled
+		// 如果cause是ErrTaskCancelled，无论错误是什么类型（包括context.Canceled），都视为用户取消
+		// 这样可以正确处理在API调用过程中被取消的情况
+		isCancelled := errors.Is(cause, ErrTaskCancelled)
+
 		switch {
-		case errors.Is(cause, ErrTaskCancelled):
+		case isCancelled:
 			taskStatus = "cancelled"
 			cancelMsg := "任务已被用户取消，后续操作已停止。"
 
@@ -972,12 +977,46 @@ func (h *AgentHandler) executeBatchQueue(queueID string) {
 		h.logger.Info("执行批量任务", zap.String("queueId", queueID), zap.String("taskId", task.ID), zap.String("message", task.Message), zap.String("conversationId", conversationID))
 
 		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Minute)
+		// 存储取消函数，以便在取消队列时能够取消当前任务
+		h.batchTaskManager.SetTaskCancel(queueID, cancel)
 		result, err := h.agent.AgentLoopWithConversationID(ctx, task.Message, []agent.ChatMessage{}, conversationID)
+		// 任务执行完成，清理取消函数
+		h.batchTaskManager.SetTaskCancel(queueID, nil)
 		cancel()
 
 		if err != nil {
-			h.logger.Error("批量任务执行失败", zap.String("queueId", queueID), zap.String("taskId", task.ID), zap.String("conversationId", conversationID), zap.Error(err))
-			h.batchTaskManager.UpdateTaskStatus(queueID, task.ID, "failed", "", err.Error())
+			// 检查是否是取消错误
+			// 1. 直接检查是否是 context.Canceled（包括包装后的错误）
+			// 2. 检查错误消息中是否包含"context canceled"或"cancelled"关键字
+			// 3. 检查 result.Response 中是否包含取消相关的消息
+			errStr := err.Error()
+			isCancelled := errors.Is(err, context.Canceled) ||
+				strings.Contains(strings.ToLower(errStr), "context canceled") ||
+				strings.Contains(strings.ToLower(errStr), "context cancelled") ||
+				(result != nil && result.Response != "" && (strings.Contains(result.Response, "任务已被取消") || strings.Contains(result.Response, "任务执行中断")))
+
+			if isCancelled {
+				h.logger.Info("批量任务被取消", zap.String("queueId", queueID), zap.String("taskId", task.ID), zap.String("conversationId", conversationID))
+				cancelMsg := "任务已被用户取消，后续操作已停止。"
+				// 如果result中有更具体的取消消息，使用它
+				if result != nil && result.Response != "" && (strings.Contains(result.Response, "任务已被取消") || strings.Contains(result.Response, "任务执行中断")) {
+					cancelMsg = result.Response
+				}
+				_, errMsg := h.db.AddMessage(conversationID, "assistant", cancelMsg, nil)
+				if errMsg != nil {
+					h.logger.Warn("保存取消消息失败", zap.String("queueId", queueID), zap.String("taskId", task.ID), zap.Error(errMsg))
+				}
+				// 保存ReAct数据（如果存在）
+				if result != nil && (result.LastReActInput != "" || result.LastReActOutput != "") {
+					if err := h.db.SaveReActData(conversationID, result.LastReActInput, result.LastReActOutput); err != nil {
+						h.logger.Warn("保存取消任务的ReAct数据失败", zap.String("queueId", queueID), zap.String("taskId", task.ID), zap.Error(err))
+					}
+				}
+				h.batchTaskManager.UpdateTaskStatusWithConversationID(queueID, task.ID, "cancelled", cancelMsg, "", conversationID)
+			} else {
+				h.logger.Error("批量任务执行失败", zap.String("queueId", queueID), zap.String("taskId", task.ID), zap.String("conversationId", conversationID), zap.Error(err))
+				h.batchTaskManager.UpdateTaskStatus(queueID, task.ID, "failed", "", err.Error())
+			}
 		} else {
 			h.logger.Info("批量任务执行成功", zap.String("queueId", queueID), zap.String("taskId", task.ID), zap.String("conversationId", conversationID))
 

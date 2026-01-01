@@ -1041,7 +1041,7 @@ async function cancelBatchQueue() {
     const queueId = batchQueuesState.currentQueueId;
     if (!queueId) return;
     
-    if (!confirm('确定要取消这个批量任务队列吗？正在执行的任务会完成，但后续任务将不会执行。')) {
+    if (!confirm('确定要取消这个批量任务队列吗？当前正在执行的任务将被停止，后续任务也不会执行。')) {
         return;
     }
     
