@@ -357,6 +357,11 @@ CyberStrikeAI has joined [404Starlink](https://github.com/knownsec/404StarLink)
 </div>
 
 
+
+## Star History
+
+[![Star History Chart](https://api.star-history.com/svg?repos=Ed1s0nZ/CyberStrikeAI&type=date&legend=top-left)](https://www.star-history.com/#Ed1s0nZ/CyberStrikeAI&type=date&legend=top-left)
+
 ---
 
 Need help or want to contribute? Open an issue or PR—community tooling additions are welcome!
