@@ -343,6 +343,11 @@ Build an attack chain for the latest engagement and export the node list with se
 - 2025-11-14 – Optimized tool lookups (O(1)), execution record cleanup, and DB pagination.
 - 2025-11-13 – Added web authentication, settings UI, and MCP stdio mode integration.
 
+## Star History
+
+![Star History Chart](https://api.star-history.com/svg?repos=Ed1s0nZ/CyberStrikeAI&type=date&legend=top-left)
+
+
 ## 404Starlink 
 
 <img src="./img/404StarLinkLogo.png" width="30%">
@@ -356,9 +361,6 @@ CyberStrikeAI has joined [404Starlink](https://github.com/knownsec/404StarLink)
   </a>
 </div>
 
-
-## Stargazers over time
-[![Stargazers over time](https://starchart.cc/Ed1s0nZ/CyberStrikeAI.svg?variant=adaptive)](https://starchart.cc/Ed1s0nZ/CyberStrikeAI)
 
 
 ---
