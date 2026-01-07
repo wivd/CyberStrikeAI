@@ -893,6 +893,11 @@ function renderBatchQueues() {
         return;
     }
     
+    // 确保分页控件可见（重置之前可能设置的 display: none）
+    if (pagination) {
+        pagination.style.display = '';
+    }
+    
     list.innerHTML = queues.map(queue => {
         const statusMap = {
             'pending': { text: '待执行', class: 'batch-queue-status-pending' },
@@ -973,8 +978,12 @@ function renderBatchQueuesPagination() {
     // 如果没有数据，不显示分页控件
     if (total === 0) {
         paginationContainer.innerHTML = '';
+        paginationContainer.style.display = 'none';
         return;
     }
+    
+    // 确保分页控件可见
+    paginationContainer.style.display = '';
     
     // 即使只有一页，也显示分页信息（总数和每页条数选择器）
     
