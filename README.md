@@ -65,35 +65,40 @@ CyberStrikeAI ships with 100+ curated tools covering the whole kill chain:
 
 ## Basic Usage
 
-### Quick Start
-1. **Clone & install**
-   ```bash
-   git clone https://github.com/Ed1s0nZ/CyberStrikeAI.git
-   cd CyberStrikeAI-main
-   go mod download
-   ```
-2. **Set up the Python tooling stack (required for the YAML tools directory)**  
-   A large portion of `tools/*.yaml` recipes wrap Python utilities (`api-fuzzer`, `http-framework-test`, `install-python-package`, etc.). Create the project-local virtual environment once and install the shared dependencies:
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   pip install -r requirements.txt
-   ```
-   The helper tools automatically detect this `venv` (or any already active `$VIRTUAL_ENV`), so the default `env_name` works out of the box unless you intentionally supply another target.
-3. **Configure OpenAI-compatible access**  
-   Either open the in-app `Settings` panel after launch or edit `config.yaml`:
-   ```yaml
-   openai:
-     api_key: "sk-your-key"
-     base_url: "https://api.openai.com/v1"
-     model: "gpt-4o"
-   auth:
-     password: ""                  # empty = auto-generate & log once
-     session_duration_hours: 12
-   security:
-     tools_dir: "tools"
-   ```
-4. **Install the tooling you need (optional)**
+### Quick Start (One-Command Deployment)
+
+**Prerequisites:**
+- Go 1.21+ ([Install](https://go.dev/dl/))
+- Python 3.10+ ([Install](https://www.python.org/downloads/))
+
+**One-Command Deployment:**
+```bash
+git clone https://github.com/Ed1s0nZ/CyberStrikeAI.git
+cd CyberStrikeAI-main
+chmod +x run.sh && ./run.sh
+```
+
+The `run.sh` script will automatically:
+- ✅ Check and validate Go & Python environments
+- ✅ Create Python virtual environment
+- ✅ Install Python dependencies
+- ✅ Download Go dependencies
+- ✅ Build the project
+- ✅ Start the server
+
+**First-Time Configuration:**
+1. **Configure OpenAI-compatible API** (required before first use)
+   - Open http://localhost:8080 after launch
+   - Go to `Settings` → Fill in your API credentials:
+     ```yaml
+     openai:
+       api_key: "sk-your-key"
+       base_url: "https://api.openai.com/v1"  # or https://api.deepseek.com/v1
+       model: "gpt-4o"  # or deepseek-chat, claude-3-opus, etc.
+     ```
+   - Or edit `config.yaml` directly before launching
+2. **Login** - Use the auto-generated password shown in the console (or set `auth.password` in `config.yaml`)
+3. **Install security tools (optional)** - Install tools as needed:
    ```bash
    # macOS
    brew install nmap sqlmap nuclei httpx gobuster feroxbuster subfinder amass
@@ -101,15 +106,18 @@ CyberStrikeAI ships with 100+ curated tools covering the whole kill chain:
    sudo apt-get install nmap sqlmap nuclei httpx gobuster feroxbuster
    ```
    AI automatically falls back to alternatives when a tool is missing.
-5. **Launch**
-   ```bash
-   chmod +x run.sh && ./run.sh
-   # or
-   go run cmd/server/main.go
-   # or
-   go build -o cyberstrike-ai cmd/server/main.go
-   ```
-6. **Open the console** at http://localhost:8080, log in with the generated password, and start chatting.
+
+**Alternative Launch Methods:**
+```bash
+# Direct Go run (requires manual setup)
+go run cmd/server/main.go
+
+# Manual build
+go build -o cyberstrike-ai cmd/server/main.go
+./cyberstrike-ai
+```
+
+**Note:** The Python virtual environment (`venv/`) is automatically created and managed by `run.sh`. Tools that require Python (like `api-fuzzer`, `http-framework-test`, etc.) will automatically use this environment.
 
 ### Core Workflows
 - **Conversation testing** – Natural-language prompts trigger toolchains with streaming SSE output.

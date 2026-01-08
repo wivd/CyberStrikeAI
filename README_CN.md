@@ -64,35 +64,40 @@ CyberStrikeAI 是一款 **AI 原生安全测试平台**，基于 Go 构建，集
 
 ## 基础使用
 
-### 快速上手
-1. **获取代码并安装依赖**
-   ```bash
-   git clone https://github.com/Ed1s0nZ/CyberStrikeAI.git
-   cd CyberStrikeAI-main
-   go mod download
-   ```
-2. **初始化 Python 虚拟环境（tools 目录所需）**  
-   `tools/*.yaml` 中大量工具（如 `api-fuzzer`、`http-framework-test`、`install-python-package` 等）依赖 Python 生态。首次进入项目根目录时请创建本地虚拟环境并安装依赖：
-   ```bash
-   python3 -m venv venv
-   source venv/bin/activate
-   pip install -r requirements.txt
-   ```
-   两个 Python 专用工具（`install-python-package` 与 `execute-python-script`）会自动检测该 `venv`（或已经激活的 `$VIRTUAL_ENV`），因此默认 `env_name` 即可满足大多数场景。
-3. **配置模型与鉴权**  
-   启动后在 Web 端 `Settings` 填写，或直接编辑 `config.yaml`：
-   ```yaml
-   openai:
-     api_key: "sk-your-key"
-     base_url: "https://api.openai.com/v1"
-     model: "gpt-4o"
-   auth:
-     password: ""                 # 为空则首次启动自动生成强口令
-     session_duration_hours: 12
-   security:
-     tools_dir: "tools"
-   ```
-4. **按需安装安全工具（可选）**
+### 快速上手（一条命令部署）
+
+**环境要求：**
+- Go 1.21+ ([下载安装](https://go.dev/dl/))
+- Python 3.10+ ([下载安装](https://www.python.org/downloads/))
+
+**一条命令部署：**
+```bash
+git clone https://github.com/Ed1s0nZ/CyberStrikeAI.git
+cd CyberStrikeAI-main
+chmod +x run.sh && ./run.sh
+```
+
+`run.sh` 脚本会自动完成：
+- ✅ 检查并验证 Go 和 Python 环境
+- ✅ 创建 Python 虚拟环境
+- ✅ 安装 Python 依赖包
+- ✅ 下载 Go 依赖模块
+- ✅ 编译构建项目
+- ✅ 启动服务器
+
+**首次配置：**
+1. **配置 AI 模型 API**（首次使用前必填）
+   - 启动后访问 http://localhost:8080
+   - 进入 `设置` → 填写 API 配置信息：
+     ```yaml
+     openai:
+       api_key: "sk-your-key"
+       base_url: "https://api.openai.com/v1"  # 或 https://api.deepseek.com/v1
+       model: "gpt-4o"  # 或 deepseek-chat, claude-3-opus 等
+     ```
+   - 或启动前直接编辑 `config.yaml` 文件
+2. **登录系统** - 使用控制台显示的自动生成密码（或在 `config.yaml` 中设置 `auth.password`）
+3. **安装安全工具（可选）** - 按需安装所需工具：
    ```bash
    # macOS
    brew install nmap sqlmap nuclei httpx gobuster feroxbuster subfinder amass
@@ -100,15 +105,18 @@ CyberStrikeAI 是一款 **AI 原生安全测试平台**，基于 Go 构建，集
    sudo apt-get install nmap sqlmap nuclei httpx gobuster feroxbuster
    ```
    未安装的工具会自动跳过或改用替代方案。
-5. **启动服务**
-   ```bash
-   chmod +x run.sh && ./run.sh
-   # 或
-   go run cmd/server/main.go
-   # 或
-   go build -o cyberstrike-ai cmd/server/main.go
-   ```
-6. **浏览器访问** http://localhost:8080 ，使用日志中提示的密码登录并开始对话。
+
+**其他启动方式：**
+```bash
+# 直接运行（需手动配置环境）
+go run cmd/server/main.go
+
+# 手动编译
+go build -o cyberstrike-ai cmd/server/main.go
+./cyberstrike-ai
+```
+
+**说明：** Python 虚拟环境（`venv/`）由 `run.sh` 自动创建和管理。需要 Python 的工具（如 `api-fuzzer`、`http-framework-test` 等）会自动使用该环境。
 
 ### 常用流程
 - **对话测试**：自然语言触发多步工具编排，SSE 实时输出。
