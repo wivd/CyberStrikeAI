@@ -457,6 +457,7 @@ async function updateIndexProgress() {
         const indexedItems = status.indexed_items || 0;
         const progressPercent = status.progress_percent || 0;
         const isComplete = status.is_complete || false;
+        const lastError = status.last_error || '';
         
         if (totalItems === 0) {
             // 没有知识项，隐藏进度条
@@ -470,6 +471,58 @@ async function updateIndexProgress() {
         
         // 显示进度条
         progressContainer.style.display = 'block';
+        
+        // 如果有错误信息，显示错误
+        if (lastError) {
+            progressContainer.innerHTML = `
+                <div class="knowledge-index-progress-error" style="
+                    background: #fee;
+                    border: 1px solid #fcc;
+                    border-radius: 8px;
+                    padding: 16px;
+                    margin-bottom: 16px;
+                ">
+                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 20px; margin-right: 8px;">❌</span>
+                        <span style="font-weight: bold; color: #c00;">索引构建失败</span>
+                    </div>
+                    <div style="color: #666; font-size: 14px; margin-bottom: 12px; line-height: 1.5;">
+                        ${escapeHtml(lastError)}
+                    </div>
+                    <div style="color: #999; font-size: 12px; margin-bottom: 12px;">
+                        可能的原因：嵌入模型配置错误、API密钥无效、余额不足等。请检查配置后重试。
+                    </div>
+                    <div style="display: flex; gap: 8px;">
+                        <button onclick="rebuildKnowledgeIndex()" style="
+                            background: #007bff;
+                            color: white;
+                            border: none;
+                            padding: 6px 12px;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            font-size: 13px;
+                        ">重试</button>
+                        <button onclick="stopIndexProgressPolling()" style="
+                            background: #6c757d;
+                            color: white;
+                            border: none;
+                            padding: 6px 12px;
+                            border-radius: 4px;
+                            cursor: pointer;
+                            font-size: 13px;
+                        ">关闭</button>
+                    </div>
+                </div>
+            `;
+            // 停止轮询
+            if (indexProgressInterval) {
+                clearInterval(indexProgressInterval);
+                indexProgressInterval = null;
+            }
+            // 显示错误通知
+            showNotification('索引构建失败: ' + lastError.substring(0, 100), 'error');
+            return;
+        }
         
         if (isComplete) {
             progressContainer.innerHTML = `
@@ -503,8 +556,46 @@ async function updateIndexProgress() {
             }
         }
     } catch (error) {
-        // 静默失败
-        console.debug('获取索引状态失败:', error);
+        // 显示错误信息
+        console.error('获取索引状态失败:', error);
+        const progressContainer = document.getElementById('knowledge-index-progress');
+        if (progressContainer) {
+            progressContainer.style.display = 'block';
+            progressContainer.innerHTML = `
+                <div class="knowledge-index-progress-error" style="
+                    background: #fee;
+                    border: 1px solid #fcc;
+                    border-radius: 8px;
+                    padding: 16px;
+                    margin-bottom: 16px;
+                ">
+                    <div style="display: flex; align-items: center; margin-bottom: 8px;">
+                        <span style="font-size: 20px; margin-right: 8px;">⚠️</span>
+                        <span style="font-weight: bold; color: #c00;">无法获取索引状态</span>
+                    </div>
+                    <div style="color: #666; font-size: 14px;">
+                        无法连接到服务器获取索引状态，请检查网络连接或刷新页面。
+                    </div>
+                </div>
+            `;
+        }
+        // 停止轮询
+        if (indexProgressInterval) {
+            clearInterval(indexProgressInterval);
+            indexProgressInterval = null;
+        }
+    }
+}
+
+// 停止索引进度轮询
+function stopIndexProgressPolling() {
+    if (indexProgressInterval) {
+        clearInterval(indexProgressInterval);
+        indexProgressInterval = null;
+    }
+    const progressContainer = document.getElementById('knowledge-index-progress');
+    if (progressContainer) {
+        progressContainer.style.display = 'none';
     }
 }
 

@@ -57,6 +57,7 @@ type ConfigHandler struct {
 	appUpdater                 AppUpdater                  // App更新器（可选）
 	logger                     *zap.Logger
 	mu                         sync.RWMutex
+	lastEmbeddingConfig        *config.EmbeddingConfig     // 上一次的嵌入模型配置（用于检测变更）
 }
 
 // AttackChainUpdater 攻击链处理器更新接口
@@ -72,15 +73,26 @@ type AgentUpdater interface {
 
 // NewConfigHandler 创建新的配置处理器
 func NewConfigHandler(configPath string, cfg *config.Config, mcpServer *mcp.Server, executor *security.Executor, agent AgentUpdater, attackChainHandler AttackChainUpdater, externalMCPMgr *mcp.ExternalMCPManager, logger *zap.Logger) *ConfigHandler {
+	// 保存初始的嵌入模型配置（如果知识库已启用）
+	var lastEmbeddingConfig *config.EmbeddingConfig
+	if cfg.Knowledge.Enabled {
+		lastEmbeddingConfig = &config.EmbeddingConfig{
+			Provider: cfg.Knowledge.Embedding.Provider,
+			Model:    cfg.Knowledge.Embedding.Model,
+			BaseURL:  cfg.Knowledge.Embedding.BaseURL,
+			APIKey:   cfg.Knowledge.Embedding.APIKey,
+		}
+	}
 	return &ConfigHandler{
-		configPath:         configPath,
-		config:             cfg,
-		mcpServer:          mcpServer,
-		executor:           executor,
-		agent:              agent,
-		attackChainHandler: attackChainHandler,
-		externalMCPMgr:     externalMCPMgr,
-		logger:             logger,
+		configPath:          configPath,
+		config:              cfg,
+		mcpServer:           mcpServer,
+		executor:            executor,
+		agent:               agent,
+		attackChainHandler:  attackChainHandler,
+		externalMCPMgr:      externalMCPMgr,
+		logger:              logger,
+		lastEmbeddingConfig: lastEmbeddingConfig,
 	}
 }
 
@@ -522,6 +534,15 @@ func (h *ConfigHandler) UpdateConfig(c *gin.Context) {
 
 	// 更新Knowledge配置
 	if req.Knowledge != nil {
+		// 保存旧的嵌入模型配置（用于检测变更）
+		if h.config.Knowledge.Enabled {
+			h.lastEmbeddingConfig = &config.EmbeddingConfig{
+				Provider: h.config.Knowledge.Embedding.Provider,
+				Model:    h.config.Knowledge.Embedding.Model,
+				BaseURL:  h.config.Knowledge.Embedding.BaseURL,
+				APIKey:   h.config.Knowledge.Embedding.APIKey,
+			}
+		}
 		h.config.Knowledge = *req.Knowledge
 		h.logger.Info("更新Knowledge配置",
 			zap.Bool("enabled", h.config.Knowledge.Enabled),
@@ -676,9 +697,54 @@ func (h *ConfigHandler) ApplyConfig(c *gin.Context) {
 		h.logger.Info("知识库动态初始化完成，工具已注册")
 	}
 
+	// 检查嵌入模型配置是否变更（需要在锁外执行，避免阻塞）
+	var needReinitKnowledge bool
+	var reinitKnowledgeInitializer KnowledgeInitializer
+	h.mu.RLock()
+	if h.config.Knowledge.Enabled && h.knowledgeInitializer != nil && h.lastEmbeddingConfig != nil {
+		// 检查嵌入模型配置是否变更
+		currentEmbedding := h.config.Knowledge.Embedding
+		if currentEmbedding.Provider != h.lastEmbeddingConfig.Provider ||
+			currentEmbedding.Model != h.lastEmbeddingConfig.Model ||
+			currentEmbedding.BaseURL != h.lastEmbeddingConfig.BaseURL ||
+			currentEmbedding.APIKey != h.lastEmbeddingConfig.APIKey {
+			needReinitKnowledge = true
+			reinitKnowledgeInitializer = h.knowledgeInitializer
+			h.logger.Info("检测到嵌入模型配置变更，需要重新初始化知识库组件",
+				zap.String("old_model", h.lastEmbeddingConfig.Model),
+				zap.String("new_model", currentEmbedding.Model),
+				zap.String("old_base_url", h.lastEmbeddingConfig.BaseURL),
+				zap.String("new_base_url", currentEmbedding.BaseURL),
+			)
+		}
+	}
+	h.mu.RUnlock()
+
+	// 如果需要重新初始化知识库（嵌入模型配置变更），在锁外执行
+	if needReinitKnowledge {
+		h.logger.Info("开始重新初始化知识库组件（嵌入模型配置已变更）")
+		if _, err := reinitKnowledgeInitializer(); err != nil {
+			h.logger.Error("重新初始化知识库失败", zap.Error(err))
+			c.JSON(http.StatusInternalServerError, gin.H{"error": "重新初始化知识库失败: " + err.Error()})
+			return
+		}
+		h.logger.Info("知识库组件重新初始化完成")
+	}
+
 	// 现在获取写锁，执行快速的操作
 	h.mu.Lock()
 	defer h.mu.Unlock()
+
+	// 如果重新初始化了知识库，更新嵌入模型配置记录
+	if needReinitKnowledge && h.config.Knowledge.Enabled {
+		h.lastEmbeddingConfig = &config.EmbeddingConfig{
+			Provider: h.config.Knowledge.Embedding.Provider,
+			Model:    h.config.Knowledge.Embedding.Model,
+			BaseURL:  h.config.Knowledge.Embedding.BaseURL,
+			APIKey:   h.config.Knowledge.Embedding.APIKey,
+		}
+		h.logger.Info("已更新嵌入模型配置记录")
+	}
 
 	// 重新注册工具（根据新的启用状态）
 	h.logger.Info("重新注册工具")
@@ -722,20 +788,30 @@ func (h *ConfigHandler) ApplyConfig(c *gin.Context) {
 		h.logger.Info("AttackChainHandler配置已更新")
 	}
 
-	// 更新检索器配置（如果知识库启用）
-	if h.config.Knowledge.Enabled && h.retrieverUpdater != nil {
-		retrievalConfig := &knowledge.RetrievalConfig{
-			TopK:                h.config.Knowledge.Retrieval.TopK,
-			SimilarityThreshold: h.config.Knowledge.Retrieval.SimilarityThreshold,
-			HybridWeight:        h.config.Knowledge.Retrieval.HybridWeight,
+		// 更新检索器配置（如果知识库启用）
+		if h.config.Knowledge.Enabled && h.retrieverUpdater != nil {
+			retrievalConfig := &knowledge.RetrievalConfig{
+				TopK:                h.config.Knowledge.Retrieval.TopK,
+				SimilarityThreshold: h.config.Knowledge.Retrieval.SimilarityThreshold,
+				HybridWeight:        h.config.Knowledge.Retrieval.HybridWeight,
+			}
+			h.retrieverUpdater.UpdateConfig(retrievalConfig)
+			h.logger.Info("检索器配置已更新",
+				zap.Int("top_k", retrievalConfig.TopK),
+				zap.Float64("similarity_threshold", retrievalConfig.SimilarityThreshold),
+				zap.Float64("hybrid_weight", retrievalConfig.HybridWeight),
+			)
 		}
-		h.retrieverUpdater.UpdateConfig(retrievalConfig)
-		h.logger.Info("检索器配置已更新",
-			zap.Int("top_k", retrievalConfig.TopK),
-			zap.Float64("similarity_threshold", retrievalConfig.SimilarityThreshold),
-			zap.Float64("hybrid_weight", retrievalConfig.HybridWeight),
-		)
-	}
+
+		// 更新嵌入模型配置记录（如果知识库启用）
+		if h.config.Knowledge.Enabled {
+			h.lastEmbeddingConfig = &config.EmbeddingConfig{
+				Provider: h.config.Knowledge.Embedding.Provider,
+				Model:    h.config.Knowledge.Embedding.Model,
+				BaseURL:  h.config.Knowledge.Embedding.BaseURL,
+				APIKey:   h.config.Knowledge.Embedding.APIKey,
+			}
+		}
 
 	h.logger.Info("配置已应用",
 		zap.Int("tools_count", len(h.config.Security.Tools)),

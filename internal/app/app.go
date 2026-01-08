@@ -214,23 +214,53 @@ func New(cfg *config.Config, log *logger.Logger) (*App, error) {
 				return
 			}
 
-			if hasIndex {
-				// 如果已有索引，只索引新添加或更新的项
-				if len(itemsToIndex) > 0 {
-					log.Logger.Info("检测到已有知识库索引，开始增量索引", zap.Int("count", len(itemsToIndex)))
-					ctx := context.Background()
-					for _, itemID := range itemsToIndex {
-						if err := knowledgeIndexer.IndexItem(ctx, itemID); err != nil {
-							log.Logger.Warn("索引知识项失败", zap.String("itemId", itemID), zap.Error(err))
-							continue
+				if hasIndex {
+					// 如果已有索引，只索引新添加或更新的项
+					if len(itemsToIndex) > 0 {
+						log.Logger.Info("检测到已有知识库索引，开始增量索引", zap.Int("count", len(itemsToIndex)))
+						ctx := context.Background()
+						consecutiveFailures := 0
+						var firstFailureItemID string
+						var firstFailureError error
+						failedCount := 0
+						
+						for _, itemID := range itemsToIndex {
+							if err := knowledgeIndexer.IndexItem(ctx, itemID); err != nil {
+								failedCount++
+								consecutiveFailures++
+								
+								if consecutiveFailures == 1 {
+									firstFailureItemID = itemID
+									firstFailureError = err
+									log.Logger.Warn("索引知识项失败", zap.String("itemId", itemID), zap.Error(err))
+								}
+								
+								// 如果连续失败2次，立即停止增量索引
+								if consecutiveFailures >= 2 {
+									log.Logger.Error("连续索引失败次数过多，立即停止增量索引",
+										zap.Int("consecutiveFailures", consecutiveFailures),
+										zap.Int("totalItems", len(itemsToIndex)),
+										zap.String("firstFailureItemId", firstFailureItemID),
+										zap.Error(firstFailureError),
+									)
+									break
+								}
+								continue
+							}
+							
+							// 成功时重置连续失败计数
+							if consecutiveFailures > 0 {
+								consecutiveFailures = 0
+								firstFailureItemID = ""
+								firstFailureError = nil
+							}
 						}
+						log.Logger.Info("增量索引完成", zap.Int("totalItems", len(itemsToIndex)), zap.Int("failedCount", failedCount))
+					} else {
+						log.Logger.Info("检测到已有知识库索引，没有需要索引的新项或更新项")
 					}
-					log.Logger.Info("增量索引完成", zap.Int("totalItems", len(itemsToIndex)))
-				} else {
-					log.Logger.Info("检测到已有知识库索引，没有需要索引的新项或更新项")
+					return
 				}
-				return
-			}
 
 			// 只有在没有索引时才自动重建
 			log.Logger.Info("未检测到知识库索引，开始自动构建索引")
@@ -934,13 +964,43 @@ func initializeKnowledge(
 			if len(itemsToIndex) > 0 {
 				logger.Info("检测到已有知识库索引，开始增量索引", zap.Int("count", len(itemsToIndex)))
 				ctx := context.Background()
+				consecutiveFailures := 0
+				var firstFailureItemID string
+				var firstFailureError error
+				failedCount := 0
+				
 				for _, itemID := range itemsToIndex {
 					if err := knowledgeIndexer.IndexItem(ctx, itemID); err != nil {
-						logger.Warn("索引知识项失败", zap.String("itemId", itemID), zap.Error(err))
+						failedCount++
+						consecutiveFailures++
+						
+						if consecutiveFailures == 1 {
+							firstFailureItemID = itemID
+							firstFailureError = err
+							logger.Warn("索引知识项失败", zap.String("itemId", itemID), zap.Error(err))
+						}
+						
+						// 如果连续失败2次，立即停止增量索引
+						if consecutiveFailures >= 2 {
+							logger.Error("连续索引失败次数过多，立即停止增量索引",
+								zap.Int("consecutiveFailures", consecutiveFailures),
+								zap.Int("totalItems", len(itemsToIndex)),
+								zap.String("firstFailureItemId", firstFailureItemID),
+								zap.Error(firstFailureError),
+							)
+							break
+						}
 						continue
 					}
+					
+					// 成功时重置连续失败计数
+					if consecutiveFailures > 0 {
+						consecutiveFailures = 0
+						firstFailureItemID = ""
+						firstFailureError = nil
+					}
 				}
-				logger.Info("增量索引完成", zap.Int("totalItems", len(itemsToIndex)))
+				logger.Info("增量索引完成", zap.Int("totalItems", len(itemsToIndex)), zap.Int("failedCount", failedCount))
 			} else {
 				logger.Info("检测到已有知识库索引，没有需要索引的新项或更新项")
 			}

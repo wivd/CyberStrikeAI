@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"net/http"
+	"time"
 
 	"cyberstrike-ai/internal/database"
 	"cyberstrike-ai/internal/knowledge"
@@ -336,14 +337,54 @@ func (h *KnowledgeHandler) ScanKnowledgeBase(c *gin.Context) {
 	go func() {
 		ctx := context.Background()
 		h.logger.Info("开始增量索引", zap.Int("count", len(itemsToIndex)))
+		failedCount := 0
+		consecutiveFailures := 0
+		var firstFailureItemID string
+		var firstFailureError error
+		
 		for i, itemID := range itemsToIndex {
 			if err := h.indexer.IndexItem(ctx, itemID); err != nil {
-				h.logger.Warn("索引知识项失败", zap.String("itemId", itemID), zap.Error(err))
+				failedCount++
+				consecutiveFailures++
+				
+				// 只在第一个失败时记录详细日志
+				if consecutiveFailures == 1 {
+					firstFailureItemID = itemID
+					firstFailureError = err
+					h.logger.Warn("索引知识项失败",
+						zap.String("itemId", itemID),
+						zap.Int("totalItems", len(itemsToIndex)),
+						zap.Error(err),
+					)
+				}
+				
+				// 如果连续失败2次，立即停止增量索引
+				if consecutiveFailures >= 2 {
+					h.logger.Error("连续索引失败次数过多，立即停止增量索引",
+						zap.Int("consecutiveFailures", consecutiveFailures),
+						zap.Int("totalItems", len(itemsToIndex)),
+						zap.Int("processedItems", i+1),
+						zap.String("firstFailureItemId", firstFailureItemID),
+						zap.Error(firstFailureError),
+					)
+					break
+				}
 				continue
 			}
-			h.logger.Info("索引进度", zap.Int("current", i+1), zap.Int("total", len(itemsToIndex)))
+			
+			// 成功时重置连续失败计数
+			if consecutiveFailures > 0 {
+				consecutiveFailures = 0
+				firstFailureItemID = ""
+				firstFailureError = nil
+			}
+			
+			// 减少进度日志频率
+			if (i+1)%10 == 0 || i+1 == len(itemsToIndex) {
+				h.logger.Info("索引进度", zap.Int("current", i+1), zap.Int("total", len(itemsToIndex)), zap.Int("failed", failedCount))
+			}
 		}
-		h.logger.Info("增量索引完成", zap.Int("totalItems", len(itemsToIndex)))
+		h.logger.Info("增量索引完成", zap.Int("totalItems", len(itemsToIndex)), zap.Int("failedCount", failedCount))
 	}()
 
 	c.JSON(http.StatusOK, gin.H{
@@ -394,6 +435,18 @@ func (h *KnowledgeHandler) GetIndexStatus(c *gin.Context) {
 		h.logger.Error("获取索引状态失败", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
 		return
+	}
+
+	// 获取索引器的错误信息
+	if h.indexer != nil {
+		lastError, lastErrorTime := h.indexer.GetLastError()
+		if lastError != "" {
+			// 如果错误是最近发生的（5分钟内），则返回错误信息
+			if time.Since(lastErrorTime) < 5*time.Minute {
+				status["last_error"] = lastError
+				status["last_error_time"] = lastErrorTime.Format(time.RFC3339)
+			}
+		}
 	}
 
 	c.JSON(http.StatusOK, status)

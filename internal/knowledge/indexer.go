@@ -7,6 +7,8 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"sync"
+	"time"
 
 	"github.com/google/uuid"
 	"go.uber.org/zap"
@@ -19,6 +21,12 @@ type Indexer struct {
 	logger    *zap.Logger
 	chunkSize int // 每个块的最大token数（估算）
 	overlap   int // 块之间的重叠token数
+	
+	// 错误跟踪
+	mu           sync.RWMutex
+	lastError    string    // 最近一次错误信息
+	lastErrorTime time.Time // 最近一次错误时间
+	errorCount   int       // 连续错误计数
 }
 
 // NewIndexer 创建新的索引器
@@ -267,13 +275,13 @@ func (idx *Indexer) IndexItem(ctx context.Context, itemID string) error {
 	chunks := idx.ChunkText(content)
 	idx.logger.Info("知识项分块完成", zap.String("itemId", itemID), zap.Int("chunks", len(chunks)))
 
+	// 跟踪该知识项的错误
+	itemErrorCount := 0
+	var firstError error
+	firstErrorChunkIndex := -1
+	
 	// 向量化每个块（包含category和title信息，以便向量检索时能匹配到风险类型）
 	for i, chunk := range chunks {
-		chunkPreview := chunk
-		if len(chunkPreview) > 200 {
-			chunkPreview = chunkPreview[:200] + "..."
-		}
-
 		// 将category和title信息包含到向量化的文本中
 		// 格式："[风险类型: {category}] [标题: {title}]\n{chunk内容}"
 		// 这样向量嵌入就会包含风险类型信息，即使SQL过滤失败，向量相似度也能帮助匹配
@@ -281,13 +289,43 @@ func (idx *Indexer) IndexItem(ctx context.Context, itemID string) error {
 
 		embedding, err := idx.embedder.EmbedText(ctx, textForEmbedding)
 		if err != nil {
-			idx.logger.Warn("向量化失败",
-				zap.String("itemId", itemID),
-				zap.Int("chunkIndex", i),
-				zap.Int("chunkLength", len(chunk)),
-				zap.String("chunkPreview", chunkPreview),
-				zap.Error(err),
-			)
+			itemErrorCount++
+			if firstError == nil {
+				firstError = err
+				firstErrorChunkIndex = i
+				// 只在第一个块失败时记录详细日志
+				chunkPreview := chunk
+				if len(chunkPreview) > 200 {
+					chunkPreview = chunkPreview[:200] + "..."
+				}
+				idx.logger.Warn("向量化失败",
+					zap.String("itemId", itemID),
+					zap.Int("chunkIndex", i),
+					zap.Int("totalChunks", len(chunks)),
+					zap.String("chunkPreview", chunkPreview),
+					zap.Error(err),
+				)
+				
+				// 更新全局错误跟踪
+				errorMsg := fmt.Sprintf("向量化失败 (知识项: %s): %v", itemID, err)
+				idx.mu.Lock()
+				idx.lastError = errorMsg
+				idx.lastErrorTime = time.Now()
+				idx.mu.Unlock()
+			}
+			
+			// 如果连续失败2个块，立即停止处理该知识项（降低阈值，更快停止）
+			// 这样可以避免继续浪费API调用，同时也能更快地检测到配置问题
+			if itemErrorCount >= 2 {
+				idx.logger.Error("知识项连续向量化失败，停止处理",
+					zap.String("itemId", itemID),
+					zap.Int("totalChunks", len(chunks)),
+					zap.Int("failedChunks", itemErrorCount),
+					zap.Int("firstErrorChunkIndex", firstErrorChunkIndex),
+					zap.Error(firstError),
+				)
+				return fmt.Errorf("知识项连续向量化失败 (%d个块失败): %v", itemErrorCount, firstError)
+			}
 			continue
 		}
 
@@ -321,6 +359,13 @@ func (idx *Indexer) HasIndex() (bool, error) {
 
 // RebuildIndex 重建所有索引
 func (idx *Indexer) RebuildIndex(ctx context.Context) error {
+	// 重置错误跟踪
+	idx.mu.Lock()
+	idx.lastError = ""
+	idx.lastErrorTime = time.Time{}
+	idx.errorCount = 0
+	idx.mu.Unlock()
+	
 	rows, err := idx.db.Query("SELECT id FROM knowledge_base_items")
 	if err != nil {
 		return fmt.Errorf("查询知识项失败: %w", err)
@@ -348,14 +393,84 @@ func (idx *Indexer) RebuildIndex(ctx context.Context) error {
 		idx.logger.Info("已清空旧索引，开始重建")
 	}
 
+	failedCount := 0
+	consecutiveFailures := 0
+	maxConsecutiveFailures := 2 // 连续失败2次后立即停止（降低阈值，更快停止）
+	firstFailureItemID := ""
+	var firstFailureError error
+	
 	for i, itemID := range itemIDs {
 		if err := idx.IndexItem(ctx, itemID); err != nil {
-			idx.logger.Warn("索引知识项失败", zap.String("itemId", itemID), zap.Error(err))
+			failedCount++
+			consecutiveFailures++
+			
+			// 只在第一个失败时记录详细日志
+			if consecutiveFailures == 1 {
+				firstFailureItemID = itemID
+				firstFailureError = err
+				idx.logger.Warn("索引知识项失败",
+					zap.String("itemId", itemID),
+					zap.Int("totalItems", len(itemIDs)),
+					zap.Error(err),
+				)
+			}
+			
+			// 如果连续失败过多，可能是配置问题，立即停止索引
+			if consecutiveFailures >= maxConsecutiveFailures {
+				errorMsg := fmt.Sprintf("连续 %d 个知识项索引失败，可能存在配置问题（如嵌入模型配置错误、API密钥无效、余额不足等）。第一个失败项: %s, 错误: %v", consecutiveFailures, firstFailureItemID, firstFailureError)
+				idx.mu.Lock()
+				idx.lastError = errorMsg
+				idx.lastErrorTime = time.Now()
+				idx.mu.Unlock()
+				
+				idx.logger.Error("连续索引失败次数过多，立即停止索引",
+					zap.Int("consecutiveFailures", consecutiveFailures),
+					zap.Int("totalItems", len(itemIDs)),
+					zap.Int("processedItems", i+1),
+					zap.String("firstFailureItemId", firstFailureItemID),
+					zap.Error(firstFailureError),
+				)
+				return fmt.Errorf("连续索引失败次数过多: %v", firstFailureError)
+			}
+			
+			// 如果失败的知识项过多，记录警告但继续处理（降低阈值到30%）
+			if failedCount > len(itemIDs)*3/10 && failedCount == len(itemIDs)*3/10+1 {
+				errorMsg := fmt.Sprintf("索引失败的知识项过多 (%d/%d)，可能存在配置问题。第一个失败项: %s, 错误: %v", failedCount, len(itemIDs), firstFailureItemID, firstFailureError)
+				idx.mu.Lock()
+				idx.lastError = errorMsg
+				idx.lastErrorTime = time.Now()
+				idx.mu.Unlock()
+				
+				idx.logger.Error("索引失败的知识项过多，可能存在配置问题",
+					zap.Int("failedCount", failedCount),
+					zap.Int("totalItems", len(itemIDs)),
+					zap.String("firstFailureItemId", firstFailureItemID),
+					zap.Error(firstFailureError),
+				)
+			}
 			continue
 		}
-		idx.logger.Info("索引进度", zap.Int("current", i+1), zap.Int("total", len(itemIDs)))
+		
+		// 成功时重置连续失败计数和第一个失败信息
+		if consecutiveFailures > 0 {
+			consecutiveFailures = 0
+			firstFailureItemID = ""
+			firstFailureError = nil
+		}
+		
+		// 减少进度日志频率（每10个或每10%记录一次）
+		if (i+1)%10 == 0 || (len(itemIDs) > 0 && (i+1)*100/len(itemIDs)%10 == 0 && (i+1)*100/len(itemIDs) > 0) {
+			idx.logger.Info("索引进度", zap.Int("current", i+1), zap.Int("total", len(itemIDs)), zap.Int("failed", failedCount))
+		}
 	}
 
-	idx.logger.Info("索引重建完成", zap.Int("totalItems", len(itemIDs)))
+	idx.logger.Info("索引重建完成", zap.Int("totalItems", len(itemIDs)), zap.Int("failedCount", failedCount))
 	return nil
+}
+
+// GetLastError 获取最近一次错误信息
+func (idx *Indexer) GetLastError() (string, time.Time) {
+	idx.mu.RLock()
+	defer idx.mu.RUnlock()
+	return idx.lastError, idx.lastErrorTime
 }
