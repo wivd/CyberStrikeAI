@@ -205,7 +205,7 @@ func (db *DB) AddConversationToGroup(conversationID, groupID string) error {
 	if err != nil {
 		return fmt.Errorf("删除对话旧分组关联失败: %w", err)
 	}
-	
+
 	// 然后插入新的分组关联
 	id := uuid.New().String()
 	_, err = db.Exec(
@@ -242,6 +242,78 @@ func (db *DB) GetConversationsByGroup(groupID string) ([]*Conversation, error) {
 	)
 	if err != nil {
 		return nil, fmt.Errorf("查询分组对话失败: %w", err)
+	}
+	defer rows.Close()
+
+	var conversations []*Conversation
+	for rows.Next() {
+		var conv Conversation
+		var createdAt, updatedAt string
+		var pinned int
+		var groupPinned int
+
+		if err := rows.Scan(&conv.ID, &conv.Title, &pinned, &createdAt, &updatedAt, &groupPinned); err != nil {
+			return nil, fmt.Errorf("扫描对话失败: %w", err)
+		}
+
+		// 尝试多种时间格式解析
+		var err1, err2 error
+		conv.CreatedAt, err1 = time.Parse("2006-01-02 15:04:05.999999999-07:00", createdAt)
+		if err1 != nil {
+			conv.CreatedAt, err1 = time.Parse("2006-01-02 15:04:05", createdAt)
+		}
+		if err1 != nil {
+			conv.CreatedAt, _ = time.Parse(time.RFC3339, createdAt)
+		}
+
+		conv.UpdatedAt, err2 = time.Parse("2006-01-02 15:04:05.999999999-07:00", updatedAt)
+		if err2 != nil {
+			conv.UpdatedAt, err2 = time.Parse("2006-01-02 15:04:05", updatedAt)
+		}
+		if err2 != nil {
+			conv.UpdatedAt, _ = time.Parse(time.RFC3339, updatedAt)
+		}
+
+		conv.Pinned = pinned != 0
+
+		conversations = append(conversations, &conv)
+	}
+
+	return conversations, nil
+}
+
+// SearchConversationsByGroup 搜索分组中的对话（按标题和消息内容模糊匹配）
+func (db *DB) SearchConversationsByGroup(groupID string, searchQuery string) ([]*Conversation, error) {
+	// 构建SQL查询，支持按标题和消息内容搜索
+	// 使用 DISTINCT 避免因为一个对话有多条匹配消息而重复
+	query := `SELECT DISTINCT c.id, c.title, COALESCE(c.pinned, 0), c.created_at, c.updated_at, COALESCE(cgm.pinned, 0) as group_pinned
+		 FROM conversations c
+		 INNER JOIN conversation_group_mappings cgm ON c.id = cgm.conversation_id
+		 WHERE cgm.group_id = ?`
+
+	args := []interface{}{groupID}
+
+	// 如果有搜索关键词，添加标题和消息内容搜索条件
+	if searchQuery != "" {
+		searchPattern := "%" + searchQuery + "%"
+		// 搜索标题或消息内容
+		// 使用 LEFT JOIN 连接消息表，这样即使没有消息的对话也能被搜索到（通过标题）
+		query += ` AND (
+			LOWER(c.title) LIKE LOWER(?)
+			OR EXISTS (
+				SELECT 1 FROM messages m 
+				WHERE m.conversation_id = c.id 
+				AND LOWER(m.content) LIKE LOWER(?)
+			)
+		)`
+		args = append(args, searchPattern, searchPattern)
+	}
+
+	query += " ORDER BY COALESCE(cgm.pinned, 0) DESC, c.updated_at DESC"
+
+	rows, err := db.Query(query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("搜索分组对话失败: %w", err)
 	}
 	defer rows.Close()
 

@@ -218,7 +218,7 @@
                                 </button>
                                 <h2 id="group-detail-title" class="group-detail-title"></h2>
                                 <div class="group-detail-actions">
-                                    <button class="group-action-btn" onclick="searchInGroup()" title="搜索">
+                                    <button class="group-action-btn" onclick="toggleGroupSearch()" title="搜索" id="group-search-toggle-btn">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                             <circle cx="11" cy="11" r="8" stroke="currentColor" stroke-width="2"/>
                                             <path d="m21 21-4.35-4.35" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -233,6 +233,17 @@
                                     <button class="group-action-btn delete-btn" onclick="deleteGroup()" title="删除">
                                         <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                                             <path d="M3 6h18M8 6V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2m3 0v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6h14z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/>
+                                        </svg>
+                                    </button>
+                                </div>
+                            </div>
+                            <div id="group-search-container" class="group-search-container" style="display: none;">
+                                <div class="group-search-input-wrapper">
+                                    <input type="text" id="group-search-input" class="group-search-input" placeholder="搜索分组中的对话..." onkeyup="handleGroupSearchInput(event)" oninput="handleGroupSearchInput(event)">
+                                    <button class="group-search-clear-btn" onclick="clearGroupSearch()" title="清除搜索" id="group-search-clear-btn" style="display: none;">
+                                        <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                            <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                                            <path d="m8 8 8 8M16 8l-8 8" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                                         </svg>
                                     </button>
                                 </div>

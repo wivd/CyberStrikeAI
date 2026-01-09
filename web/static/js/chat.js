@@ -5148,7 +5148,8 @@ async function enterGroupDetail(groupId) {
         // 刷新分组列表，确保当前分组高亮显示
         await loadGroups();
 
-        loadGroupConversations(groupId);
+        // 加载分组对话（如果有搜索查询则使用搜索查询）
+        loadGroupConversations(groupId, currentGroupSearchQuery);
     } catch (error) {
         console.error('加载分组失败:', error);
         currentGroupId = null;
@@ -5158,6 +5159,14 @@ async function enterGroupDetail(groupId) {
 // 退出分组详情
 function exitGroupDetail() {
     currentGroupId = null;
+    currentGroupSearchQuery = ''; // 清除搜索状态
+    
+    // 隐藏搜索框并清除搜索内容
+    const searchContainer = document.getElementById('group-search-container');
+    const searchInput = document.getElementById('group-search-input');
+    if (searchContainer) searchContainer.style.display = 'none';
+    if (searchInput) searchInput.value = '';
+    
     const sidebar = document.querySelector('.conversation-sidebar');
     const groupDetailPage = document.getElementById('group-detail-page');
     const chatContainer = document.querySelector('.chat-container');
@@ -5172,7 +5181,7 @@ function exitGroupDetail() {
 }
 
 // 加载分组中的对话
-async function loadGroupConversations(groupId) {
+async function loadGroupConversations(groupId, searchQuery = '') {
     try {
         if (!groupId) {
             console.error('loadGroupConversations: groupId is null or undefined');
@@ -5190,10 +5199,20 @@ async function loadGroupConversations(groupId) {
             console.error('group-conversations-list element not found');
             return;
         }
-        list.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--text-muted);">加载中...</div>';
+        
+        // 显示加载状态
+        if (searchQuery) {
+            list.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--text-muted);">搜索中...</div>';
+        } else {
+            list.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--text-muted);">加载中...</div>';
+        }
 
-        // 确保使用正确的 groupId
-        const url = `/api/groups/${groupId}/conversations`;
+        // 构建URL，如果有搜索关键词则添加search参数
+        let url = `/api/groups/${groupId}/conversations`;
+        if (searchQuery && searchQuery.trim()) {
+            url += '?search=' + encodeURIComponent(searchQuery.trim());
+        }
+        
         const response = await apiFetch(url);
         if (!response.ok) {
             console.error(`Failed to load conversations for group ${groupId}:`, response.statusText);
@@ -5235,7 +5254,11 @@ async function loadGroupConversations(groupId) {
         list.innerHTML = '';
 
         if (groupConvs.length === 0) {
-            list.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--text-muted);">该分组暂无对话</div>';
+            if (searchQuery && searchQuery.trim()) {
+                list.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--text-muted);">未找到匹配的对话</div>';
+            } else {
+                list.innerHTML = '<div style="padding: 40px; text-align: center; color: var(--text-muted);">该分组暂无对话</div>';
+            }
             return;
         }
 
@@ -5631,9 +5654,94 @@ function closeGroupContextMenu() {
 }
 
 
-// 在分组中搜索（占位函数）
-function searchInGroup() {
-    alert('搜索功能待实现');
+// 分组搜索相关变量
+let groupSearchTimer = null;
+let currentGroupSearchQuery = '';
+
+// 切换分组搜索框显示/隐藏
+function toggleGroupSearch() {
+    const searchContainer = document.getElementById('group-search-container');
+    const searchInput = document.getElementById('group-search-input');
+    
+    if (!searchContainer || !searchInput) return;
+    
+    if (searchContainer.style.display === 'none') {
+        searchContainer.style.display = 'block';
+        searchInput.focus();
+    } else {
+        searchContainer.style.display = 'none';
+        clearGroupSearch();
+    }
+}
+
+// 处理分组搜索输入
+function handleGroupSearchInput(event) {
+    // 支持回车键搜索
+    if (event.key === 'Enter') {
+        event.preventDefault();
+        performGroupSearch();
+        return;
+    }
+    
+    // 支持ESC键关闭搜索
+    if (event.key === 'Escape') {
+        clearGroupSearch();
+        toggleGroupSearch();
+        return;
+    }
+    
+    const searchInput = document.getElementById('group-search-input');
+    const clearBtn = document.getElementById('group-search-clear-btn');
+    
+    if (!searchInput) return;
+    
+    const query = searchInput.value.trim();
+    
+    // 显示/隐藏清除按钮
+    if (clearBtn) {
+        clearBtn.style.display = query ? 'block' : 'none';
+    }
+    
+    // 防抖搜索
+    if (groupSearchTimer) {
+        clearTimeout(groupSearchTimer);
+    }
+    
+    groupSearchTimer = setTimeout(() => {
+        performGroupSearch();
+    }, 300); // 300ms 防抖
+}
+
+// 执行分组搜索
+async function performGroupSearch() {
+    const searchInput = document.getElementById('group-search-input');
+    if (!searchInput || !currentGroupId) return;
+    
+    const query = searchInput.value.trim();
+    currentGroupSearchQuery = query;
+    
+    // 加载搜索结果
+    await loadGroupConversations(currentGroupId, query);
+}
+
+// 清除分组搜索
+function clearGroupSearch() {
+    const searchInput = document.getElementById('group-search-input');
+    const clearBtn = document.getElementById('group-search-clear-btn');
+    
+    if (searchInput) {
+        searchInput.value = '';
+    }
+    if (clearBtn) {
+        clearBtn.style.display = 'none';
+    }
+    
+    currentGroupSearchQuery = '';
+    
+    // 重新加载分组对话（不搜索）
+    if (currentGroupId) {
+        loadGroupConversations(currentGroupId, '');
+    }
 }
 
 // 初始化时加载分组

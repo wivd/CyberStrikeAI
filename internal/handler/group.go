@@ -189,8 +189,18 @@ type GroupConversation struct {
 // GetGroupConversations 获取分组中的所有对话
 func (h *GroupHandler) GetGroupConversations(c *gin.Context) {
 	groupID := c.Param("id")
+	searchQuery := c.Query("search") // 获取搜索参数
 
-	conversations, err := h.db.GetConversationsByGroup(groupID)
+	var conversations []*database.Conversation
+	var err error
+
+	// 如果有搜索关键词，使用搜索方法；否则使用普通方法
+	if searchQuery != "" {
+		conversations, err = h.db.SearchConversationsByGroup(groupID, searchQuery)
+	} else {
+		conversations, err = h.db.GetConversationsByGroup(groupID)
+	}
+
 	if err != nil {
 		h.logger.Error("获取分组对话失败", zap.Error(err))
 		c.JSON(http.StatusInternalServerError, gin.H{"error": err.Error()})
