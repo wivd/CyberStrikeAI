@@ -14,6 +14,9 @@ const mentionState = {
     selectedIndex: 0,
 };
 
+// IME输入法状态跟踪
+let isComposing = false;
+
 // 输入框草稿保存相关
 const DRAFT_STORAGE_KEY = 'cyberstrike-chat-draft';
 let draftSaveTimer = null;
@@ -85,13 +88,20 @@ function clearChatDraft() {
 function adjustTextareaHeight(textarea) {
     if (!textarea) return;
     
-    // 重置高度以获取准确的scrollHeight
-    textarea.style.height = '44px';
+    // 先重置高度为auto，然后立即设置为固定值，确保能准确获取scrollHeight
+    textarea.style.height = 'auto';
+    // 强制浏览器重新计算布局
+    void textarea.offsetHeight;
     
     // 计算新高度（最小44px，最大不超过300px）
     const scrollHeight = textarea.scrollHeight;
     const newHeight = Math.min(Math.max(scrollHeight, 44), 300);
     textarea.style.height = newHeight + 'px';
+    
+    // 如果内容为空或只有很少内容，立即重置到最小高度
+    if (!textarea.value || textarea.value.trim().length === 0) {
+        textarea.style.height = '44px';
+    }
 }
 
 // 发送消息
@@ -333,7 +343,10 @@ function handleChatInputInput(event) {
     const textarea = event.target;
     updateMentionStateFromInput(textarea);
     // 自动调整输入框高度
-    adjustTextareaHeight(textarea);
+    // 使用requestAnimationFrame确保在DOM更新后立即调整，特别是在删除内容时
+    requestAnimationFrame(() => {
+        adjustTextareaHeight(textarea);
+    });
     // 保存输入内容到localStorage（防抖）
     saveChatDraftDebounced(textarea.value);
 }
@@ -343,6 +356,12 @@ function handleChatInputClick(event) {
 }
 
 function handleChatInputKeydown(event) {
+    // 如果正在使用输入法输入（IME），回车键应该用于确认候选词，而不是发送消息
+    // 使用 event.isComposing 或 isComposing 标志来判断
+    if (event.isComposing || isComposing) {
+        return;
+    }
+
     if (mentionState.active && mentionSuggestionsEl && mentionSuggestionsEl.style.display !== 'none') {
         if (event.key === 'ArrowDown') {
             event.preventDefault();
@@ -816,6 +835,24 @@ function addMessage(role, content, mcpExecutionIds = null, progressId = null, cr
     bubble.innerHTML = formattedContent;
     contentWrapper.appendChild(bubble);
     
+    // 保存原始内容到消息元素，用于复制功能
+    if (role === 'assistant') {
+        messageDiv.dataset.originalContent = content;
+    }
+    
+    // 为助手消息添加复制按钮（复制整个回复内容）- 放在消息气泡右下角
+    if (role === 'assistant') {
+        const copyBtn = document.createElement('button');
+        copyBtn.className = 'message-copy-btn';
+        copyBtn.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M16 1H4c-1.1 0-2 .9-2 2v14h2V3h12V1zm3 4H8c-1.1 0-2 .9-2 2v14c0 1.1.9 2 2 2h11c1.1 0 2-.9 2-2V7c0-1.1-.9-2-2-2zm0 16H8V7h11v14z" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" fill="currentColor"/></svg><span>复制</span>';
+        copyBtn.title = '复制消息内容';
+        copyBtn.onclick = function(e) {
+            e.stopPropagation();
+            copyMessageToClipboard(messageDiv, this);
+        };
+        bubble.appendChild(copyBtn);
+    }
+    
     // 添加时间戳
     const timeDiv = document.createElement('div');
     timeDiv.className = 'message-time';
@@ -883,6 +920,65 @@ function addMessage(role, content, mcpExecutionIds = null, progressId = null, cr
     messagesDiv.appendChild(messageDiv);
     messagesDiv.scrollTop = messagesDiv.scrollHeight;
     return id;
+}
+
+// 复制消息内容到剪贴板（使用原始Markdown格式）
+function copyMessageToClipboard(messageDiv, button) {
+    try {
+        // 获取保存的原始Markdown内容
+        const originalContent = messageDiv.dataset.originalContent;
+        
+        if (!originalContent) {
+            // 如果没有保存原始内容，尝试从渲染后的HTML提取（降级方案）
+            const bubble = messageDiv.querySelector('.message-bubble');
+            if (bubble) {
+                const tempDiv = document.createElement('div');
+                tempDiv.innerHTML = bubble.innerHTML;
+                
+                // 移除复制按钮本身（避免复制按钮文本）
+                const copyBtnInTemp = tempDiv.querySelector('.message-copy-btn');
+                if (copyBtnInTemp) {
+                    copyBtnInTemp.remove();
+                }
+                
+                // 提取纯文本内容
+                let textContent = tempDiv.textContent || tempDiv.innerText || '';
+                textContent = textContent.replace(/\n{3,}/g, '\n\n').trim();
+                
+                navigator.clipboard.writeText(textContent).then(() => {
+                    showCopySuccess(button);
+                }).catch(err => {
+                    console.error('复制失败:', err);
+                    alert('复制失败，请手动选择内容复制');
+                });
+            }
+            return;
+        }
+        
+        // 使用原始Markdown内容
+        navigator.clipboard.writeText(originalContent).then(() => {
+            showCopySuccess(button);
+        }).catch(err => {
+            console.error('复制失败:', err);
+            alert('复制失败，请手动选择内容复制');
+        });
+    } catch (error) {
+        console.error('复制消息时出错:', error);
+        alert('复制失败，请手动选择内容复制');
+    }
+}
+
+// 显示复制成功提示
+function showCopySuccess(button) {
+    if (button) {
+        const originalText = button.innerHTML;
+        button.innerHTML = '<svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M20 6L9 17l-5-5" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"/></svg><span>已复制</span>';
+        button.style.color = '#28a745';
+        setTimeout(() => {
+            button.innerHTML = originalText;
+            button.style.color = '';
+        }, 2000);
+    }
 }
 
 // 渲染过程详情
@@ -1057,6 +1153,13 @@ if (chatInput) {
     chatInput.addEventListener('input', handleChatInputInput);
     chatInput.addEventListener('click', handleChatInputClick);
     chatInput.addEventListener('focus', handleChatInputClick);
+    // IME输入法事件监听，用于跟踪输入法状态
+    chatInput.addEventListener('compositionstart', () => {
+        isComposing = true;
+    });
+    chatInput.addEventListener('compositionend', () => {
+        isComposing = false;
+    });
     chatInput.addEventListener('blur', () => {
         setTimeout(() => {
             if (!chatInput.matches(':focus')) {

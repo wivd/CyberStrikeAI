@@ -1046,6 +1046,9 @@ header {
     min-width: 120px;
     display: flex;
     flex-direction: column;
+    overflow-x: visible;
+    overflow-y: visible;
+    width: 100%;
 }
 
 .message.user .message-content {
@@ -1056,6 +1059,7 @@ header {
 .message.assistant .message-content {
     align-items: flex-start;
     margin-right: auto;
+    min-width: 0;
 }
 
 .message.system .message-content {
@@ -1071,6 +1075,11 @@ header {
     word-break: break-word;
     line-height: 1.6;
     box-shadow: var(--shadow-sm);
+    overflow-x: auto;
+    overflow-y: visible;
+    max-width: 100%;
+    -webkit-overflow-scrolling: touch;
+    position: relative;
 }
 
 /* Markdown 样式 */
@@ -1196,6 +1205,140 @@ header {
 .message.user .message-bubble a {
     color: rgba(255, 255, 255, 0.9);
     text-decoration: underline;
+}
+
+/* Markdown 表格样式 */
+/* 表格本身，允许根据内容自动扩展宽度 */
+.message-bubble table {
+    width: auto;
+    min-width: 100%;
+    border-collapse: collapse;
+    margin: 1em 0;
+    font-size: 0.9em;
+    display: table;
+    table-layout: auto;
+}
+
+/* 确保表格能够超出容器宽度 */
+.message-bubble table * {
+    box-sizing: border-box;
+}
+
+/* 确保表格内容不会被压缩 */
+.message-bubble table colgroup,
+.message-bubble table col {
+    width: auto;
+}
+
+.message-bubble table thead {
+    background: var(--bg-secondary);
+}
+
+.message-bubble table th {
+    padding: 10px 12px;
+    text-align: left;
+    font-weight: 600;
+    color: var(--text-primary);
+    border-bottom: 2px solid var(--border-color);
+    white-space: nowrap;
+    min-width: fit-content;
+}
+
+.message-bubble table td {
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-color);
+    color: var(--text-primary);
+    width: auto;
+    max-width: 200px;
+    min-width: 120px;
+    vertical-align: top;
+    /* 强制不换行，内容会保持在一行，超出部分会溢出（由表格横向滚动处理） */
+    white-space: nowrap !important;
+    overflow: visible;
+    text-overflow: clip;
+}
+
+
+.message-bubble table tbody tr:hover {
+    background: var(--bg-secondary);
+}
+
+.message-bubble table tbody tr:last-child td {
+    border-bottom: none;
+}
+
+/* 消息气泡相对定位，用于放置复制按钮 */
+.message-bubble {
+    position: relative;
+}
+
+/* 消息复制按钮 - 位于消息气泡右下角 */
+.message-copy-btn {
+    position: absolute;
+    bottom: 8px;
+    right: 8px;
+    display: flex;
+    align-items: center;
+    gap: 4px;
+    padding: 6px 12px;
+    background: var(--bg-primary);
+    border: 1px solid var(--border-color);
+    border-radius: 6px;
+    color: var(--text-secondary);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+    z-index: 10;
+    opacity: 0;
+}
+
+.message-bubble:hover .message-copy-btn {
+    opacity: 1;
+}
+
+.message-copy-btn:hover {
+    background: var(--bg-secondary);
+    border-color: var(--accent-color);
+    color: var(--accent-color);
+    box-shadow: 0 2px 8px rgba(0, 102, 255, 0.2);
+}
+
+.message-copy-btn:active {
+    transform: scale(0.95);
+}
+
+.message-copy-btn svg {
+    width: 16px;
+    height: 16px;
+    flex-shrink: 0;
+}
+
+.message-copy-btn span {
+    font-weight: 500;
+}
+
+/* 用户消息中的表格样式 */
+.message.user .message-bubble table {
+    color: rgba(255, 255, 255, 0.95);
+}
+
+.message.user .message-bubble table thead {
+    background: rgba(255, 255, 255, 0.15);
+}
+
+.message.user .message-bubble table th {
+    color: rgba(255, 255, 255, 0.95);
+    border-bottom-color: rgba(255, 255, 255, 0.3);
+}
+
+.message.user .message-bubble table td {
+    color: rgba(255, 255, 255, 0.9);
+    border-bottom-color: rgba(255, 255, 255, 0.2);
+}
+
+.message.user .message-bubble table tbody tr:hover {
+    background: rgba(255, 255, 255, 0.1);
 }
 
 .message.user .message-bubble {
