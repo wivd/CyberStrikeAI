@@ -543,7 +543,8 @@ func (m *ExternalMCPManager) GetToolCount(name string) (int, error) {
 		return 0, nil
 	}
 
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	// 增加超时时间到30秒，因为通过代理连接远程服务器可能需要更长时间
+	ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 	defer cancel()
 
 	tools, err := client.ListTools(ctx)
@@ -570,7 +571,8 @@ func (m *ExternalMCPManager) GetToolCounts() map[string]int {
 			continue
 		}
 
-		ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+		// 增加超时时间到30秒，因为通过代理连接远程服务器可能需要更长时间
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		tools, err := client.ListTools(ctx)
 		cancel()
 

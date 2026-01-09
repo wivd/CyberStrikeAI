@@ -102,6 +102,20 @@ func (c *HTTPMCPClient) Initialize(ctx context.Context) error {
 		return fmt.Errorf("初始化失败: %w", err)
 	}
 
+	// 发送 initialized 通知（MCP 协议要求：收到 initialize 响应后必须发送此通知）
+	notifyReq := Message{
+		ID:      MessageID{value: nil}, // 通知没有 ID
+		Method:  "notifications/initialized",
+		Version: "2.0",
+	}
+	notifyReq.Params = json.RawMessage("{}")
+
+	// 发送通知（不需要等待响应）
+	if err := c.sendNotification(&notifyReq); err != nil {
+		c.logger.Warn("发送 initialized 通知失败", zap.Error(err))
+		// 通知失败不应该导致初始化失败，只记录警告
+	}
+
 	c.setStatus("connected")
 	return nil
 }
@@ -193,6 +207,34 @@ func (c *HTTPMCPClient) sendRequest(ctx context.Context, msg *Message) (*Message
 	}
 
 	return &mcpResp, nil
+}
+
+func (c *HTTPMCPClient) sendNotification(msg *Message) error {
+	// 通知没有 ID，不需要等待响应
+	body, err := json.Marshal(msg)
+	if err != nil {
+		return fmt.Errorf("序列化通知失败: %w", err)
+	}
+
+	// 使用较短的超时发送通知
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, c.url, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("创建HTTP请求失败: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	// 发送通知，不等待响应（通知不需要响应）
+	resp, err := c.client.Do(httpReq)
+	if err != nil {
+		return fmt.Errorf("发送通知失败: %w", err)
+	}
+	resp.Body.Close()
+
+	return nil
 }
 
 func (c *HTTPMCPClient) Close() error {
@@ -289,6 +331,20 @@ func (c *StdioMCPClient) Initialize(ctx context.Context) error {
 		c.setStatus("error")
 		c.Close()
 		return fmt.Errorf("初始化失败: %w", err)
+	}
+
+	// 发送 initialized 通知（MCP 协议要求：收到 initialize 响应后必须发送此通知）
+	notifyReq := Message{
+		ID:      MessageID{value: nil}, // 通知没有 ID
+		Method:  "notifications/initialized",
+		Version: "2.0",
+	}
+	notifyReq.Params = json.RawMessage("{}")
+
+	// 发送通知（不需要等待响应）
+	if err := c.sendNotification(&notifyReq); err != nil {
+		c.logger.Warn("发送 initialized 通知失败", zap.Error(err))
+		// 通知失败不应该导致初始化失败，只记录警告
 	}
 
 	c.setStatus("connected")
@@ -426,6 +482,20 @@ func (c *StdioMCPClient) ListTools(ctx context.Context) ([]Tool, error) {
 	return listResp.Tools, nil
 }
 
+func (c *StdioMCPClient) sendNotification(msg *Message) error {
+	// 通知没有 ID，不需要等待响应
+	if c.encoder == nil {
+		return fmt.Errorf("进程未启动")
+	}
+
+	// 直接发送通知，不等待响应
+	if err := c.encoder.Encode(msg); err != nil {
+		return fmt.Errorf("发送通知失败: %w", err)
+	}
+
+	return nil
+}
+
 func (c *StdioMCPClient) CallTool(ctx context.Context, name string, args map[string]interface{}) (*ToolResult, error) {
 	req := Message{
 		ID:      MessageID{value: uuid.New().String()},
@@ -561,6 +631,20 @@ func (c *SSEMCPClient) Initialize(ctx context.Context) error {
 		c.setStatus("error")
 		c.Close()
 		return fmt.Errorf("初始化失败: %w", err)
+	}
+
+	// 发送 initialized 通知（MCP 协议要求：收到 initialize 响应后必须发送此通知）
+	notifyReq := Message{
+		ID:      MessageID{value: nil}, // 通知没有 ID
+		Method:  "notifications/initialized",
+		Version: "2.0",
+	}
+	notifyReq.Params = json.RawMessage("{}")
+
+	// 发送通知（不需要等待响应）
+	if err := c.sendNotification(&notifyReq); err != nil {
+		c.logger.Warn("发送 initialized 通知失败", zap.Error(err))
+		// 通知失败不应该导致初始化失败，只记录警告
 	}
 
 	c.setStatus("connected")
@@ -834,6 +918,50 @@ func (c *SSEMCPClient) ListTools(ctx context.Context) ([]Tool, error) {
 	}
 
 	return listResp.Tools, nil
+}
+
+func (c *SSEMCPClient) sendNotification(msg *Message) error {
+	// 通知没有 ID，不需要等待响应
+	if c.sseConn == nil {
+		return fmt.Errorf("SSE连接未建立")
+	}
+
+	body, err := json.Marshal(msg)
+	if err != nil {
+		return fmt.Errorf("序列化通知失败: %w", err)
+	}
+
+	// 使用 POST 发送通知（与 sendRequest 类似的逻辑）
+	postURL := c.url
+	if strings.HasSuffix(postURL, "/sse") {
+		postURL = strings.TrimSuffix(postURL, "/sse")
+		postURL += "/message"
+	} else if strings.HasSuffix(postURL, "/events") {
+		postURL = strings.TrimSuffix(postURL, "/events")
+		postURL += "/message"
+	} else if !strings.Contains(postURL, "/message") {
+		postURL = strings.TrimSuffix(postURL, "/")
+		postURL += "/message"
+	}
+
+	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
+	defer cancel()
+
+	httpReq, err := http.NewRequestWithContext(ctx, http.MethodPost, postURL, bytes.NewReader(body))
+	if err != nil {
+		return fmt.Errorf("创建POST请求失败: %w", err)
+	}
+
+	httpReq.Header.Set("Content-Type", "application/json")
+
+	// 发送通知，不等待响应（通知不需要响应）
+	resp, err := c.client.Do(httpReq)
+	if err != nil {
+		return fmt.Errorf("发送通知失败: %w", err)
+	}
+	resp.Body.Close()
+
+	return nil
 }
 
 func (c *SSEMCPClient) CallTool(ctx context.Context, name string, args map[string]interface{}) (*ToolResult, error) {

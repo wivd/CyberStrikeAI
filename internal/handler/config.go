@@ -203,7 +203,8 @@ func (h *ConfigHandler) GetConfig(c *gin.Context) {
 
 	// 获取外部MCP工具
 	if h.externalMCPMgr != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		// 增加超时时间到30秒，因为通过代理连接远程服务器可能需要更长时间
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
 		externalTools, err := h.externalMCPMgr.GetAllTools(ctx)
@@ -375,7 +376,8 @@ func (h *ConfigHandler) GetTools(c *gin.Context) {
 
 	// 获取外部MCP工具
 	if h.externalMCPMgr != nil {
-		ctx, cancel := context.WithTimeout(context.Background(), 10*time.Second)
+		// 增加超时时间到30秒，因为通过代理连接远程服务器可能需要更长时间
+		ctx, cancel := context.WithTimeout(context.Background(), 30*time.Second)
 		defer cancel()
 
 		externalTools, err := h.externalMCPMgr.GetAllTools(ctx)
