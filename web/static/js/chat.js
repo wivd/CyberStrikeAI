@@ -1449,7 +1449,6 @@ async function loadConversations(searchQuery = '') {
             url += '&search=' + encodeURIComponent(searchQuery.trim());
         }
         const response = await apiFetch(url);
-        const conversations = await response.json();
 
         const listContainer = document.getElementById('conversations-list');
         if (!listContainer) {
@@ -1458,6 +1457,14 @@ async function loadConversations(searchQuery = '') {
 
         const emptyStateHtml = '<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.875rem;">暂无历史对话</div>';
         listContainer.innerHTML = '';
+
+        // 如果响应不是200，显示空状态（友好处理，不显示错误）
+        if (!response.ok) {
+            listContainer.innerHTML = emptyStateHtml;
+            return;
+        }
+
+        const conversations = await response.json();
 
         if (!Array.isArray(conversations) || conversations.length === 0) {
             listContainer.innerHTML = emptyStateHtml;
@@ -1533,6 +1540,12 @@ async function loadConversations(searchQuery = '') {
         updateActiveConversation();
     } catch (error) {
         console.error('加载对话列表失败:', error);
+        // 错误时显示空状态，而不是错误提示（更友好的用户体验）
+        const listContainer = document.getElementById('conversations-list');
+        if (listContainer) {
+            const emptyStateHtml = '<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.875rem;">暂无历史对话</div>';
+            listContainer.innerHTML = emptyStateHtml;
+        }
     }
 }
 
@@ -4056,7 +4069,6 @@ async function loadConversationsWithGroups(searchQuery = '') {
             url += '&search=' + encodeURIComponent(searchQuery.trim());
         }
         const response = await apiFetch(url);
-        const conversations = await response.json();
 
         const listContainer = document.getElementById('conversations-list');
         if (!listContainer) {
@@ -4065,6 +4077,14 @@ async function loadConversationsWithGroups(searchQuery = '') {
 
         const emptyStateHtml = '<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.875rem;">暂无历史对话</div>';
         listContainer.innerHTML = '';
+
+        // 如果响应不是200，显示空状态（友好处理，不显示错误）
+        if (!response.ok) {
+            listContainer.innerHTML = emptyStateHtml;
+            return;
+        }
+
+        const conversations = await response.json();
 
         if (!Array.isArray(conversations) || conversations.length === 0) {
             listContainer.innerHTML = emptyStateHtml;
@@ -4136,6 +4156,12 @@ async function loadConversationsWithGroups(searchQuery = '') {
         updateActiveConversation();
     } catch (error) {
         console.error('加载对话列表失败:', error);
+        // 错误时显示空状态，而不是错误提示（更友好的用户体验）
+        const listContainer = document.getElementById('conversations-list');
+        if (listContainer) {
+            const emptyStateHtml = '<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.875rem;">暂无历史对话</div>';
+            listContainer.innerHTML = emptyStateHtml;
+        }
     }
 }
 
@@ -4988,7 +5014,14 @@ let allConversationsForBatch = [];
 async function showBatchManageModal() {
     try {
         const response = await apiFetch('/api/conversations?limit=1000');
-        allConversationsForBatch = await response.json();
+        
+        // 如果响应不是200，使用空数组（友好处理，不显示错误）
+        if (!response.ok) {
+            allConversationsForBatch = [];
+        } else {
+            const data = await response.json();
+            allConversationsForBatch = Array.isArray(data) ? data : [];
+        }
 
         const modal = document.getElementById('batch-manage-modal');
         const countEl = document.getElementById('batch-manage-count');
@@ -5002,7 +5035,17 @@ async function showBatchManageModal() {
         }
     } catch (error) {
         console.error('加载对话列表失败:', error);
-        alert('加载对话列表失败');
+        // 错误时使用空数组，不显示错误提示（更友好的用户体验）
+        allConversationsForBatch = [];
+        const modal = document.getElementById('batch-manage-modal');
+        const countEl = document.getElementById('batch-manage-count');
+        if (countEl) {
+            countEl.textContent = 0;
+        }
+        if (modal) {
+            renderBatchConversations();
+            modal.style.display = 'flex';
+        }
     }
 }
 
