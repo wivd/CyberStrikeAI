@@ -1075,11 +1075,14 @@
     <script src="https://cdn.jsdelivr.net/npm/dompurify@3.0.8/dist/purify.min.js"></script>
     <!-- Cytoscape.js for attack chain visualization -->
     <script src="https://cdn.jsdelivr.net/npm/cytoscape@3.27.0/dist/cytoscape.min.js"></script>
-    <!-- dagre layout dependencies -->
-    <script src="https://cdn.jsdelivr.net/npm/graphlib@2.1.8/dist/graphlib.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/dagre@0.8.5/dist/dagre.min.js"></script>
-    <!-- dagre layout for hierarchical layout -->
-    <script src="https://cdn.jsdelivr.net/npm/cytoscape-dagre@2.5.0/cytoscape-dagre.min.js"></script>
+    <!-- ELK.js for high-quality DAG layout (reduces edge crossings) -->
+    <script src="https://cdn.jsdelivr.net/npm/elkjs@0.9.2/lib/elk.bundled.js"></script>
+    <script>
+        // 确保ELK对象全局可用
+        if (typeof ELK === 'undefined' && typeof elk !== 'undefined') {
+            window.ELK = elk;
+        }
+    </script>
     <!-- 知识项编辑模态框 -->
     <div id="knowledge-item-modal" class="modal">
         <div class="modal-content" style="max-width: 900px;">

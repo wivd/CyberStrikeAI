@@ -2203,14 +2203,11 @@ function renderAttackChain(chainData) {
             textOutlineColor = '#fff';
         }
         
-        // 构建带类型标签的显示文本：使用现代极简的设计风格
-        // 类型标签显示在顶部，使用简洁的格式，通过间距自然分隔
-        const displayLabel = typeBadge + ' ' + typeLabel + '\n\n' + node.label;
-        
+        // 保存节点数据，使用原始标签（样式中会添加类型标签）
         elements.push({
             data: {
                 id: node.id,
-                label: displayLabel,  // 使用包含类型标签的标签
+                label: node.label,  // 原始标签
                 originalLabel: node.label,  // 保存原始标签用于搜索
                 type: nodeType,
                 typeLabel: typeLabel,  // 保存类型标签文本
@@ -2229,9 +2226,13 @@ function renderAttackChain(chainData) {
     
     // 添加边（只添加源节点和目标节点都存在的边）
     const nodeIds = new Set(chainData.nodes.map(node => node.id));
+    
+    // 保存有效的边用于ELK布局
+    const validEdges = [];
     chainData.edges.forEach(edge => {
         // 验证源节点和目标节点是否存在
         if (nodeIds.has(edge.source) && nodeIds.has(edge.target)) {
+            validEdges.push(edge);
             elements.push({
                 data: {
                     id: edge.id,
@@ -2260,202 +2261,175 @@ function renderAttackChain(chainData) {
             {
                 selector: 'node',
                 style: {
-                    'label': 'data(label)',
-                    // 增大节点尺寸，使其更加醒目和美观
-                    // 根据节点类型调整大小，target节点更大（增加高度以容纳类型标签）
+                    // 参考图二：现代化卡片设计，清晰的视觉层次
+                    'label': function(ele) {
+                        const typeLabel = ele.data('typeLabel') || '';
+                        const label = ele.data('label') || '';
+                        // 简洁的两行显示：类型标签 + 内容
+                        return typeLabel + '\n' + label;
+                    },
+                    // 合理的节点尺寸，参考图二
                     'width': function(ele) {
                         const type = ele.data('type');
-                        if (type === 'target') return isComplexGraph ? 380 : 420;
-                        return isComplexGraph ? 360 : 400;
+                        if (type === 'target') return isComplexGraph ? 280 : 320;
+                        if (type === 'vulnerability') return isComplexGraph ? 260 : 300;
+                        return isComplexGraph ? 240 : 280;
                     },
                     'height': function(ele) {
                         const type = ele.data('type');
-                        if (type === 'target') return isComplexGraph ? 180 : 200;
-                        return isComplexGraph ? 170 : 190;
+                        if (type === 'target') return isComplexGraph ? 100 : 120;
+                        if (type === 'vulnerability') return isComplexGraph ? 90 : 110;
+                        return isComplexGraph ? 80 : 100;
                     },
-                    'shape': function(ele) {
-                        // 所有节点都使用圆角矩形
-                        return 'round-rectangle';
-                    },
-                    'background-color': function(ele) {
+                    'shape': 'round-rectangle',
+                    // 现代化背景：白色卡片 + 左侧彩色条
+                    'background-color': '#FFFFFF',
+                    'background-opacity': 1,
+                    // 左侧彩色条效果（通过边框实现）
+                    'border-width': function(ele) {
                         const type = ele.data('type');
-                        const riskScore = ele.data('riskScore') || 0;
-                        
-                        // target节点使用更深的蓝色背景，增强对比度
-                        if (type === 'target') {
-                            return '#e8f4fd';  // 更亮的蓝色背景，提高对比度
-                        }
-                        
-                        // action节点根据执行有效性显示不同颜色
-                        if (type === 'action') {
-                            const metadata = ele.data('metadata') || {};
-                            const findings = metadata.findings || [];
-                            const status = metadata.status || '';
-                            
-                            // 有效执行：有findings且status不是failed_insight
-                            const hasFindings = Array.isArray(findings) && findings.length > 0;
-                            const isFailedInsight = status === 'failed_insight';
-                            
-                            if (hasFindings && !isFailedInsight) {
-                                return '#f5fbf5';  // 更亮的绿色背景，提高对比度
-                            } else {
-                                return '#fafafa';  // 浅灰色背景，与白色文字形成对比
-                            }
-                        }
-                        
-                        // vulnerability节点根据风险分数显示不同颜色，使用更亮的背景
-                        if (type === 'vulnerability') {
-                            if (riskScore >= 80) return '#fff0f0';  // 更亮的红色背景
-                            if (riskScore >= 60) return '#fff5e6';  // 更亮的橙色背景
-                            if (riskScore >= 40) return '#fffef0';  // 更亮的黄色背景
-                            return '#f5fbf5';  // 更亮的绿色背景
-                        }
-                        
-                        return '#ffffff';  // 默认白色背景
+                        return 0;  // 无边框，使用背景色块
                     },
-                    // 根据节点类型和风险分数设置文字颜色，使用更深的颜色提高对比度
-                    // 注意：由于标签包含类型标签和内容，颜色适用于所有文本
-                    'color': function(ele) {
-                        const type = ele.data('type');
-                        const riskScore = ele.data('riskScore') || 0;
-                        
-                        if (type === 'target') {
-                            return '#0d47a1';  // 更深的蓝色文字，提高对比度
-                        }
-                        
-                        // action节点根据执行有效性显示不同文字颜色
-                        if (type === 'action') {
-                            const metadata = ele.data('metadata') || {};
-                            const findings = metadata.findings || [];
-                            const status = metadata.status || '';
-                            
-                            // 有效执行：有findings且status不是failed_insight
-                            const hasFindings = Array.isArray(findings) && findings.length > 0;
-                            const isFailedInsight = status === 'failed_insight';
-                            
-                            if (hasFindings && !isFailedInsight) {
-                                return '#1b5e20';  // 更深的绿色：有效执行，提高对比度
-                            } else {
-                                return '#212121';  // 深灰色：无效执行，提高对比度
-                            }
-                        }
-                        
-                        // vulnerability节点根据风险分数显示不同文字颜色，使用更深的颜色
-                        if (type === 'vulnerability') {
-                            if (riskScore >= 80) return '#b71c1c';  // 更深的红色，提高对比度
-                            if (riskScore >= 60) return '#bf360c';  // 更深的橙色，提高对比度
-                            if (riskScore >= 40) return '#e65100';  // 更深的黄色，提高对比度
-                            return '#33691e';  // 更深的绿色，提高对比度
-                        }
-                        
-                        return '#000000';  // 黑色，最高对比度
-                    },
+                    'border-color': 'transparent',
+                    // 文字样式：清晰易读
+                    'color': '#2C3E50',  // 深蓝灰色，专业感
                     'font-size': function(ele) {
-                        // 进一步增大字体，提高可读性
                         const type = ele.data('type');
-                        if (type === 'target') return isComplexGraph ? '20px' : '22px';
-                        return isComplexGraph ? '19px' : '21px';
+                        if (type === 'target') return isComplexGraph ? '14px' : '16px';
+                        if (type === 'vulnerability') return isComplexGraph ? '13px' : '15px';
+                        return isComplexGraph ? '13px' : '15px';
                     },
-                    'font-weight': 'bold',  // 加粗字体，提高可读性
-                    'font-family': '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif',
+                    'font-weight': '600',  // 中等加粗
+                    'font-family': '-apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, "Microsoft YaHei", sans-serif',
                     'text-valign': 'center',
                     'text-halign': 'center',
                     'text-wrap': 'wrap',
                     'text-max-width': function(ele) {
                         const type = ele.data('type');
-                        if (type === 'target') return isComplexGraph ? '340px' : '380px';
-                        return isComplexGraph ? '320px' : '360px';
+                        if (type === 'target') return isComplexGraph ? '240px' : '280px';
+                        if (type === 'vulnerability') return isComplexGraph ? '220px' : '260px';
+                        return isComplexGraph ? '200px' : '240px';
                     },
                     'text-overflow-wrap': 'anywhere',
-                    'text-margin-y': 5,  // 调整垂直边距以适应多行文本
-                    'padding': '18px',  // 进一步增加内边距，使节点内容更有呼吸感
-                    'line-height': 1.6,  // 增加行高，提高可读性
-                    // 根据节点类型设置边框样式，使用更粗的边框增强视觉效果
-                    'border-width': function(ele) {
-                        const type = ele.data('type');
-                        if (type === 'target') return 6;
-                        return 5;
+                    'text-margin-y': 4,
+                    'padding': '12px 16px',  // 合理的内边距
+                    'line-height': 1.5,
+                    'text-outline-width': 0
+                }
+            },
+            {
+                // 目标节点：蓝色主题
+                selector: 'node[type = "target"]',
+                style: {
+                    'background-color': '#E3F2FD',
+                    'color': '#1565C0',
+                    'border-width': 3,
+                    'border-color': '#2196F3',
+                    'border-style': 'solid'
+                }
+            },
+            {
+                // 行动节点：根据状态显示不同颜色
+                selector: 'node[type = "action"]',
+                style: {
+                    'background-color': function(ele) {
+                        const metadata = ele.data('metadata') || {};
+                        const findings = metadata.findings || [];
+                        const status = metadata.status || '';
+                        const hasFindings = Array.isArray(findings) && findings.length > 0;
+                        const isFailedInsight = status === 'failed_insight';
+                        
+                        if (hasFindings && !isFailedInsight) {
+                            return '#E8F5E9';  // 浅绿色背景
+                        } else {
+                            return '#F5F5F5';  // 浅灰色背景
+                        }
                     },
+                    'color': '#424242',
+                    'border-width': 2,
                     'border-color': function(ele) {
-                        const type = ele.data('type');
-                        const riskScore = ele.data('riskScore') || 0;
+                        const metadata = ele.data('metadata') || {};
+                        const findings = metadata.findings || [];
+                        const status = metadata.status || '';
+                        const hasFindings = Array.isArray(findings) && findings.length > 0;
+                        const isFailedInsight = status === 'failed_insight';
                         
-                        if (type === 'target') {
-                            return '#1565c0';  // 更深的蓝色边框，提高对比度
+                        if (hasFindings && !isFailedInsight) {
+                            return '#4CAF50';  // 绿色边框
+                        } else {
+                            return '#9E9E9E';  // 灰色边框
                         }
-                        
-                        // action节点根据执行有效性显示不同边框颜色
-                        if (type === 'action') {
-                            const metadata = ele.data('metadata') || {};
-                            const findings = metadata.findings || [];
-                            const status = metadata.status || '';
-                            
-                            // 有效执行：有findings且status不是failed_insight
-                            const hasFindings = Array.isArray(findings) && findings.length > 0;
-                            const isFailedInsight = status === 'failed_insight';
-                            
-                            if (hasFindings && !isFailedInsight) {
-                                return '#4caf50';  // 更深的绿色边框：有效执行，提高对比度
-                            } else {
-                                return '#757575';  // 更深的灰色边框：无效执行，提高对比度
-                            }
-                        }
-                        
-                        // vulnerability节点根据风险分数显示不同边框颜色，使用更深的颜色
-                        if (type === 'vulnerability') {
-                            if (riskScore >= 80) return '#b71c1c';  // 更深的红色边框，提高对比度
-                            if (riskScore >= 60) return '#bf360c';  // 更深的橙色边框，提高对比度
-                            if (riskScore >= 40) return '#e65100';  // 更深的黄色边框，提高对比度
-                            return '#33691e';  // 更深的绿色边框，提高对比度
-                        }
-                        
-                        return '#616161';  // 更深的默认灰色边框，提高对比度
                     },
-                    'border-style': 'solid',  // 统一使用实线边框，提高可读性
-                    'overlay-padding': '12px',
-                    // 移除文字轮廓，使用纯色文字
-                    'text-outline-width': 0,
-                    'background-opacity': 1
+                    'border-style': 'solid'
+                }
+            },
+            {
+                // 漏洞节点：根据风险等级显示颜色
+                selector: 'node[type = "vulnerability"]',
+                style: {
+                    'background-color': function(ele) {
+                        const riskScore = ele.data('riskScore') || 0;
+                        if (riskScore >= 80) return '#FFEBEE';
+                        if (riskScore >= 60) return '#FFF3E0';
+                        if (riskScore >= 40) return '#FFFDE7';
+                        return '#E8F5E9';
+                    },
+                    'color': function(ele) {
+                        const riskScore = ele.data('riskScore') || 0;
+                        if (riskScore >= 80) return '#C62828';
+                        if (riskScore >= 60) return '#E65100';
+                        if (riskScore >= 40) return '#F57C00';
+                        return '#2E7D32';
+                    },
+                    'border-width': 3,
+                    'border-color': function(ele) {
+                        const riskScore = ele.data('riskScore') || 0;
+                        if (riskScore >= 80) return '#F44336';
+                        if (riskScore >= 60) return '#FF9800';
+                        if (riskScore >= 40) return '#FFC107';
+                        return '#4CAF50';
+                    },
+                    'border-style': 'solid'
                 }
             },
             {
                 selector: 'edge',
                 style: {
-                    'width': 'mapData(weight, 1, 5, 1.5, 3)',
+                    // 参考图二：简洁清晰的连接线
+                    'width': function(ele) {
+                        const type = ele.data('type');
+                        if (type === 'discovers') return 2.5;  // 发现漏洞的边稍粗
+                        if (type === 'enables') return 2.5;  // 使能关系稍粗
+                        return 2;  // 普通边
+                    },
                     'line-color': function(ele) {
                         const type = ele.data('type');
-                        // 参考图片风格，使用不同颜色和样式
-                        if (type === 'discovers') return '#42a5f5';  // 浅蓝色：action发现vulnerability
-                        if (type === 'targets') return '#1976d2';  // 深蓝色：target指向action（虚线）
-                        if (type === 'enables') return '#e53935';  // 红色：vulnerability间的因果关系
-                        if (type === 'leads_to') return '#616161';  // 灰色：action之间的逻辑顺序
-                        return '#9e9e9e';
+                        if (type === 'discovers') return '#42A5F5';  // 蓝色
+                        if (type === 'targets') return '#42A5F5';  // 蓝色
+                        if (type === 'enables') return '#EF5350';  // 红色
+                        if (type === 'leads_to') return '#90A4AE';  // 灰蓝色
+                        return '#B0BEC5';
                     },
                     'target-arrow-color': function(ele) {
                         const type = ele.data('type');
-                        if (type === 'discovers') return '#42a5f5';
-                        if (type === 'targets') return '#1976d2';
-                        if (type === 'enables') return '#e53935';
-                        if (type === 'leads_to') return '#616161';
-                        return '#9e9e9e';
+                        if (type === 'discovers') return '#42A5F5';
+                        if (type === 'targets') return '#42A5F5';
+                        if (type === 'enables') return '#EF5350';
+                        if (type === 'leads_to') return '#90A4AE';
+                        return '#B0BEC5';
                     },
                     'target-arrow-shape': 'triangle',
-                    // 使用bezier曲线，更美观
-                    'curve-style': 'bezier',
-                    'control-point-step-size': 60,  // 增加步长，让控制点分布更均匀
-                    // 大幅增加控制点距离，避免多条边指向同一节点时箭头重叠
-                    // 使用更大的值确保箭头之间有足够的间距
-                    'control-point-distance': isComplexGraph ? 180 : 150,
-                    'opacity': 0.7,
-                    // 根据边类型设置线条样式：targets使用虚线，其他使用实线
+                    'arrow-scale': 1.2,  // 适中的箭头大小
+                    'curve-style': 'straight',
+                    'opacity': 0.7,  // 适中的不透明度
                     'line-style': function(ele) {
                         const type = ele.data('type');
-                        if (type === 'targets') return 'dashed';  // target相关的边使用虚线
+                        if (type === 'targets') return 'dashed';
                         return 'solid';
                     },
                     'line-dash-pattern': function(ele) {
                         const type = ele.data('type');
-                        if (type === 'targets') return [8, 4];  // 虚线模式
+                        if (type === 'targets') return [8, 4];
                         return [];
                     }
                 }
@@ -2477,8 +2451,7 @@ function renderAttackChain(chainData) {
         boxSelectionEnabled: true
     });
     
-    // 注册dagre布局（确保依赖已加载）
-    let layoutName = 'breadthfirst'; // 默认布局
+    // 使用ELK布局（高质量DAG布局，减少边交叉）
     let layoutOptions = {
         name: 'breadthfirst',
         directed: true,
@@ -2486,456 +2459,114 @@ function renderAttackChain(chainData) {
         padding: 40
     };
     
-    if (typeof cytoscape !== 'undefined' && typeof cytoscapeDagre !== 'undefined') {
+    // 使用ELK.js进行布局计算
+    // elk.bundled.js会暴露ELK对象，可以直接使用new ELK()
+    let elkInstance = null;
+    if (typeof ELK !== 'undefined') {
         try {
-            cytoscape.use(cytoscapeDagre);
-            layoutName = 'dagre';
-            
-            // 动态计算布局参数，基于容器尺寸和节点数量
-            const containerWidth = container ? container.offsetWidth : 1200;
-            const containerHeight = container ? container.offsetHeight : 800;
-            
-            // 计算平均节点宽度（考虑不同类型节点的平均尺寸）
-            const avgNodeWidth = isComplexGraph ? 370 : 410;  // 进一步增大节点尺寸
-            const avgNodeHeight = isComplexGraph ? 175 : 195;
-            
-            // 计算图的层级深度（估算）
-            const estimatedDepth = Math.ceil(Math.log2(Math.max(nodeCount, 2))) + 1;
-            
-            // 动态计算节点水平间距：基于容器宽度和节点数量
-            // 目标：使用容器宽度的95%，让图充分展开
-            const maxLevelWidth = Math.max(1, Math.ceil(nodeCount / estimatedDepth));
-            const targetGraphWidth = containerWidth * 0.95;  // 使用95%的容器宽度，让图更宽
-            // 大幅增加最小间距，确保节点不重叠（考虑节点宽度和标签）
-            const minNodeSep = avgNodeWidth * 1.5;  // 最小间距为节点宽度的1.5倍，确保节点之间有足够空间
-            // 优化间距计算：确保即使节点很多时也有足够的间距
-            const availableWidth = targetGraphWidth - avgNodeWidth * maxLevelWidth;
-            const calculatedNodeSep = Math.max(
-                minNodeSep,
-                Math.min(
-                    availableWidth / Math.max(1, maxLevelWidth - 1),
-                    avgNodeWidth * 3.0  // 最大间距不超过节点宽度的3.0倍，让图更宽
-                )
-            );
-            
-            // 动态计算层级间距：基于容器高度和层级数
-            // 减小垂直间距，让节点更紧凑，同时节点更大更易读
-            const targetGraphHeight = containerHeight * 0.85;
-            const calculatedRankSep = Math.max(
-                avgNodeHeight * 1.3,  // 减小到节点高度的1.3倍，让节点更紧凑
-                Math.min(
-                    targetGraphHeight / Math.max(estimatedDepth - 1, 1),
-                    avgNodeHeight * 2.0  // 最大不超过节点高度的2.0倍
-                )
-            );
-            
-            // 边间距：基于节点间距的合理比例
-            // 增加边间距，确保边之间有足够的空间，避免视觉混乱
-            const calculatedEdgeSep = Math.max(50, calculatedNodeSep * 0.4);
-            
-            // 根据图的复杂度调整布局参数，优化可读性和空间利用率
-            layoutOptions = {
-                name: 'dagre',
-                rankDir: 'TB',  // 从上到下
-                spacingFactor: 1.2,  // 增加间距因子，让图更宽
-                nodeSep: Math.round(calculatedNodeSep),  // 动态计算的节点间距
-                edgeSep: Math.round(calculatedEdgeSep),  // 动态计算的边间距
-                rankSep: Math.round(calculatedRankSep),  // 动态计算的层级间距
-                nodeDimensionsIncludeLabels: true,  // 考虑标签大小
-                animate: false,
-                padding: Math.max(40, Math.min(60, containerWidth * 0.03)),  // 减少边距，让图更宽
-                // 优化边的路由，减少交叉
-                edgeRouting: 'polyline',
-                // 对齐方式：使用上左对齐，然后手动居中
-                align: 'UL'  // 上左对齐（dagre不支持'C'）
-            };
+            elkInstance = new ELK();
         } catch (e) {
-            console.warn('dagre布局注册失败，使用默认布局:', e);
+            console.warn('ELK初始化失败:', e);
         }
-    } else {
-        console.warn('dagre布局插件未加载，使用默认布局');
     }
     
-    // 应用布局，等待布局完成后再平衡和居中
-    const layout = attackChainCytoscape.layout(layoutOptions);
-    layout.one('layoutstop', () => {
-        // 布局完成后，先平衡分支，再修复重叠，最后居中显示
-        setTimeout(() => {
-            balanceBranches();
-            setTimeout(() => {
-                fixNodeOverlaps();
+    if (elkInstance) {
+        try {
+            
+            // 构建ELK图结构
+            const elkGraph = {
+                id: 'root',
+                layoutOptions: {
+                    'elk.algorithm': 'layered',
+                    'elk.direction': 'DOWN',
+                    'elk.spacing.nodeNode': String(isComplexGraph ? 100 : 120),  // 合理的节点间距
+                    'elk.spacing.edgeNode': '50',  // 合理的边到节点间距
+                    'elk.spacing.edgeEdge': '25',  // 合理的边间距
+                    'elk.layered.spacing.nodeNodeBetweenLayers': String(isComplexGraph ? 150 : 180),  // 合理的层级间距
+                    'elk.layered.nodePlacement.strategy': 'SIMPLE',  // 使用简单策略，让布局更分散
+                    'elk.layered.crossingMinimization.strategy': 'INTERACTIVE',  // 交互式交叉最小化
+                    'elk.layered.thoroughness': '10',  // 最高优化程度
+                    'elk.layered.spacing.edgeNodeBetweenLayers': '50',
+                    'elk.layered.nodePlacement.strategy': 'BRANDES_KOEPF',
+                    'elk.layered.crossingMinimization.strategy': 'LAYER_SWEEP',
+                    'elk.layered.crossingMinimization.forceNodeModelOrder': 'true',
+                    'elk.layered.cycleBreaking.strategy': 'GREEDY',
+                    'elk.layered.thoroughness': '7',
+                    'elk.padding': '[top=60,left=100,bottom=60,right=100]',  // 更大的左右边距，让图更分散
+                    'elk.spacing.componentComponent': String(isComplexGraph ? 100 : 120)  // 组件间距
+                },
+                children: chainData.nodes.map(node => {
+                    const type = node.type || '';
+                    return {
+                        id: node.id,
+                        width: type === 'target' ? (isComplexGraph ? 280 : 320) : 
+                               type === 'vulnerability' ? (isComplexGraph ? 260 : 300) : 
+                               (isComplexGraph ? 240 : 280),
+                        height: type === 'target' ? (isComplexGraph ? 100 : 120) : 
+                                type === 'vulnerability' ? (isComplexGraph ? 90 : 110) : 
+                                (isComplexGraph ? 80 : 100)
+                    };
+                }),
+                edges: validEdges.map(edge => ({
+                    id: edge.id,
+                    sources: [edge.source],
+                    targets: [edge.target]
+                }))
+            };
+            
+            // 使用ELK计算布局
+            elkInstance.layout(elkGraph).then(laidOutGraph => {
+                // 应用ELK计算的布局到Cytoscape节点
+                if (laidOutGraph && laidOutGraph.children) {
+                    laidOutGraph.children.forEach(elkNode => {
+                        const cyNode = attackChainCytoscape.getElementById(elkNode.id);
+                        if (cyNode && elkNode.x !== undefined && elkNode.y !== undefined) {
+                            cyNode.position({
+                                x: elkNode.x + (elkNode.width || 0) / 2,
+                                y: elkNode.y + (elkNode.height || 0) / 2
+                            });
+                        }
+                    });
+                    
+                    // 布局完成后，居中显示图
+                    setTimeout(() => {
+                        centerAttackChain();
+                    }, 150);
+                } else {
+                    throw new Error('ELK布局返回无效结果');
+                }
+            }).catch(err => {
+                console.warn('ELK布局计算失败，使用默认布局:', err);
+                // 回退到默认布局
+                const layout = attackChainCytoscape.layout(layoutOptions);
+                layout.one('layoutstop', () => {
+                    setTimeout(() => {
+                        centerAttackChain();
+                    }, 100);
+                });
+                layout.run();
+            });
+        } catch (e) {
+            console.warn('ELK布局初始化失败，使用默认布局:', e);
+            // 回退到默认布局
+            const layout = attackChainCytoscape.layout(layoutOptions);
+            layout.one('layoutstop', () => {
                 setTimeout(() => {
                     centerAttackChain();
-                }, 50);
-            }, 50);
-        }, 100);
-    });
-    layout.run();
-    
-    // 平衡分支分布的函数 - 使分支在根节点左右平均分布
-    function balanceBranches() {
-        try {
-            if (!attackChainCytoscape) {
-                return;
-            }
-            
-            // 动态计算节点间距，基于容器尺寸
-            const container = attackChainCytoscape.container();
-            const containerWidth = container ? container.offsetWidth : 1200;
-            const avgNodeWidth = isComplexGraph ? 370 : 410;  // 与布局计算保持一致
-            const estimatedDepth = Math.ceil(Math.log2(Math.max(nodeCount, 2))) + 1;
-            const maxLevelWidth = Math.max(1, Math.ceil(nodeCount / estimatedDepth));
-            const targetGraphWidth = containerWidth * 0.95;  // 与布局计算保持一致，使用95%宽度
-            // 与布局计算保持一致，使用更大的间距避免节点重叠
-            const minNodeSep = avgNodeWidth * 1.5;  // 与布局计算保持一致
-            const availableWidth = targetGraphWidth - avgNodeWidth * maxLevelWidth;
-            const spacing = Math.max(
-                minNodeSep,
-                Math.min(
-                    availableWidth / Math.max(1, maxLevelWidth - 1),
-                    avgNodeWidth * 3.0  // 与布局计算保持一致
-                )
-            );
-            
-            // 找到target节点作为根节点
-            const targetNodes = attackChainCytoscape.nodes().filter(node => {
-                return node.data('type') === 'target';
+                }, 100);
             });
-            
-            if (targetNodes.length === 0) {
-                return; // 没有target节点，无法平衡
-            }
-            
-            const rootNode = targetNodes[0];
-            const rootPos = rootNode.position();
-            const rootX = rootPos.x;
-            const rootY = rootPos.y;
-            
-            // 构建图的邻接表
-            const edges = attackChainCytoscape.edges();
-            const childrenMap = new Map();
-            
-            edges.forEach(edge => {
-                const { source, target, valid } = getEdgeNodes(edge);
-                if (valid) {
-                    const sourceId = source.id();
-                    const targetId = target.id();
-                    
-                    if (!childrenMap.has(sourceId)) {
-                        childrenMap.set(sourceId, []);
-                    }
-                    childrenMap.get(sourceId).push(targetId);
-                }
-            });
-            
-            // 计算每个节点的子树宽度（递归）
-            const subtreeWidth = new Map();
-            function calculateSubtreeWidth(nodeId) {
-                if (subtreeWidth.has(nodeId)) {
-                    return subtreeWidth.get(nodeId);
-                }
-                
-                const children = childrenMap.get(nodeId) || [];
-                if (children.length === 0) {
-                    subtreeWidth.set(nodeId, 0);
-                    return 0;
-                }
-                
-                // 计算所有子树的宽度总和
-                let totalWidth = 0;
-                children.forEach(childId => {
-                    totalWidth += calculateSubtreeWidth(childId);
-                });
-                
-                // 使用动态计算的间距
-                const width = Math.max(totalWidth + (children.length - 1) * spacing, spacing);
-                
-                subtreeWidth.set(nodeId, width);
-                return width;
-            }
-            
-            // 计算所有子树宽度
-            const nodes = attackChainCytoscape.nodes();
-            nodes.forEach(node => {
-                calculateSubtreeWidth(node.id());
-            });
-            
-            // 获取根节点的直接子节点
-            const rootChildren = childrenMap.get(rootNode.id()) || [];
-            
-            if (rootChildren.length === 0) {
-                return; // 没有子节点
-            }
-            
-            // 将子节点分成左右两组
-            const childWidths = rootChildren.map(childId => ({
-                id: childId,
-                width: subtreeWidth.get(childId) || 100
-            })).sort((a, b) => b.width - a.width);
-            
-            const leftGroup = [];
-            const rightGroup = [];
-            let leftTotal = 0;
-            let rightTotal = 0;
-            
-            // 贪心分配：将较大的子树交替分配到左右
-            childWidths.forEach(child => {
-                if (leftTotal <= rightTotal) {
-                    leftGroup.push(child);
-                    leftTotal += child.width;
-                } else {
-                    rightGroup.push(child);
-                    rightTotal += child.width;
-                }
-            });
-            
-            // 计算左右两侧需要的总宽度（使用动态计算的间距）
-            const leftTotalWidth = leftGroup.length > 0 ? leftTotal + (leftGroup.length - 1) * spacing : 0;
-            const rightTotalWidth = rightGroup.length > 0 ? rightTotal + (rightGroup.length - 1) * spacing : 0;
-            // 根据容器宽度动态调整，充分利用水平空间
-            // 使用更大的宽度系数，让图充分利用容器空间（使用95%的容器宽度以匹配布局算法）
-            const maxSideWidth = Math.max(leftTotalWidth, rightTotalWidth);
-            const targetWidth = Math.max(maxSideWidth * 1.2, containerWidth * 0.95);  // 使用95%的容器宽度以匹配布局
-            const maxWidth = Math.max(targetWidth, avgNodeWidth * 2);
-            
-            // 递归调整子树位置
-            function adjustSubtree(nodeId, centerX, availableWidth) {
-                const node = attackChainCytoscape.getElementById(nodeId);
-                if (!node) return;
-                
-                const currentPos = node.position();
-                const children = childrenMap.get(nodeId) || [];
-                
-                if (children.length === 0) {
-                    // 叶子节点
-                    node.position({
-                        x: centerX,
-                        y: currentPos.y
-                    });
-                    return;
-                }
-                
-                // 计算子节点的宽度
-                const childWidths = children.map(childId => ({
-                    id: childId,
-                    width: subtreeWidth.get(childId) || 100
-                }));
-                
-                const totalChildWidth = childWidths.reduce((sum, c) => sum + c.width, 0);
-                const totalSpacing = (children.length - 1) * spacing;
-                const neededWidth = totalChildWidth + totalSpacing;
-                
-                // 如果需要的宽度超过可用宽度，按比例缩放
-                const scale = neededWidth > availableWidth ? availableWidth / neededWidth : 1;
-                const scaledWidth = neededWidth * scale;
-                
-                // 分配子节点位置
-                let currentOffset = -scaledWidth / 2;
-                childWidths.forEach((child, index) => {
-                    const childWidth = child.width * scale;
-                    const childCenterX = centerX + currentOffset + childWidth / 2;
-                    
-                    adjustSubtree(child.id, childCenterX, childWidth);
-                    currentOffset += childWidth + spacing * scale;
-                });
-                
-                // 调整当前节点到子节点的中心
-                const childPositions = children.map(childId => {
-                    const childNode = attackChainCytoscape.getElementById(childId);
-                    return childNode ? childNode.position().x : centerX;
-                });
-                const childrenCenterX = childPositions.reduce((sum, x) => sum + x, 0) / childPositions.length;
-                
-                node.position({
-                    x: childrenCenterX,
-                    y: currentPos.y
-                });
-            }
-            
-            // 调整左侧子树
-            let leftOffset = -maxWidth / 2;
-            leftGroup.forEach((child, index) => {
-                const childWidth = child.width;
-                const childCenterX = rootX + leftOffset + childWidth / 2;
-                adjustSubtree(child.id, childCenterX, childWidth);
-                leftOffset += childWidth + spacing;
-            });
-            
-            // 调整右侧子树
-            let rightOffset = maxWidth / 2;
-            rightGroup.forEach((child, index) => {
-                const childWidth = child.width;
-                const childCenterX = rootX + rightOffset - childWidth / 2;
-                adjustSubtree(child.id, childCenterX, childWidth);
-                rightOffset -= (childWidth + spacing);
-            });
-            
-            // 重新计算根节点的中心位置：基于所有直接子节点的实际位置
-            const rootChildrenPositions = rootChildren.map(childId => {
-                const childNode = attackChainCytoscape.getElementById(childId);
-                return childNode ? childNode.position().x : rootX;
-            });
-            
-            if (rootChildrenPositions.length > 0) {
-                // 计算所有子节点的平均 x 位置作为根节点的中心位置
-                const childrenCenterX = rootChildrenPositions.reduce((sum, x) => sum + x, 0) / rootChildrenPositions.length;
-                rootNode.position({
-                    x: childrenCenterX,
-                    y: rootY
-                });
-            } else {
-                // 如果没有子节点，保持原位置
-                rootNode.position({
-                    x: rootX,
-                    y: rootY
-                });
-            }
-            
-        } catch (error) {
-            console.warn('平衡分支时出错:', error);
+            layout.run();
         }
-    }
-    
-    // 修复节点重叠的函数
-    function fixNodeOverlaps() {
-        try {
-            if (!attackChainCytoscape) {
-                return;
-            }
-            
-            const nodes = attackChainCytoscape.nodes();
-            const minSpacing = 40; // 节点之间的最小间距（像素），增加以确保不重叠
-            const overlapThreshold = 0.05; // 重叠阈值（5%），更敏感地检测重叠
-            
-            // 按Y坐标分组节点（同一层级的节点）
-            const nodesByLevel = new Map();
-            nodes.forEach(node => {
-                const pos = node.position();
-                const y = Math.round(pos.y / 30) * 30; // 将相近的Y坐标归为同一层级（更精细的分组）
-                
-                if (!nodesByLevel.has(y)) {
-                    nodesByLevel.set(y, []);
-                }
-                nodesByLevel.get(y).push(node);
-            });
-            
-            // 检查并修复同一层级内的重叠
-            nodesByLevel.forEach((levelNodes, levelY) => {
-                // 按X坐标排序
-                levelNodes.sort((a, b) => a.position().x - b.position().x);
-                
-                // 检查相邻节点是否重叠
-                for (let i = 0; i < levelNodes.length - 1; i++) {
-                    const node1 = levelNodes[i];
-                    const node2 = levelNodes[i + 1];
-                    
-                    const pos1 = node1.position();
-                    const pos2 = node2.position();
-                    const width1 = node1.width();
-                    const width2 = node2.width();
-                    const height1 = node1.height();
-                    const height2 = node2.height();
-                    
-                    // 计算节点边界
-                    const left1 = pos1.x - width1 / 2;
-                    const right1 = pos1.x + width1 / 2;
-                    const top1 = pos1.y - height1 / 2;
-                    const bottom1 = pos1.y + height1 / 2;
-                    
-                    const left2 = pos2.x - width2 / 2;
-                    const right2 = pos2.x + width2 / 2;
-                    const top2 = pos2.y - height2 / 2;
-                    const bottom2 = pos2.y + height2 / 2;
-                    
-                    // 检查是否重叠
-                    const horizontalOverlap = Math.max(0, Math.min(right1, right2) - Math.max(left1, left2));
-                    const verticalOverlap = Math.max(0, Math.min(bottom1, bottom2) - Math.max(top1, top2));
-                    
-                    const overlapArea = horizontalOverlap * verticalOverlap;
-                    const node1Area = width1 * height1;
-                    const node2Area = width2 * height2;
-                    const minArea = Math.min(node1Area, node2Area);
-                    
-                    // 如果重叠面积超过阈值，调整位置
-                    if (overlapArea > minArea * overlapThreshold) {
-                        // 计算需要的间距
-                        const requiredSpacing = (width1 + width2) / 2 + minSpacing;
-                        const currentSpacing = pos2.x - pos1.x;
-                        const spacingDiff = requiredSpacing - currentSpacing;
-                        
-                        if (spacingDiff > 0) {
-                            // 向右移动第二个节点及其后续节点
-                            const moveDistance = spacingDiff;
-                            for (let j = i + 1; j < levelNodes.length; j++) {
-                                const node = levelNodes[j];
-                                const currentPos = node.position();
-                                node.position({
-                                    x: currentPos.x + moveDistance,
-                                    y: currentPos.y
-                                });
-                            }
-                        }
-                    }
-                }
-            });
-            
-            // 检查不同层级之间的重叠（垂直方向）- 简化处理
-            // 只处理明显的垂直重叠，通过增加层级间距来解决
-            const sortedLevels = Array.from(nodesByLevel.keys()).sort((a, b) => a - b);
-            for (let i = 0; i < sortedLevels.length - 1; i++) {
-                const level1Y = sortedLevels[i];
-                const level2Y = sortedLevels[i + 1];
-                const level1Nodes = nodesByLevel.get(level1Y);
-                const level2Nodes = nodesByLevel.get(level2Y);
-                
-                // 检查两个层级之间的最小垂直间距
-                let minVerticalSpacing = Infinity;
-                level1Nodes.forEach(node1 => {
-                    const pos1 = node1.position();
-                    const height1 = node1.height();
-                    const bottom1 = pos1.y + height1 / 2;
-                    
-                    level2Nodes.forEach(node2 => {
-                        const pos2 = node2.position();
-                        const height2 = node2.height();
-                        const top2 = pos2.y - height2 / 2;
-                        
-                        const spacing = top2 - bottom1;
-                        if (spacing < minVerticalSpacing) {
-                            minVerticalSpacing = spacing;
-                        }
-                    });
-                });
-                
-                // 如果垂直间距太小，向下移动第二个层级的所有节点
-                if (minVerticalSpacing < minSpacing) {
-                    const moveDistance = minSpacing - minVerticalSpacing;
-                    level2Nodes.forEach(node => {
-                        const currentPos = node.position();
-                        node.position({
-                            x: currentPos.x,
-                            y: currentPos.y + moveDistance
-                        });
-                    });
-                    
-                    // 更新后续层级的Y坐标
-                    for (let j = i + 2; j < sortedLevels.length; j++) {
-                        const laterLevelY = sortedLevels[j];
-                        const laterLevelNodes = nodesByLevel.get(laterLevelY);
-                        laterLevelNodes.forEach(node => {
-                            const currentPos = node.position();
-                            node.position({
-                                x: currentPos.x,
-                                y: currentPos.y + moveDistance
-                            });
-                        });
-                    }
-                }
-            }
-            
-        } catch (error) {
-            console.warn('修复节点重叠时出错:', error);
-        }
+    } else {
+        console.warn('ELK.js未加载，使用默认布局。请检查elkjs库是否正确加载。');
+        // 使用默认布局
+        const layout = attackChainCytoscape.layout(layoutOptions);
+        layout.one('layoutstop', () => {
+            setTimeout(() => {
+                centerAttackChain();
+            }, 100);
+        });
+        layout.run();
     }
     
     // 居中攻击链的函数
@@ -2959,10 +2590,11 @@ function renderAttackChain(chainData) {
                 return;
             }
             
-            // 先fit以适应所有节点，使用更小的边距以更好地填充空间
-            attackChainCytoscape.fit(undefined, 60);
+            // 居中显示图，同时保持合理的缩放
+            const padding = 80;  // 边距
+            attackChainCytoscape.fit(undefined, padding);
             
-            // 等待fit完成，然后根据图的宽度调整缩放，并整体居中
+            // 等待fit完成后再调整
             setTimeout(() => {
                 const extent = attackChainCytoscape.extent();
                 if (!extent || typeof extent.x1 === 'undefined' || typeof extent.x2 === 'undefined' || 
@@ -2970,54 +2602,44 @@ function renderAttackChain(chainData) {
                     return;
                 }
                 
-                // 根据图的宽度和容器宽度，调整缩放以更好地利用水平空间
                 const graphWidth = extent.x2 - extent.x1;
                 const graphHeight = extent.y2 - extent.y1;
-                const availableWidth = containerWidth * 0.95; // 使用95%的容器宽度（与布局算法一致）
-                const availableHeight = containerHeight * 0.85; // 使用85%的容器高度
                 const currentZoom = attackChainCytoscape.zoom();
                 
-                // 计算基于宽度和高度的缩放比例，选择较小的以适配
+                // 如果图太小，适当放大
+                const availableWidth = containerWidth - padding * 2;
+                const availableHeight = containerHeight - padding * 2;
                 const widthScale = graphWidth > 0 ? availableWidth / (graphWidth * currentZoom) : 1;
                 const heightScale = graphHeight > 0 ? availableHeight / (graphHeight * currentZoom) : 1;
                 const scale = Math.min(widthScale, heightScale);
                 
-                if (graphWidth > 0 && scale > 1 && scale < 1.4) {
-                    // 如果图在当前缩放下太窄，稍微放大以填充空间，但不要过度放大
+                // 只在合理范围内调整缩放（0.8-1.3倍）
+                if (scale > 1 && scale < 1.3) {
                     attackChainCytoscape.zoom(currentZoom * scale);
+                } else if (scale < 0.8) {
+                    attackChainCytoscape.zoom(currentZoom * 0.8);
                 }
                 
-                // 如果图太复杂，稍微缩小视图
-                if (isComplexGraph && nodeCount > 20) {
-                    attackChainCytoscape.zoom(attackChainCytoscape.zoom() * 0.9);
-                }
-                
-                // 计算图的中心点（在图形坐标系中）
+                // 确保图居中
                 const graphCenterX = (extent.x1 + extent.x2) / 2;
                 const graphCenterY = (extent.y1 + extent.y2) / 2;
-                
-                // 获取当前的缩放和平移
                 const zoom = attackChainCytoscape.zoom();
                 const pan = attackChainCytoscape.pan();
                 
-                // 计算图中心在当前视图中的位置
                 const graphCenterViewX = graphCenterX * zoom + pan.x;
                 const graphCenterViewY = graphCenterY * zoom + pan.y;
                 
-                // 目标位置：容器中心
                 const desiredViewX = containerWidth / 2;
                 const desiredViewY = containerHeight / 2;
                 
-                // 计算需要平移的距离
                 const deltaX = desiredViewX - graphCenterViewX;
                 const deltaY = desiredViewY - graphCenterViewY;
                 
-                // 应用新的平移，使整个图居中（包括所有分支）
                 attackChainCytoscape.pan({
                     x: pan.x + deltaX,
                     y: pan.y + deltaY
                 });
-            }, 150);
+            }, 100);
         } catch (error) {
             console.warn('居中图表时出错:', error);
         }
