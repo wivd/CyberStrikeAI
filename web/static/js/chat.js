@@ -1497,6 +1497,10 @@ async function loadConversations(searchQuery = '') {
             return;
         }
 
+        // 保存滚动位置
+        const sidebarContent = listContainer.closest('.sidebar-content');
+        const savedScrollTop = sidebarContent ? sidebarContent.scrollTop : 0;
+
         const emptyStateHtml = '<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.875rem;">暂无历史对话</div>';
         listContainer.innerHTML = '';
 
@@ -1580,6 +1584,14 @@ async function loadConversations(searchQuery = '') {
 
         listContainer.appendChild(fragment);
         updateActiveConversation();
+        
+        // 恢复滚动位置
+        if (sidebarContent) {
+            // 使用 requestAnimationFrame 确保 DOM 已经更新
+            requestAnimationFrame(() => {
+                sidebarContent.scrollTop = savedScrollTop;
+            });
+        }
     } catch (error) {
         console.error('加载对话列表失败:', error);
         // 错误时显示空状态，而不是错误提示（更友好的用户体验）
@@ -4117,6 +4129,10 @@ async function loadConversationsWithGroups(searchQuery = '') {
             return;
         }
 
+        // 保存滚动位置
+        const sidebarContent = listContainer.closest('.sidebar-content');
+        const savedScrollTop = sidebarContent ? sidebarContent.scrollTop : 0;
+
         const emptyStateHtml = '<div style="padding: 20px; text-align: center; color: var(--text-muted); font-size: 0.875rem;">暂无历史对话</div>';
         listContainer.innerHTML = '';
 
@@ -4196,6 +4212,14 @@ async function loadConversationsWithGroups(searchQuery = '') {
 
         listContainer.appendChild(fragment);
         updateActiveConversation();
+        
+        // 恢复滚动位置
+        if (sidebarContent) {
+            // 使用 requestAnimationFrame 确保 DOM 已经更新
+            requestAnimationFrame(() => {
+                sidebarContent.scrollTop = savedScrollTop;
+            });
+        }
     } catch (error) {
         console.error('加载对话列表失败:', error);
         // 错误时显示空状态，而不是错误提示（更友好的用户体验）

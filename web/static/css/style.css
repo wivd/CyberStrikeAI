@@ -2638,6 +2638,9 @@ header {
     border-radius: 10px;
     box-shadow: var(--shadow-sm);
     color: var(--text-primary);
+    flex-wrap: nowrap;
+    overflow-x: auto;
+    overflow-y: hidden;
 }
 
 .active-task-item {
@@ -2649,8 +2652,8 @@ header {
     border: 1px solid rgba(0, 102, 255, 0.2);
     border-radius: 8px;
     padding: 8px 12px;
-    flex: 1;
-    min-width: 0;
+    flex-shrink: 0;
+    min-width: 280px;
     box-shadow: inset 0 1px 1px rgba(0, 0, 0, 0.03);
 }
 
@@ -3474,6 +3477,9 @@ header {
 .monitor-sections {
     display: grid;
     gap: 24px;
+    width: 100%;
+    box-sizing: border-box;
+    min-width: 0;
 }
 
 .monitor-section {
@@ -3485,6 +3491,9 @@ header {
     display: flex;
     flex-direction: column;
     gap: 16px;
+    min-width: 0;
+    overflow: hidden;
+    box-sizing: border-box;
 }
 
 .monitor-section .section-header {
@@ -3492,12 +3501,16 @@ header {
     align-items: center;
     justify-content: space-between;
     gap: 12px;
+    min-width: 0;
+    flex-wrap: wrap;
 }
 
 .monitor-section .section-header h3 {
     margin: 0;
     font-size: 1.1rem;
     color: var(--text-primary);
+    flex-shrink: 0;
+    min-width: 0;
 }
 
 .monitor-section .section-actions {
@@ -3506,6 +3519,9 @@ header {
     gap: 12px;
     font-size: 0.875rem;
     color: var(--text-secondary);
+    flex-wrap: wrap;
+    min-width: 0;
+    flex-shrink: 1;
 }
 
 .monitor-section .section-actions select {
@@ -3563,6 +3579,8 @@ header {
     display: grid;
     grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
     gap: 16px;
+    width: 100%;
+    box-sizing: border-box;
 }
 
 .monitor-stat-card {
@@ -3574,35 +3592,55 @@ header {
     flex-direction: column;
     gap: 6px;
     box-shadow: var(--shadow-xs);
+    min-width: 0;
+    overflow: hidden;
+    box-sizing: border-box;
 }
 
 .monitor-stat-card h4 {
     margin: 0;
     font-size: 0.95rem;
     color: var(--text-secondary);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    word-break: break-word;
+    max-width: 100%;
 }
 
 .monitor-stat-value {
     font-size: 1.8rem;
     font-weight: 600;
     color: var(--text-primary);
+    word-break: break-word;
+    overflow-wrap: break-word;
 }
 
 .monitor-stat-meta {
     font-size: 0.8rem;
     color: var(--text-muted);
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    word-break: break-word;
+    max-width: 100%;
 }
 
 .monitor-table-container {
     border: 1px solid var(--border-color);
     border-radius: 12px;
     overflow: hidden;
+    width: 100%;
+    box-sizing: border-box;
+    overflow-x: auto;
 }
 
 .monitor-table {
     width: 100%;
     border-collapse: collapse;
     font-size: 0.875rem;
+    table-layout: auto;
+    min-width: 100%;
 }
 
 .monitor-table th,
@@ -3611,6 +3649,15 @@ header {
     text-align: left;
     border-bottom: 1px solid var(--border-color);
     vertical-align: middle;
+    word-break: break-word;
+    overflow-wrap: break-word;
+}
+
+.monitor-table td:nth-child(2) {
+    max-width: 250px;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
 }
 
 .monitor-table thead {
