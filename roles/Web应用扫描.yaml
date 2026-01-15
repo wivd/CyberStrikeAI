@@ -22,4 +22,6 @@ tools:
     - record_vulnerability
     - list_knowledge_risk_types
     - search_knowledge_base
+    - list_skills
+    - read_skill
 enabled: true
