@@ -676,23 +676,22 @@
                         <h2>角色管理</h2>
                         <div class="page-header-actions">
                             <button class="btn-secondary" onclick="refreshRoles()">刷新</button>
-                            <button class="btn-primary" onclick="showAddRoleModal()">添加角色</button>
+                            <button class="btn-primary" onclick="showAddRoleModal()">创建角色</button>
                         </div>
                     </div>
                     <div class="page-content">
                         <div class="roles-controls">
-                            <div class="roles-stats-bar" id="roles-stats">
-                                <div class="role-stat-item">
-                                    <span class="role-stat-label">总角色数</span>
-                                    <span class="role-stat-value">-</span>
-                                </div>
-                                <div class="role-stat-item">
-                                    <span class="role-stat-label">已启用</span>
-                                    <span class="role-stat-value">-</span>
-                                </div>
+                            <div class="roles-search-box">
+                                <input type="text" id="roles-search" placeholder="搜索角色..." oninput="handleRolesSearchInput()" onkeydown="if(event.key==='Enter') searchRoles()" />
+                                <button class="roles-search-clear" id="roles-search-clear" onclick="clearRolesSearch()" style="display: none;" title="清除搜索">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                                        <path d="M15 9l-6 6M9 9l6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    </svg>
+                                </button>
                             </div>
                         </div>
-                        <div id="roles-list" class="roles-list">
+                        <div id="roles-list" class="roles-grid">
                             <div class="loading-spinner">加载中...</div>
                         </div>
                     </div>
@@ -737,23 +736,22 @@
                         <h2>Skills管理</h2>
                         <div class="page-header-actions">
                             <button class="btn-secondary" onclick="refreshSkills()">刷新</button>
-                            <button class="btn-primary" onclick="showAddSkillModal()">添加Skill</button>
+                            <button class="btn-primary" onclick="showAddSkillModal()">创建Skill</button>
                         </div>
                     </div>
                     <div class="page-content page-content-with-pagination">
                         <div class="skills-controls">
-                            <div class="skills-stats-bar" id="skills-management-stats">
-                                <div class="skill-stat-item">
-                                    <span class="skill-stat-label">总Skills数</span>
-                                    <span class="skill-stat-value">-</span>
-                                </div>
-                            </div>
-                            <div class="skills-filters">
-                                <input type="text" id="skills-search" placeholder="搜索skill..." oninput="handleSkillsSearchInput()" onkeydown="if(event.key==='Enter') searchSkills()" />
-                                <button class="btn-search" onclick="searchSkills()" title="搜索">🔍</button>
+                            <div class="skills-search-box">
+                                <input type="text" id="skills-search" placeholder="搜索Skills..." oninput="handleSkillsSearchInput()" onkeydown="if(event.key==='Enter') searchSkills()" />
+                                <button class="skills-search-clear" id="skills-search-clear" onclick="clearSkillsSearch()" style="display: none;" title="清除搜索">
+                                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
+                                        <circle cx="12" cy="12" r="10" stroke="currentColor" stroke-width="2"/>
+                                        <path d="M15 9l-6 6M9 9l6 6" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
+                                    </svg>
+                                </button>
                             </div>
                         </div>
-                        <div id="skills-list" class="skills-list skills-list-with-pagination">
+                        <div id="skills-list" class="skills-grid">
                             <div class="loading-spinner">加载中...</div>
                         </div>
                         <div id="skills-pagination" class="pagination-container pagination-fixed"></div>

@@ -280,6 +280,15 @@ function initPage(pageId) {
             break;
         case 'roles-management':
             // 初始化角色管理页面
+            // 重置搜索UI（变量会在下次搜索时自动更新）
+            const rolesSearchInput = document.getElementById('roles-search');
+            if (rolesSearchInput) {
+                rolesSearchInput.value = '';
+            }
+            const rolesSearchClear = document.getElementById('roles-search-clear');
+            if (rolesSearchClear) {
+                rolesSearchClear.style.display = 'none';
+            }
             if (typeof loadRoles === 'function') {
                 loadRoles().then(() => {
                     if (typeof renderRolesList === 'function') {
@@ -296,6 +305,15 @@ function initPage(pageId) {
             break;
         case 'skills-management':
             // 初始化Skills管理页面
+            // 重置搜索UI（变量会在下次搜索时自动更新）
+            const skillsSearchInput = document.getElementById('skills-search');
+            if (skillsSearchInput) {
+                skillsSearchInput.value = '';
+            }
+            const skillsSearchClear = document.getElementById('skills-search-clear');
+            if (skillsSearchClear) {
+                skillsSearchClear.style.display = 'none';
+            }
             if (typeof initSkillsPagination === 'function') {
                 initSkillsPagination();
             }

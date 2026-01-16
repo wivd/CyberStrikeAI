@@ -24,7 +24,7 @@ function getSkillsPageSize() {
         const saved = localStorage.getItem('skillsPageSize');
         if (saved) {
             const size = parseInt(saved);
-            if ([10, 20, 50, 100].includes(size)) {
+            if ([20, 50, 100].includes(size)) {
                 return size;
             }
         }
@@ -94,7 +94,7 @@ function renderSkillsList() {
 
     if (filteredSkills.length === 0) {
         skillsListEl.innerHTML = '<div class="empty-state">' + 
-            (skillsSearchKeyword ? '没有找到匹配的skills' : '暂无skills，点击"添加Skill"创建第一个skill') + 
+            (skillsSearchKeyword ? '没有找到匹配的skills' : '暂无skills，点击"创建Skill"创建第一个skill') + 
             '</div>';
         // 搜索时隐藏分页
         const paginationContainer = document.getElementById('skills-pagination');
@@ -105,47 +105,31 @@ function renderSkillsList() {
     }
 
     skillsListEl.innerHTML = filteredSkills.map(skill => {
-        const fileSize = skill.file_size || 0;
-        const fileSizeStr = fileSize < 1024 ? fileSize + ' B' : 
-                           fileSize < 1024 * 1024 ? (fileSize / 1024).toFixed(2) + ' KB' :
-                           (fileSize / (1024 * 1024)).toFixed(2) + ' MB';
-        
         return `
-            <div class="skill-item">
-                <div class="skill-item-header">
-                    <div class="skill-item-info">
-                        <h3 class="skill-item-name">${escapeHtml(skill.name || '')}</h3>
-                        ${skill.description ? `<p class="skill-item-desc">${escapeHtml(skill.description)}</p>` : ''}
-                    </div>
-                    <div class="skill-item-actions">
-                        <button class="btn-icon" onclick="viewSkill('${escapeHtml(skill.name)}')" title="查看">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M1 12s4-8 11-8 11 8 11 8-4 8-11 8-11-8-11-8z"></path>
-                                <circle cx="12" cy="12" r="3"></circle>
-                            </svg>
-                        </button>
-                        <button class="btn-icon" onclick="editSkill('${escapeHtml(skill.name)}')" title="编辑">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <path d="M11 4H4a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2v-7"></path>
-                                <path d="M18.5 2.5a2.121 2.121 0 0 1 3 3L12 15l-4 1 1-4 9.5-9.5z"></path>
-                            </svg>
-                        </button>
-                        <button class="btn-icon btn-danger" onclick="deleteSkill('${escapeHtml(skill.name)}')" title="删除">
-                            <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                <polyline points="3 6 5 6 21 6"></polyline>
-                                <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"></path>
-                            </svg>
-                        </button>
-                    </div>
+            <div class="skill-card">
+                <div class="skill-card-header">
+                    <h3 class="skill-card-title">${escapeHtml(skill.name || '')}</h3>
                 </div>
-                <div class="skill-item-meta">
-                    <span class="skill-meta-item">路径: ${escapeHtml(skill.path || '')}</span>
-                    <span class="skill-meta-item">大小: ${fileSizeStr}</span>
-                    ${skill.mod_time ? `<span class="skill-meta-item">修改时间: ${escapeHtml(skill.mod_time)}</span>` : ''}
+                <div class="skill-card-description">${escapeHtml(skill.description || '无描述')}</div>
+                <div class="skill-card-actions">
+                    <button class="btn-secondary btn-small" onclick="viewSkill('${escapeHtml(skill.name)}')">查看</button>
+                    <button class="btn-secondary btn-small" onclick="editSkill('${escapeHtml(skill.name)}')">编辑</button>
+                    <button class="btn-secondary btn-small btn-danger" onclick="deleteSkill('${escapeHtml(skill.name)}')">删除</button>
                 </div>
             </div>
         `;
     }).join('');
+    
+    // 确保列表容器可以滚动，分页栏可见
+    // 使用 setTimeout 确保 DOM 更新完成后再检查
+    setTimeout(() => {
+        const paginationContainer = document.getElementById('skills-pagination');
+        if (paginationContainer && !skillsSearchKeyword) {
+            // 确保分页栏可见
+            paginationContainer.style.display = 'block';
+            paginationContainer.style.visibility = 'visible';
+        }
+    }, 0);
 }
 
 // 渲染分页组件（参考MCP管理页面样式）
@@ -177,7 +161,6 @@ function renderSkillsPagination() {
             <label class="pagination-page-size">
                 每页显示
                 <select id="skills-page-size-pagination" onchange="changeSkillsPageSize()">
-                    <option value="10" ${pageSize === 10 ? 'selected' : ''}>10</option>
                     <option value="20" ${pageSize === 20 ? 'selected' : ''}>20</option>
                     <option value="50" ${pageSize === 50 ? 'selected' : ''}>50</option>
                     <option value="100" ${pageSize === 100 ? 'selected' : ''}>100</option>
@@ -205,6 +188,11 @@ function renderSkillsPagination() {
     function alignPaginationWidth() {
         const skillsList = document.getElementById('skills-list');
         if (skillsList && paginationContainer) {
+            // 确保分页容器始终可见
+            paginationContainer.style.display = '';
+            paginationContainer.style.visibility = 'visible';
+            paginationContainer.style.opacity = '1';
+            
             // 获取列表的实际内容宽度（不包括滚动条）
             const listClientWidth = skillsList.clientWidth; // 可视区域宽度（不包括滚动条）
             const listScrollHeight = skillsList.scrollHeight; // 内容总高度
@@ -213,7 +201,7 @@ function renderSkillsPagination() {
             
             // 如果列表有垂直滚动条，分页组件应该与列表内容区域对齐（clientWidth）
             // 如果没有滚动条，使用100%宽度
-            if (hasScrollbar) {
+            if (hasScrollbar && listClientWidth > 0) {
                 // 分页组件应该与列表内容区域对齐，不包括滚动条
                 paginationContainer.style.width = `${listClientWidth}px`;
             } else {
@@ -235,6 +223,10 @@ function renderSkillsPagination() {
     if (skillsList) {
         resizeObserver.observe(skillsList);
     }
+    
+    // 确保分页容器始终可见（防止被隐藏）
+    paginationContainer.style.display = 'block';
+    paginationContainer.style.visibility = 'visible';
 }
 
 // 改变每页显示数量
@@ -288,6 +280,10 @@ async function searchSkills() {
     if (!searchInput) return;
     
     skillsSearchKeyword = searchInput.value.trim();
+    const clearBtn = document.getElementById('skills-search-clear');
+    if (clearBtn) {
+        clearBtn.style.display = skillsSearchKeyword ? 'block' : 'none';
+    }
     
     if (skillsSearchKeyword) {
         // 有搜索关键词时，使用后端搜索API（加载所有匹配结果，不分页）
@@ -315,6 +311,21 @@ async function searchSkills() {
         // 没有搜索关键词时，恢复分页加载
         await loadSkills(1, skillsPagination.pageSize);
     }
+}
+
+// 清除skills搜索
+function clearSkillsSearch() {
+    const searchInput = document.getElementById('skills-search');
+    if (searchInput) {
+        searchInput.value = '';
+    }
+    skillsSearchKeyword = '';
+    const clearBtn = document.getElementById('skills-search-clear');
+    if (clearBtn) {
+        clearBtn.style.display = 'none';
+    }
+    // 恢复分页加载
+    loadSkills(1, skillsPagination.pageSize);
 }
 
 // 刷新skills

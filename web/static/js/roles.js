@@ -1,6 +1,8 @@
 // 角色管理相关功能
 let currentRole = localStorage.getItem('currentRole') || '';
 let roles = [];
+let rolesSearchKeyword = ''; // 角色搜索关键词
+let rolesSearchTimeout = null; // 搜索防抖定时器
 let allRoleTools = []; // 存储所有工具列表（用于角色工具选择）
 let roleToolsPagination = {
     page: 1,
@@ -258,6 +260,7 @@ async function refreshRoles() {
     }
     // 始终更新侧边栏角色选择列表
     renderRoleSelectionSidebar();
+    showNotification('已刷新', 'success');
 }
 
 // 渲染角色列表
@@ -265,30 +268,25 @@ function renderRolesList() {
     const rolesList = document.getElementById('roles-list');
     if (!rolesList) return;
 
-    if (roles.length === 0) {
-        rolesList.innerHTML = '<div class="empty-state">暂无角色</div>';
+    // 过滤角色（根据搜索关键词）
+    let filteredRoles = roles;
+    if (rolesSearchKeyword) {
+        const keyword = rolesSearchKeyword.toLowerCase();
+        filteredRoles = roles.filter(role => 
+            role.name.toLowerCase().includes(keyword) ||
+            (role.description && role.description.toLowerCase().includes(keyword))
+        );
+    }
+
+    if (filteredRoles.length === 0) {
+        rolesList.innerHTML = '<div class="empty-state">' + 
+            (rolesSearchKeyword ? '没有找到匹配的角色' : '暂无角色') + 
+            '</div>';
         return;
     }
 
-    // 更新统计
-    const stats = document.getElementById('roles-stats');
-    if (stats) {
-        const totalRoles = roles.length;
-        const enabledRoles = roles.filter(r => r.enabled !== false).length;
-        stats.innerHTML = `
-            <div class="role-stat-item">
-                <span class="role-stat-label">总角色数</span>
-                <span class="role-stat-value">${totalRoles}</span>
-            </div>
-            <div class="role-stat-item">
-                <span class="role-stat-label">已启用</span>
-                <span class="role-stat-value">${enabledRoles}</span>
-            </div>
-        `;
-    }
-
     // 对角色进行排序：默认角色第一个，其他按名称排序
-    const sortedRoles = sortRoles(roles);
+    const sortedRoles = sortRoles(filteredRoles);
     
     rolesList.innerHTML = sortedRoles.map(role => {
         // 获取角色图标，如果是Unicode转义格式则转换为emoji
@@ -307,45 +305,91 @@ function renderRolesList() {
                 }
             }
         }
+
+        // 获取工具列表显示
+        let toolsDisplay = '';
+        let toolsCount = 0;
+        if (role.name === '默认') {
+            toolsDisplay = '使用所有工具';
+        } else if (role.tools && role.tools.length > 0) {
+            toolsCount = role.tools.length;
+            // 显示前5个工具名称
+            const toolNames = role.tools.slice(0, 5).map(tool => {
+                // 如果是外部工具，格式为 external_mcp::tool_name，只显示工具名
+                const toolName = tool.includes('::') ? tool.split('::')[1] : tool;
+                return escapeHtml(toolName);
+            });
+            if (toolsCount <= 5) {
+                toolsDisplay = toolNames.join(', ');
+            } else {
+                toolsDisplay = toolNames.join(', ') + ` 等 ${toolsCount} 个`;
+            }
+        } else if (role.mcps && role.mcps.length > 0) {
+            toolsCount = role.mcps.length;
+            toolsDisplay = `等 ${toolsCount} 个`;
+        } else {
+            toolsDisplay = '使用所有工具';
+        }
+
         return `
-        <div class="role-item">
-            <div class="role-item-content">
-                <div class="role-item-header">
-                    <div class="role-item-name">
-                        <span class="role-item-icon" style="margin-right: 8px;">${roleIcon}</span>
-                        ${escapeHtml(role.name)}
-                    </div>
-                    <div class="role-item-badge ${role.enabled !== false ? 'enabled' : 'disabled'}">
-                        ${role.enabled !== false ? '已启用' : '已禁用'}
-                    </div>
-                </div>
-                <div class="role-item-description">${escapeHtml(role.description || '无描述')}</div>
-                <div class="role-item-details">
-                    <div class="role-item-detail">
-                        <span class="role-item-detail-label">用户提示词:</span>
-                        <span class="role-item-detail-value">${role.user_prompt ? (role.user_prompt.length > 100 ? escapeHtml(role.user_prompt.substring(0, 100)) + '...' : escapeHtml(role.user_prompt)) : '无'}</span>
-                    </div>
-                    <div class="role-item-detail">
-                        <span class="role-item-detail-label">关联的工具:</span>
-                        <span class="role-item-detail-value">${
-                            role.name === '默认' 
-                                ? '使用所有工具' 
-                                : (role.tools && role.tools.length > 0 
-                                    ? `${role.tools.length} 个工具` 
-                                    : (role.mcps && role.mcps.length > 0 
-                                        ? `${role.mcps.length} 个工具（兼容旧版）` 
-                                        : '使用所有工具'))
-                        }</span>
-                    </div>
-                </div>
+        <div class="role-card">
+            <div class="role-card-header">
+                <h3 class="role-card-title">
+                    <span class="role-card-icon">${roleIcon}</span>
+                    ${escapeHtml(role.name)}
+                </h3>
+                <span class="role-card-badge ${role.enabled !== false ? 'enabled' : 'disabled'}">
+                    ${role.enabled !== false ? '已启用' : '已禁用'}
+                </span>
             </div>
-            <div class="role-item-actions">
-                <button class="btn-secondary" onclick="editRole('${escapeHtml(role.name)}')">编辑</button>
-                ${role.name !== '默认' ? `<button class="btn-secondary btn-danger" onclick="deleteRole('${escapeHtml(role.name)}')">删除</button>` : ''}
+            <div class="role-card-description">${escapeHtml(role.description || '无描述')}</div>
+            <div class="role-card-tools">
+                <span class="role-card-tools-label">工具:</span>
+                <span class="role-card-tools-value">${toolsDisplay}</span>
+            </div>
+            <div class="role-card-actions">
+                <button class="btn-secondary btn-small" onclick="editRole('${escapeHtml(role.name)}')">编辑</button>
+                ${role.name !== '默认' ? `<button class="btn-secondary btn-small btn-danger" onclick="deleteRole('${escapeHtml(role.name)}')">删除</button>` : ''}
             </div>
         </div>
     `;
     }).join('');
+}
+
+// 处理角色搜索输入
+function handleRolesSearchInput() {
+    clearTimeout(rolesSearchTimeout);
+    rolesSearchTimeout = setTimeout(() => {
+        searchRoles();
+    }, 300);
+}
+
+// 搜索角色
+function searchRoles() {
+    const searchInput = document.getElementById('roles-search');
+    if (!searchInput) return;
+    
+    rolesSearchKeyword = searchInput.value.trim();
+    const clearBtn = document.getElementById('roles-search-clear');
+    if (clearBtn) {
+        clearBtn.style.display = rolesSearchKeyword ? 'block' : 'none';
+    }
+    
+    renderRolesList();
+}
+
+// 清除角色搜索
+function clearRolesSearch() {
+    const searchInput = document.getElementById('roles-search');
+    if (searchInput) {
+        searchInput.value = '';
+    }
+    rolesSearchKeyword = '';
+    const clearBtn = document.getElementById('roles-search-clear');
+    if (clearBtn) {
+        clearBtn.style.display = 'none';
+    }
+    renderRolesList();
 }
 
 // 生成工具唯一标识符（与settings.js中的getToolKey保持一致）
