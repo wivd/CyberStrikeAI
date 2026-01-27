@@ -309,7 +309,6 @@ func New(cfg *config.Config, log *logger.Logger) (*App, error) {
 	}
 	monitorHandler := handler.NewMonitorHandler(mcpServer, executor, db, log.Logger)
 	monitorHandler.SetExternalMCPManager(externalMCPMgr) // 设置外部MCP管理器，以便获取外部MCP执行记录
-	conversationHandler := handler.NewConversationHandler(db, log.Logger)
 	groupHandler := handler.NewGroupHandler(db, log.Logger)
 	authHandler := handler.NewAuthHandler(authManager, cfg, configPath, log.Logger)
 	attackChainHandler := handler.NewAttackChainHandler(db, &cfg.OpenAI, log.Logger)
@@ -322,6 +321,10 @@ func New(cfg *config.Config, log *logger.Logger) (*App, error) {
 	if db != nil {
 		skillsHandler.SetDB(db) // 设置数据库连接以便获取调用统计
 	}
+
+	// 创建OpenAPI处理器
+	conversationHandler := handler.NewConversationHandler(db, log.Logger)
+	openAPIHandler := handler.NewOpenAPIHandler(db, log.Logger, resultStorage, conversationHandler, agentHandler)
 
 	// 创建 App 实例（部分字段稍后填充）
 	app := &App{
@@ -414,6 +417,7 @@ func New(cfg *config.Config, log *logger.Logger) (*App, error) {
 		skillsHandler,
 		mcpServer,
 		authManager,
+		openAPIHandler,
 	)
 
 	return app, nil
@@ -476,6 +480,7 @@ func setupRoutes(
 	skillsHandler *handler.SkillsHandler,
 	mcpServer *mcp.Server,
 	authManager *security.AuthManager,
+	openAPIHandler *handler.OpenAPIHandler,
 ) {
 	// API路由
 	api := router.Group("/api")
@@ -722,7 +727,18 @@ func setupRoutes(
 		protected.POST("/mcp", func(c *gin.Context) {
 			mcpServer.HandleHTTP(c.Writer, c.Request)
 		})
+
+		// OpenAPI结果聚合端点（可选，用于获取对话的完整结果）
+		protected.GET("/conversations/:id/results", openAPIHandler.GetConversationResults)
 	}
+
+	// OpenAPI规范（需要认证，避免暴露API结构信息）
+	protected.GET("/openapi/spec", openAPIHandler.GetOpenAPISpec)
+
+	// API文档页面（公开访问，但需要登录后才能使用API）
+	router.GET("/api-docs", func(c *gin.Context) {
+		c.HTML(http.StatusOK, "api-docs.html", nil)
+	})
 
 	// 静态文件
 	router.Static("/static", "./web/static")

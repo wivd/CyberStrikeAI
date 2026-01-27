@@ -147,6 +147,14 @@ func (h *AgentHandler) AgentLoop(c *gin.Context) {
 			return
 		}
 		conversationID = conv.ID
+	} else {
+		// 验证对话是否存在
+		_, err := h.db.GetConversation(conversationID)
+		if err != nil {
+			h.logger.Error("对话不存在", zap.String("conversationId", conversationID), zap.Error(err))
+			c.JSON(http.StatusNotFound, gin.H{"error": "对话不存在"})
+			return
+		}
 	}
 
 	// 优先尝试从保存的ReAct数据恢复历史上下文
@@ -203,6 +211,8 @@ func (h *AgentHandler) AgentLoop(c *gin.Context) {
 	_, err = h.db.AddMessage(conversationID, "user", req.Message, nil)
 	if err != nil {
 		h.logger.Error("保存用户消息失败", zap.Error(err))
+		c.JSON(http.StatusInternalServerError, gin.H{"error": "保存用户消息失败: " + err.Error()})
+		return
 	}
 
 	// 执行Agent Loop，传入历史消息和对话ID（使用包含角色提示词的finalMessage和角色工具列表）
@@ -228,6 +238,8 @@ func (h *AgentHandler) AgentLoop(c *gin.Context) {
 	_, err = h.db.AddMessage(conversationID, "assistant", result.Response, result.MCPExecutionIDs)
 	if err != nil {
 		h.logger.Error("保存助手消息失败", zap.Error(err))
+		// 即使保存失败，也返回响应，但记录错误
+		// 因为AI已经生成了回复，用户应该能看到
 	}
 
 	// 保存最后一轮ReAct的输入和输出
@@ -479,11 +491,18 @@ func (h *AgentHandler) AgentLoopStream(c *gin.Context) {
 			return
 		}
 		conversationID = conv.ID
+		sendEvent("conversation", "会话已创建", map[string]interface{}{
+			"conversationId": conversationID,
+		})
+	} else {
+		// 验证对话是否存在
+		_, err := h.db.GetConversation(conversationID)
+		if err != nil {
+			h.logger.Error("对话不存在", zap.String("conversationId", conversationID), zap.Error(err))
+			sendEvent("error", "对话不存在", nil)
+			return
+		}
 	}
-
-	sendEvent("conversation", "会话已创建", map[string]interface{}{
-		"conversationId": conversationID,
-	})
 
 	// 优先尝试从保存的ReAct数据恢复历史上下文
 	agentHistoryMessages, err := h.loadHistoryFromReActData(conversationID)

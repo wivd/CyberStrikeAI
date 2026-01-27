@@ -223,12 +223,30 @@ func (db *DB) UpdateConversationTime(id string) error {
 	return nil
 }
 
-// DeleteConversation 删除对话
+// DeleteConversation 删除对话及其所有相关数据
+// 由于数据库外键约束设置了 ON DELETE CASCADE，删除对话时会自动删除：
+// - messages（消息）
+// - process_details（过程详情）
+// - attack_chain_nodes（攻击链节点）
+// - attack_chain_edges（攻击链边）
+// - vulnerabilities（漏洞）
+// - conversation_group_mappings（分组映射）
+// 注意：knowledge_retrieval_logs 使用 ON DELETE SET NULL，记录会保留但 conversation_id 会被设为 NULL
 func (db *DB) DeleteConversation(id string) error {
-	_, err := db.Exec("DELETE FROM conversations WHERE id = ?", id)
+	// 显式删除知识检索日志（虽然外键是SET NULL，但为了彻底清理，我们手动删除）
+	_, err := db.Exec("DELETE FROM knowledge_retrieval_logs WHERE conversation_id = ?", id)
+	if err != nil {
+		db.logger.Warn("删除知识检索日志失败", zap.String("conversationId", id), zap.Error(err))
+		// 不返回错误，继续删除对话
+	}
+
+	// 删除对话（外键CASCADE会自动删除其他相关数据）
+	_, err = db.Exec("DELETE FROM conversations WHERE id = ?", id)
 	if err != nil {
 		return fmt.Errorf("删除对话失败: %w", err)
 	}
+
+	db.logger.Info("对话及其所有相关数据已删除", zap.String("conversationId", id))
 	return nil
 }
 

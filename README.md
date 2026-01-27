@@ -495,6 +495,7 @@ See [CHANGELOG.md](CHANGELOG.md) for detailed version history and all changes.
 
 ### Recent Highlights
 
+- **2026-01-27** – OpenAPI documentation with interactive testing interface, supporting conversation management, message interaction, and result querying
 - **2026-01-15** – Skills system with 20+ predefined security testing skills
 - **2026-01-11** – Role-based testing with predefined security testing roles
 - **2026-01-08** – SSE transport mode support for external MCP servers

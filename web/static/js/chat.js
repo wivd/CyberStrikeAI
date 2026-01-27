@@ -5761,4 +5761,34 @@ document.addEventListener('DOMContentLoaded', async () => {
         };
     }
     await loadConversationsWithGroups();
+    
+    // 添加页面焦点时自动刷新对话列表的功能
+    // 这样当通过OpenAPI创建对话后，切换回页面时能自动看到新对话
+    let lastFocusTime = Date.now();
+    const CONVERSATION_REFRESH_INTERVAL = 30000; // 30秒内最多刷新一次，避免过于频繁
+    
+    window.addEventListener('focus', () => {
+        const now = Date.now();
+        // 如果距离上次刷新超过30秒，才刷新对话列表
+        if (now - lastFocusTime > CONVERSATION_REFRESH_INTERVAL) {
+            lastFocusTime = now;
+            if (typeof loadConversationsWithGroups === 'function') {
+                loadConversationsWithGroups();
+            }
+        }
+    });
+    
+    // 监听页面可见性变化（当用户切换标签页回来时）
+    document.addEventListener('visibilitychange', () => {
+        if (!document.hidden) {
+            // 页面变为可见时，检查是否需要刷新
+            const now = Date.now();
+            if (now - lastFocusTime > CONVERSATION_REFRESH_INTERVAL) {
+                lastFocusTime = now;
+                if (typeof loadConversationsWithGroups === 'function') {
+                    loadConversationsWithGroups();
+                }
+            }
+        }
+    });
 });
