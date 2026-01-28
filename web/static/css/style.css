@@ -6754,21 +6754,146 @@ header {
 
 .group-icon-input {
     position: absolute;
-    left: 16px;
+    left: 8px;
     top: 50%;
     transform: translateY(-50%);
-    width: auto;
-    height: auto;
+    width: 28px;
+    height: 28px;
     display: flex;
     align-items: center;
     justify-content: center;
-    background: none;
-    border-radius: 0;
+    background: #f5f5f5;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
     font-size: 1rem;
-    pointer-events: none;
-    z-index: 1;
+    cursor: pointer;
+    z-index: 2;
     box-shadow: none;
     line-height: 1;
+    transition: all 0.2s ease;
+}
+
+.group-icon-input:hover {
+    background: #e8e8e8;
+    border-color: #d0d0d0;
+    transform: translateY(-50%) scale(1.05);
+}
+
+.group-icon-input:active {
+    transform: translateY(-50%) scale(0.98);
+    background: #ddd;
+}
+
+/* 图标选择器面板 */
+.group-icon-picker {
+    position: absolute;
+    top: calc(100% + 8px);
+    left: 0;
+    width: 280px;
+    background: #ffffff;
+    border: 1px solid #e0e0e0;
+    border-radius: 12px;
+    box-shadow: 0 4px 20px rgba(0, 0, 0, 0.15);
+    z-index: 100;
+    overflow: hidden;
+}
+
+.icon-picker-header {
+    padding: 10px 14px;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: #666;
+    background: #fafafa;
+    border-bottom: 1px solid #f0f0f0;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.icon-picker-header > span {
+    flex-shrink: 0;
+}
+
+.icon-picker-custom {
+    display: flex;
+    align-items: center;
+    gap: 6px;
+}
+
+.custom-icon-input {
+    width: 60px;
+    padding: 4px 8px;
+    border: 1px solid #e0e0e0;
+    border-radius: 6px;
+    font-size: 0.875rem;
+    text-align: center;
+    background: #ffffff;
+    transition: all 0.2s ease;
+}
+
+.custom-icon-input:focus {
+    outline: none;
+    border-color: #667eea;
+    box-shadow: 0 0 0 2px rgba(102, 126, 234, 0.1);
+}
+
+.custom-icon-input::placeholder {
+    color: #bbb;
+    font-size: 0.75rem;
+}
+
+.custom-icon-btn {
+    padding: 4px 10px;
+    font-size: 0.75rem;
+    font-weight: 500;
+    color: #fff;
+    background: #667eea;
+    border: none;
+    border-radius: 6px;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    white-space: nowrap;
+}
+
+.custom-icon-btn:hover {
+    background: #5a6fd6;
+}
+
+.custom-icon-btn:active {
+    transform: scale(0.96);
+}
+
+.icon-picker-grid {
+    display: grid;
+    grid-template-columns: repeat(6, 1fr);
+    gap: 4px;
+    padding: 12px;
+    max-height: 180px;
+    overflow-y: auto;
+}
+
+.icon-option {
+    width: 36px;
+    height: 36px;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    font-size: 1.25rem;
+    cursor: pointer;
+    border-radius: 8px;
+    transition: all 0.15s ease;
+    user-select: none;
+}
+
+.icon-option:hover {
+    background: #f0f0f0;
+    transform: scale(1.15);
+}
+
+.icon-option:active {
+    transform: scale(1);
+    background: #e0e0e0;
 }
 
 #create-group-name-input {

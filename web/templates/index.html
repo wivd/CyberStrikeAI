@@ -1284,8 +1284,44 @@ version: 1.0.0<br>
             <div class="modal-body create-group-body">
                 <p class="create-group-description">分组功能可将对话集中归类管理，让对话更加井然有序。</p>
                 <div class="create-group-input-wrapper">
-                    <span class="group-icon-input">😊</span>
+                    <button type="button" class="group-icon-input" id="create-group-icon-btn" onclick="toggleGroupIconPicker()" title="点击选择图标">📁</button>
                     <input type="text" id="create-group-name-input" placeholder="请输入分组名称" />
+                    <!-- Emoji选择器面板 -->
+                    <div id="group-icon-picker" class="group-icon-picker" style="display: none;">
+                        <div class="icon-picker-header">
+                            <span>选择图标</span>
+                            <div class="icon-picker-custom">
+                                <input type="text" id="custom-icon-input" class="custom-icon-input" placeholder="自定义" maxlength="2" />
+                                <button type="button" class="custom-icon-btn" onclick="applyCustomIcon()">确定</button>
+                            </div>
+                        </div>
+                        <div class="icon-picker-grid">
+                            <span class="icon-option" onclick="selectGroupIcon('📁')">📁</span>
+                            <span class="icon-option" onclick="selectGroupIcon('🔒')">🔒</span>
+                            <span class="icon-option" onclick="selectGroupIcon('🛡️')">🛡️</span>
+                            <span class="icon-option" onclick="selectGroupIcon('⚔️')">⚔️</span>
+                            <span class="icon-option" onclick="selectGroupIcon('🎯')">🎯</span>
+                            <span class="icon-option" onclick="selectGroupIcon('🔍')">🔍</span>
+                            <span class="icon-option" onclick="selectGroupIcon('💻')">💻</span>
+                            <span class="icon-option" onclick="selectGroupIcon('🐛')">🐛</span>
+                            <span class="icon-option" onclick="selectGroupIcon('🚀')">🚀</span>
+                            <span class="icon-option" onclick="selectGroupIcon('⚡')">⚡</span>
+                            <span class="icon-option" onclick="selectGroupIcon('🔥')">🔥</span>
+                            <span class="icon-option" onclick="selectGroupIcon('💡')">💡</span>
+                            <span class="icon-option" onclick="selectGroupIcon('🎮')">🎮</span>
+                            <span class="icon-option" onclick="selectGroupIcon('🏴‍☠️')">🏴‍☠️</span>
+                            <span class="icon-option" onclick="selectGroupIcon('🕵️')">🕵️</span>
+                            <span class="icon-option" onclick="selectGroupIcon('🔑')">🔑</span>
+                            <span class="icon-option" onclick="selectGroupIcon('📡')">📡</span>
+                            <span class="icon-option" onclick="selectGroupIcon('🌐')">🌐</span>
+                            <span class="icon-option" onclick="selectGroupIcon('📊')">📊</span>
+                            <span class="icon-option" onclick="selectGroupIcon('📝')">📝</span>
+                            <span class="icon-option" onclick="selectGroupIcon('🗂️')">🗂️</span>
+                            <span class="icon-option" onclick="selectGroupIcon('📌')">📌</span>
+                            <span class="icon-option" onclick="selectGroupIcon('⭐')">⭐</span>
+                            <span class="icon-option" onclick="selectGroupIcon('💎')">💎</span>
+                        </div>
+                    </div>
                 </div>
                 <div class="create-group-suggestions">
                     <div class="suggestion-tag" onclick="selectSuggestion('渗透测试')">渗透测试</div>

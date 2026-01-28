@@ -4994,8 +4994,24 @@ function closeBatchManageModal() {
 function showCreateGroupModal(andMoveConversation = false) {
     const modal = document.getElementById('create-group-modal');
     const input = document.getElementById('create-group-name-input');
+    const iconBtn = document.getElementById('create-group-icon-btn');
+    const iconPicker = document.getElementById('group-icon-picker');
+    const customInput = document.getElementById('custom-icon-input');
+    
     if (input) {
         input.value = '';
+    }
+    // 重置图标为默认值
+    if (iconBtn) {
+        iconBtn.textContent = '📁';
+    }
+    // 清空自定义图标输入框
+    if (customInput) {
+        customInput.value = '';
+    }
+    // 关闭图标选择器
+    if (iconPicker) {
+        iconPicker.style.display = 'none';
     }
     if (modal) {
         modal.style.display = 'flex';
@@ -5016,6 +5032,21 @@ function closeCreateGroupModal() {
     if (input) {
         input.value = '';
     }
+    // 重置图标为默认值
+    const iconBtn = document.getElementById('create-group-icon-btn');
+    if (iconBtn) {
+        iconBtn.textContent = '📁';
+    }
+    // 清空自定义图标输入框
+    const customInput = document.getElementById('custom-icon-input');
+    if (customInput) {
+        customInput.value = '';
+    }
+    // 关闭图标选择器
+    const iconPicker = document.getElementById('group-icon-picker');
+    if (iconPicker) {
+        iconPicker.style.display = 'none';
+    }
 }
 
 // 选择建议标签
@@ -5026,6 +5057,81 @@ function selectSuggestion(name) {
         input.focus();
     }
 }
+
+// 切换图标选择器显示状态
+function toggleGroupIconPicker() {
+    const picker = document.getElementById('group-icon-picker');
+    if (picker) {
+        const isVisible = picker.style.display !== 'none';
+        picker.style.display = isVisible ? 'none' : 'block';
+    }
+}
+
+// 选择分组图标
+function selectGroupIcon(icon) {
+    const iconBtn = document.getElementById('create-group-icon-btn');
+    if (iconBtn) {
+        iconBtn.textContent = icon;
+    }
+    // 清空自定义输入框
+    const customInput = document.getElementById('custom-icon-input');
+    if (customInput) {
+        customInput.value = '';
+    }
+    // 关闭选择器
+    const picker = document.getElementById('group-icon-picker');
+    if (picker) {
+        picker.style.display = 'none';
+    }
+}
+
+// 应用自定义图标
+function applyCustomIcon() {
+    const customInput = document.getElementById('custom-icon-input');
+    if (!customInput) return;
+    
+    const customIcon = customInput.value.trim();
+    if (!customIcon) {
+        return;
+    }
+    
+    const iconBtn = document.getElementById('create-group-icon-btn');
+    if (iconBtn) {
+        iconBtn.textContent = customIcon;
+    }
+    
+    // 清空输入框并关闭选择器
+    customInput.value = '';
+    const picker = document.getElementById('group-icon-picker');
+    if (picker) {
+        picker.style.display = 'none';
+    }
+}
+
+// 自定义图标输入框回车键处理
+document.addEventListener('DOMContentLoaded', function() {
+    const customInput = document.getElementById('custom-icon-input');
+    if (customInput) {
+        customInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                applyCustomIcon();
+            }
+        });
+    }
+});
+
+// 点击外部关闭图标选择器
+document.addEventListener('click', function(event) {
+    const picker = document.getElementById('group-icon-picker');
+    const iconBtn = document.getElementById('create-group-icon-btn');
+    if (picker && iconBtn) {
+        // 如果点击的不是图标按钮和选择器本身，则关闭选择器
+        if (!picker.contains(event.target) && !iconBtn.contains(event.target)) {
+            picker.style.display = 'none';
+        }
+    }
+});
 
 // 创建分组
 async function createGroup(event) {
@@ -5071,6 +5177,10 @@ async function createGroup(event) {
         console.error('检查分组名称失败:', error);
     }
 
+    // 获取选中的图标
+    const iconBtn = document.getElementById('create-group-icon-btn');
+    const selectedIcon = iconBtn ? iconBtn.textContent.trim() : '📁';
+
     try {
         const response = await apiFetch('/api/groups', {
             method: 'POST',
@@ -5079,7 +5189,7 @@ async function createGroup(event) {
             },
             body: JSON.stringify({
                 name: name,
-                icon: '📁',
+                icon: selectedIcon,
             }),
         });
 
