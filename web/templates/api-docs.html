@@ -278,6 +278,198 @@
             margin-bottom: 16px;
         }
         
+        .api-description strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        
+        .api-description code {
+            background: var(--bg-secondary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.875em;
+            color: var(--accent-color);
+        }
+        
+        .api-description pre {
+            background: var(--bg-secondary);
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 8px 0;
+            font-size: 0.875rem;
+        }
+        
+        .api-description pre code {
+            background: transparent;
+            padding: 0;
+            color: var(--text-secondary);
+        }
+        
+        .api-description ul {
+            margin: 8px 0;
+            padding-left: 24px;
+            list-style-type: disc;
+        }
+        
+        .api-description li {
+            margin: 4px 0;
+        }
+        
+        /* Markdown样式 */
+        .api-description-detail .md-h1 {
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 16px 0 12px 0;
+            padding-bottom: 8px;
+            border-bottom: 2px solid var(--border-color);
+        }
+        
+        .api-description-detail .md-h2 {
+            font-size: 1.25rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 14px 0 10px 0;
+            padding-bottom: 6px;
+            border-bottom: 1px solid var(--border-color);
+        }
+        
+        .api-description-detail .md-h3 {
+            font-size: 1.125rem;
+            font-weight: 600;
+            color: var(--text-primary);
+            margin: 12px 0 8px 0;
+        }
+        
+        .api-description-detail .md-paragraph {
+            margin: 8px 0;
+            line-height: 1.6;
+        }
+        
+        .api-description-detail .md-list {
+            margin: 8px 0;
+            padding-left: 24px;
+            list-style-type: disc;
+        }
+        
+        .api-description-detail .md-list ol {
+            list-style-type: decimal;
+            margin: 4px 0;
+            padding-left: 24px;
+        }
+        
+        .api-description-detail .md-list-item {
+            margin: 4px 0;
+            line-height: 1.6;
+        }
+        
+        .api-description-detail .md-link {
+            color: var(--accent-color);
+            text-decoration: none;
+            border-bottom: 1px solid transparent;
+            transition: all 0.2s ease;
+        }
+        
+        .api-description-detail .md-link:hover {
+            color: var(--accent-hover);
+            border-bottom-color: var(--accent-hover);
+        }
+        
+        .api-description-detail .inline-code {
+            background: var(--bg-secondary);
+            padding: 2px 6px;
+            border-radius: 4px;
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            font-size: 0.875em;
+            color: var(--accent-color);
+        }
+        
+        .api-description-detail .code-block {
+            background: var(--bg-secondary);
+            padding: 12px;
+            border-radius: 6px;
+            overflow-x: auto;
+            margin: 12px 0;
+            font-size: 0.875rem;
+            border: 1px solid var(--border-color);
+        }
+        
+        .api-description-detail .code-block code {
+            background: transparent;
+            padding: 0;
+            color: var(--text-secondary);
+            font-family: 'Monaco', 'Menlo', 'Ubuntu Mono', monospace;
+            display: block;
+            white-space: pre;
+        }
+        
+        .api-description-detail .code-lang {
+            display: block;
+            font-size: 0.75rem;
+            color: var(--text-muted);
+            margin-bottom: 8px;
+            text-transform: uppercase;
+            font-weight: 600;
+            letter-spacing: 0.5px;
+        }
+        
+        .api-description-detail strong {
+            color: var(--text-primary);
+            font-weight: 600;
+        }
+        
+        .api-description-detail em {
+            font-style: italic;
+            color: var(--text-secondary);
+        }
+        
+        .api-description-toggle {
+            margin-top: 8px;
+        }
+        
+        .description-toggle-btn {
+            background: none;
+            border: none;
+            color: var(--accent-color);
+            cursor: pointer;
+            padding: 6px 0;
+            font-size: 0.875rem;
+            display: flex;
+            align-items: center;
+            gap: 6px;
+            transition: all 0.2s ease;
+            font-weight: 500;
+        }
+        
+        .description-toggle-btn:hover {
+            color: var(--accent-hover);
+            opacity: 0.8;
+        }
+        
+        .description-toggle-icon {
+            transition: transform 0.2s ease;
+        }
+        
+        .api-description-detail {
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-color);
+            animation: slideDown 0.2s ease;
+        }
+        
+        @keyframes slideDown {
+            from {
+                opacity: 0;
+                transform: translateY(-10px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+        
         .api-params-table {
             width: 100%;
             border-collapse: collapse;

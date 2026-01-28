@@ -205,7 +205,20 @@ function createEndpointCard(endpoint) {
         <div class="api-endpoint-body">
             <div class="api-section">
                 <div class="api-section-title">描述</div>
-                <div class="api-description">${endpoint.summary || endpoint.description || '无描述'}</div>
+                ${endpoint.summary ? `<div class="api-description" style="font-weight: 500; margin-bottom: 8px; color: var(--text-primary);">${escapeHtml(endpoint.summary)}</div>` : ''}
+                ${endpoint.description ? `
+                    <div class="api-description-toggle">
+                        <button class="description-toggle-btn" onclick="toggleDescription(this)">
+                            <svg class="description-toggle-icon" width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                <polyline points="6 9 12 15 18 9"/>
+                            </svg>
+                            <span>查看详细说明</span>
+                        </button>
+                        <div class="api-description-detail" style="display: none;">
+                            ${formatDescription(endpoint.description)}
+                        </div>
+                    </div>
+                ` : endpoint.summary ? '' : '<div class="api-description">无描述</div>'}
             </div>
             
             ${renderParameters(endpoint)}
@@ -756,6 +769,147 @@ function copyCurlCommand(event, method, path) {
     }
 }
 
+// 格式化描述文本（处理markdown格式）
+function formatDescription(text) {
+    if (!text) return '';
+    
+    // 先提取代码块（避免代码块内的markdown被处理）
+    let formatted = text;
+    const codeBlocks = [];
+    let codeBlockIndex = 0;
+    
+    // 提取代码块（支持语言标识符，如 ```json 或 ```javascript）
+    formatted = formatted.replace(/```(\w+)?\s*\n?([\s\S]*?)```/g, (match, lang, code) => {
+        const placeholder = `__CODE_BLOCK_${codeBlockIndex}__`;
+        codeBlocks[codeBlockIndex] = {
+            lang: (lang && lang.trim()) || '',
+            code: code.trim()
+        };
+        codeBlockIndex++;
+        return placeholder;
+    });
+    
+    // 提取行内代码（避免行内代码内的markdown被处理）
+    const inlineCodes = [];
+    let inlineCodeIndex = 0;
+    formatted = formatted.replace(/`([^`\n]+)`/g, (match, code) => {
+        const placeholder = `__INLINE_CODE_${inlineCodeIndex}__`;
+        inlineCodes[inlineCodeIndex] = code;
+        inlineCodeIndex++;
+        return placeholder;
+    });
+    
+    // 转义HTML（但保留占位符）
+    formatted = escapeHtml(formatted);
+    
+    // 恢复行内代码（需要转义，因为占位符已经被转义了）
+    inlineCodes.forEach((code, index) => {
+        formatted = formatted.replace(
+            `__INLINE_CODE_${index}__`,
+            `<code class="inline-code">${escapeHtml(code)}</code>`
+        );
+    });
+    
+    // 恢复代码块（代码块内容已经转义过，直接使用）
+    codeBlocks.forEach((block, index) => {
+        const langLabel = block.lang ? `<span class="code-lang">${escapeHtml(block.lang)}</span>` : '';
+        // 代码块内容已经在提取时保存，不需要再次转义
+        formatted = formatted.replace(
+            `__CODE_BLOCK_${index}__`,
+            `<pre class="code-block">${langLabel}<code>${escapeHtml(block.code)}</code></pre>`
+        );
+    });
+    
+    // 处理标题（### 标题）
+    formatted = formatted.replace(/^###\s+(.+)$/gm, '<h3 class="md-h3">$1</h3>');
+    formatted = formatted.replace(/^##\s+(.+)$/gm, '<h2 class="md-h2">$1</h2>');
+    formatted = formatted.replace(/^#\s+(.+)$/gm, '<h1 class="md-h1">$1</h1>');
+    
+    // 处理加粗文本（**text** 或 __text__）
+    formatted = formatted.replace(/\*\*([^*]+?)\*\*/g, '<strong>$1</strong>');
+    formatted = formatted.replace(/__([^_]+?)__/g, '<strong>$1</strong>');
+    
+    // 处理斜体（*text* 或 _text_，但不与加粗冲突）
+    formatted = formatted.replace(/(?<!\*)\*([^*\n]+?)\*(?!\*)/g, '<em>$1</em>');
+    formatted = formatted.replace(/(?<!_)_([^_\n]+?)_(?!_)/g, '<em>$1</em>');
+    
+    // 处理链接 [text](url)
+    formatted = formatted.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener noreferrer" class="md-link">$1</a>');
+    
+    // 处理列表项（有序和无序）
+    const lines = formatted.split('\n');
+    const result = [];
+    let inUnorderedList = false;
+    let inOrderedList = false;
+    let orderedListStart = 1;
+    
+    for (let i = 0; i < lines.length; i++) {
+        const line = lines[i];
+        const unorderedMatch = line.match(/^[-*]\s+(.+)$/);
+        const orderedMatch = line.match(/^\d+\.\s+(.+)$/);
+        
+        if (unorderedMatch) {
+            if (inOrderedList) {
+                result.push('</ol>');
+                inOrderedList = false;
+            }
+            if (!inUnorderedList) {
+                result.push('<ul class="md-list">');
+                inUnorderedList = true;
+            }
+            result.push(`<li class="md-list-item">${unorderedMatch[1]}</li>`);
+        } else if (orderedMatch) {
+            if (inUnorderedList) {
+                result.push('</ul>');
+                inUnorderedList = false;
+            }
+            if (!inOrderedList) {
+                result.push('<ol class="md-list">');
+                inOrderedList = true;
+                orderedListStart = parseInt(line.match(/^(\d+)\./)[1]) || 1;
+            }
+            result.push(`<li class="md-list-item">${orderedMatch[1]}</li>`);
+        } else {
+            if (inUnorderedList) {
+                result.push('</ul>');
+                inUnorderedList = false;
+            }
+            if (inOrderedList) {
+                result.push('</ol>');
+                inOrderedList = false;
+            }
+            if (line.trim()) {
+                result.push(line);
+            } else if (i < lines.length - 1) {
+                // 只在非最后一行时添加换行
+                result.push('<br>');
+            }
+        }
+    }
+    
+    if (inUnorderedList) {
+        result.push('</ul>');
+    }
+    if (inOrderedList) {
+        result.push('</ol>');
+    }
+    
+    formatted = result.join('\n');
+    
+    // 处理段落（连续的空行分隔段落）
+    formatted = formatted.replace(/(<br>\s*){2,}/g, '</p><p class="md-paragraph">');
+    formatted = '<p class="md-paragraph">' + formatted + '</p>';
+    
+    // 清理多余的<br>标签（在块级元素前后）
+    formatted = formatted.replace(/(<\/?(h[1-6]|ul|ol|li|pre|p)[^>]*>)\s*<br>/gi, '$1');
+    formatted = formatted.replace(/<br>\s*(<\/?(h[1-6]|ul|ol|li|pre|p)[^>]*>)/gi, '$1');
+    
+    // 将剩余的单个换行符转换为<br>（但避免在块级元素内）
+    formatted = formatted.replace(/\n(?!<\/?(h[1-6]|ul|ol|li|pre|p|code))/g, '<br>');
+    
+    return formatted;
+}
+
 // HTML转义
 function escapeHtml(text) {
     const div = document.createElement('div');
@@ -766,4 +920,21 @@ function escapeHtml(text) {
 // ID转义（用于HTML ID属性）
 function escapeId(text) {
     return text.replace(/[{}]/g, '').replace(/\//g, '-');
+}
+
+// 切换描述显示/隐藏
+function toggleDescription(button) {
+    const icon = button.querySelector('.description-toggle-icon');
+    const detail = button.parentElement.querySelector('.api-description-detail');
+    const span = button.querySelector('span');
+    
+    if (detail.style.display === 'none') {
+        detail.style.display = 'block';
+        icon.style.transform = 'rotate(180deg)';
+        span.textContent = '隐藏详细说明';
+    } else {
+        detail.style.display = 'none';
+        icon.style.transform = 'rotate(0deg)';
+        span.textContent = '查看详细说明';
+    }
 }

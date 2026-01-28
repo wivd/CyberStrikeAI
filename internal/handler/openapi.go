@@ -264,7 +264,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 					},
 				},
 				"LoginRequest": map[string]interface{}{
-					"type": "object",
+					"type":     "object",
 					"required": []string{"password"},
 					"properties": map[string]interface{}{
 						"password": map[string]interface{}{
@@ -292,7 +292,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 					},
 				},
 				"ChangePasswordRequest": map[string]interface{}{
-					"type": "object",
+					"type":     "object",
 					"required": []string{"oldPassword", "newPassword"},
 					"properties": map[string]interface{}{
 						"oldPassword": map[string]interface{}{
@@ -306,7 +306,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 					},
 				},
 				"UpdateConversationRequest": map[string]interface{}{
-					"type": "object",
+					"type":     "object",
 					"required": []string{"title"},
 					"properties": map[string]interface{}{
 						"title": map[string]interface{}{
@@ -343,7 +343,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 					},
 				},
 				"CreateGroupRequest": map[string]interface{}{
-					"type": "object",
+					"type":     "object",
 					"required": []string{"name"},
 					"properties": map[string]interface{}{
 						"name": map[string]interface{}{
@@ -357,7 +357,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 					},
 				},
 				"UpdateGroupRequest": map[string]interface{}{
-					"type": "object",
+					"type":     "object",
 					"required": []string{"name"},
 					"properties": map[string]interface{}{
 						"name": map[string]interface{}{
@@ -371,7 +371,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 					},
 				},
 				"AddConversationToGroupRequest": map[string]interface{}{
-					"type": "object",
+					"type":     "object",
 					"required": []string{"conversationId", "groupId"},
 					"properties": map[string]interface{}{
 						"conversationId": map[string]interface{}{
@@ -385,7 +385,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 					},
 				},
 				"BatchTaskRequest": map[string]interface{}{
-					"type": "object",
+					"type":     "object",
 					"required": []string{"tasks"},
 					"properties": map[string]interface{}{
 						"title": map[string]interface{}{
@@ -436,7 +436,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 					},
 				},
 				"CancelAgentLoopRequest": map[string]interface{}{
-					"type": "object",
+					"type":     "object",
 					"required": []string{"conversationId"},
 					"properties": map[string]interface{}{
 						"conversationId": map[string]interface{}{
@@ -465,7 +465,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 					},
 				},
 				"CreateVulnerabilityRequest": map[string]interface{}{
-					"type": "object",
+					"type":     "object",
 					"required": []string{"conversation_id", "title", "severity"},
 					"properties": map[string]interface{}{
 						"conversation_id": map[string]interface{}{
@@ -657,7 +657,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 					},
 				},
 				"CreateSkillRequest": map[string]interface{}{
-					"type": "object",
+					"type":     "object",
 					"required": []string{"name", "description"},
 					"properties": map[string]interface{}{
 						"name": map[string]interface{}{
@@ -789,7 +789,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 					},
 				},
 				"AddOrUpdateExternalMCPRequest": map[string]interface{}{
-					"type": "object",
+					"type":     "object",
 					"required": []string{"config"},
 					"properties": map[string]interface{}{
 						"config": map[string]interface{}{
@@ -802,9 +802,9 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 					"description": "攻击链数据",
 				},
 				"MCPMessage": map[string]interface{}{
-					"type": "object",
+					"type":        "object",
 					"description": "MCP消息（符合JSON-RPC 2.0规范）",
-					"required": []string{"jsonrpc"},
+					"required":    []string{"jsonrpc"},
 					"properties": map[string]interface{}{
 						"id": map[string]interface{}{
 							"description": "消息ID，可以是字符串、数字或null。对于请求，必须提供；对于通知，可以省略",
@@ -843,7 +843,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 					},
 				},
 				"MCPInitializeParams": map[string]interface{}{
-					"type": "object",
+					"type":     "object",
 					"required": []string{"protocolVersion", "capabilities", "clientInfo"},
 					"properties": map[string]interface{}{
 						"protocolVersion": map[string]interface{}{
@@ -856,7 +856,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 							"description": "客户端能力",
 						},
 						"clientInfo": map[string]interface{}{
-							"type": "object",
+							"type":     "object",
 							"required": []string{"name", "version"},
 							"properties": map[string]interface{}{
 								"name": map[string]interface{}{
@@ -874,7 +874,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 					},
 				},
 				"MCPCallToolParams": map[string]interface{}{
-					"type": "object",
+					"type":     "object",
 					"required": []string{"name", "arguments"},
 					"properties": map[string]interface{}{
 						"name": map[string]interface{}{
@@ -908,7 +908,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 							"type":        "object",
 						},
 						"error": map[string]interface{}{
-							"type": "object",
+							"type":        "object",
 							"description": "错误信息（如果执行失败）",
 							"properties": map[string]interface{}{
 								"code": map[string]interface{}{
@@ -1084,7 +1084,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 				"post": map[string]interface{}{
 					"tags":        []string{"对话管理"},
 					"summary":     "创建对话",
-					"description": "创建一个新的安全测试对话。\n\n**重要说明**：\n- ✅ 创建的对话会**立即保存到数据库**\n- ✅ 前端页面会**自动刷新**显示新对话\n- ✅ 与前端创建的对话**完全一致**\n\n**创建对话的两种方式**：\n\n**方式1（推荐）：** 直接使用 `/api/agent-loop` 发送消息，**不提供** `conversationId` 参数，系统会自动创建新对话并发送消息。这是最简单的方式，一步完成创建和发送。\n\n**方式2：** 先调用此端点创建空对话，然后使用返回的 `conversationId` 调用 `/api/agent-loop` 发送消息。适用于需要先创建对话，稍后再发送消息的场景。\n\n**示例**：\n```json\n{\n  \"title\": \"Web应用安全测试\"\n}\n```",
+					"description": "创建一个新的安全测试对话。\n**重要说明**：\n- ✅ 创建的对话会**立即保存到数据库**\n- ✅ 前端页面会**自动刷新**显示新对话\n- ✅ 与前端创建的对话**完全一致**\n**创建对话的两种方式**：\n**方式1（推荐）：** 直接使用 `/api/agent-loop` 发送消息，**不提供** `conversationId` 参数，系统会自动创建新对话并发送消息。这是最简单的方式，一步完成创建和发送。\n**方式2：** 先调用此端点创建空对话，然后使用返回的 `conversationId` 调用 `/api/agent-loop` 发送消息。适用于需要先创建对话，稍后再发送消息的场景。\n**示例**：\n```json\n{\n  \"title\": \"Web应用安全测试\"\n}\n```",
 					"operationId": "createConversation",
 					"requestBody": map[string]interface{}{
 						"required": true,
@@ -1348,7 +1348,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 				"post": map[string]interface{}{
 					"tags":        []string{"对话交互"},
 					"summary":     "发送消息并获取AI回复（非流式）",
-					"description": "向AI发送消息并获取回复（非流式响应）。**这是与AI交互的核心端点**，与前端聊天功能完全一致。\n\n**重要说明**：\n- ✅ 通过此API创建/发送的消息会**立即保存到数据库**\n- ✅ 前端页面会**自动刷新**显示新创建的对话和消息\n- ✅ 所有操作都有**完整的交互痕迹**，就像在前端操作一样\n- ✅ 支持角色配置，可以指定使用哪个测试角色\n\n**推荐使用流程**：\n\n1. **先创建对话**：调用 `POST /api/conversations` 创建新对话，获取 `conversationId`\n2. **再发送消息**：使用返回的 `conversationId` 调用此端点发送消息\n\n**使用示例**：\n\n**步骤1 - 创建对话：**\n```json\nPOST /api/conversations\n{\n  \"title\": \"Web应用安全测试\"\n}\n```\n\n**步骤2 - 发送消息：**\n```json\nPOST /api/agent-loop\n{\n  \"conversationId\": \"返回的对话ID\",\n  \"message\": \"扫描 http://example.com 的SQL注入漏洞\",\n  \"role\": \"渗透测试\"\n}\n```\n\n**其他方式**：\n\n如果不提供 `conversationId`，系统会自动创建新对话并发送消息。但**推荐先创建对话**，这样可以更好地管理对话列表。\n\n**响应**：返回AI的回复、对话ID和MCP执行ID列表。前端会自动刷新显示新消息。",
+					"description": "向AI发送消息并获取回复（非流式响应）。**这是与AI交互的核心端点**，与前端聊天功能完全一致。\n**重要说明**：\n- ✅ 通过此API创建/发送的消息会**立即保存到数据库**\n- ✅ 前端页面会**自动刷新**显示新创建的对话和消息\n- ✅ 所有操作都有**完整的交互痕迹**，就像在前端操作一样\n- ✅ 支持角色配置，可以指定使用哪个测试角色\n**推荐使用流程**：\n1. **先创建对话**：调用 `POST /api/conversations` 创建新对话，获取 `conversationId`\n2. **再发送消息**：使用返回的 `conversationId` 调用此端点发送消息\n**使用示例**：\n**步骤1 - 创建对话：**\n```json\nPOST /api/conversations\n{\n  \"title\": \"Web应用安全测试\"\n}\n```\n**步骤2 - 发送消息：**\n```json\nPOST /api/agent-loop\n{\n  \"conversationId\": \"返回的对话ID\",\n  \"message\": \"扫描 http://example.com 的SQL注入漏洞\",\n  \"role\": \"渗透测试\"\n}\n```\n**其他方式**：\n如果不提供 `conversationId`，系统会自动创建新对话并发送消息。但**推荐先创建对话**，这样可以更好地管理对话列表。\n**响应**：返回AI的回复、对话ID和MCP执行ID列表。前端会自动刷新显示新消息。",
 					"operationId": "sendMessage",
 					"requestBody": map[string]interface{}{
 						"required": true,
@@ -1427,7 +1427,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 				"post": map[string]interface{}{
 					"tags":        []string{"对话交互"},
 					"summary":     "发送消息并获取AI回复（流式）",
-					"description": "向AI发送消息并获取流式回复（Server-Sent Events）。**这是与AI交互的核心端点**，与前端聊天功能完全一致。\n\n**重要说明**：\n- ✅ 通过此API创建/发送的消息会**立即保存到数据库**\n- ✅ 前端页面会**自动刷新**显示新创建的对话和消息\n- ✅ 所有操作都有**完整的交互痕迹**，就像在前端操作一样\n- ✅ 支持角色配置，可以指定使用哪个测试角色\n- ✅ 返回流式响应，适合实时显示AI回复\n\n**推荐使用流程**：\n\n1. **先创建对话**：调用 `POST /api/conversations` 创建新对话，获取 `conversationId`\n2. **再发送消息**：使用返回的 `conversationId` 调用此端点发送消息\n\n**使用示例**：\n\n**步骤1 - 创建对话：**\n```json\nPOST /api/conversations\n{\n  \"title\": \"Web应用安全测试\"\n}\n```\n\n**步骤2 - 发送消息（流式）：**\n```json\nPOST /api/agent-loop/stream\n{\n  \"conversationId\": \"返回的对话ID\",\n  \"message\": \"扫描 http://example.com 的SQL注入漏洞\",\n  \"role\": \"渗透测试\"\n}\n```\n\n**响应格式**：Server-Sent Events (SSE)，事件类型包括：\n- `message`: 用户消息确认\n- `response`: AI回复片段\n- `progress`: 进度更新\n- `done`: 完成\n- `error`: 错误\n- `cancelled`: 已取消",
+					"description": "向AI发送消息并获取流式回复（Server-Sent Events）。**这是与AI交互的核心端点**，与前端聊天功能完全一致。\n**重要说明**：\n- ✅ 通过此API创建/发送的消息会**立即保存到数据库**\n- ✅ 前端页面会**自动刷新**显示新创建的对话和消息\n- ✅ 所有操作都有**完整的交互痕迹**，就像在前端操作一样\n- ✅ 支持角色配置，可以指定使用哪个测试角色\n- ✅ 返回流式响应，适合实时显示AI回复\n**推荐使用流程**：\n1. **先创建对话**：调用 `POST /api/conversations` 创建新对话，获取 `conversationId`\n2. **再发送消息**：使用返回的 `conversationId` 调用此端点发送消息\n**使用示例**：\n**步骤1 - 创建对话：**\n```json\nPOST /api/conversations\n{\n  \"title\": \"Web应用安全测试\"\n}\n```\n**步骤2 - 发送消息（流式）：**\n```json\nPOST /api/agent-loop/stream\n{\n  \"conversationId\": \"返回的对话ID\",\n  \"message\": \"扫描 http://example.com 的SQL注入漏洞\",\n  \"role\": \"渗透测试\"\n}\n```\n**响应格式**：Server-Sent Events (SSE)，事件类型包括：\n- `message`: 用户消息确认\n- `response`: AI回复片段\n- `progress`: 进度更新\n- `done`: 完成\n- `error`: 错误\n- `cancelled`: 已取消",
 					"operationId": "sendMessageStream",
 					"requestBody": map[string]interface{}{
 						"required": true,
@@ -1506,16 +1506,16 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 										"type": "object",
 										"properties": map[string]interface{}{
 											"status": map[string]interface{}{
-												"type":        "string",
-												"example":     "cancelling",
+												"type":    "string",
+												"example": "cancelling",
 											},
 											"conversationId": map[string]interface{}{
 												"type":        "string",
 												"description": "对话ID",
 											},
 											"message": map[string]interface{}{
-												"type":        "string",
-												"example":     "已提交取消请求，任务将在当前步骤完成后停止。",
+												"type":    "string",
+												"example": "已提交取消请求，任务将在当前步骤完成后停止。",
 											},
 										},
 									},
@@ -1799,7 +1799,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 				"post": map[string]interface{}{
 					"tags":        []string{"批量任务"},
 					"summary":     "添加任务到队列",
-					"description": "向批量任务队列添加新任务。任务会添加到队列末尾，按照队列顺序依次执行。每个任务会创建一个独立的对话，支持完整的状态跟踪。\n\n**任务格式**：\n任务内容是一个字符串，描述要执行的安全测试任务。例如：\n- \"扫描 http://example.com 的SQL注入漏洞\"\n- \"对 192.168.1.1 进行端口扫描\"\n- \"检测 https://target.com 的XSS漏洞\"\n\n**使用示例**：\n```json\n{\n  \"task\": \"扫描 http://example.com 的SQL注入漏洞\"\n}\n```",
+					"description": "向批量任务队列添加新任务。任务会添加到队列末尾，按照队列顺序依次执行。每个任务会创建一个独立的对话，支持完整的状态跟踪。\n**任务格式**：\n任务内容是一个字符串，描述要执行的安全测试任务。例如：\n- \"扫描 http://example.com 的SQL注入漏洞\"\n- \"对 192.168.1.1 进行端口扫描\"\n- \"检测 https://target.com 的XSS漏洞\"\n**使用示例**：\n```json\n{\n  \"task\": \"扫描 http://example.com 的SQL注入漏洞\"\n}\n```",
 					"operationId": "addBatchTask",
 					"parameters": []map[string]interface{}{
 						{
@@ -1817,7 +1817,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 						"content": map[string]interface{}{
 							"application/json": map[string]interface{}{
 								"schema": map[string]interface{}{
-									"type": "object",
+									"type":     "object",
 									"required": []string{"task"},
 									"properties": map[string]interface{}{
 										"task": map[string]interface{}{
@@ -2830,7 +2830,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 							"content": map[string]interface{}{
 								"application/json": map[string]interface{}{
 									"schema": map[string]interface{}{
-										"type": "object",
+										"type":        "object",
 										"description": "统计信息",
 									},
 								},
@@ -3198,7 +3198,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 							"content": map[string]interface{}{
 								"application/json": map[string]interface{}{
 									"schema": map[string]interface{}{
-										"type": "object",
+										"type":        "object",
 										"description": "统计信息",
 									},
 								},
@@ -3272,7 +3272,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 							"content": map[string]interface{}{
 								"application/json": map[string]interface{}{
 									"schema": map[string]interface{}{
-										"type": "array",
+										"type":        "array",
 										"description": "工具配置列表",
 									},
 								},
@@ -3348,7 +3348,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 							"content": map[string]interface{}{
 								"application/json": map[string]interface{}{
 									"schema": map[string]interface{}{
-										"type": "object",
+										"type":        "object",
 										"description": "统计信息",
 									},
 								},
@@ -3399,7 +3399,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 				"put": map[string]interface{}{
 					"tags":        []string{"外部MCP管理"},
 					"summary":     "添加或更新外部MCP",
-					"description": "添加新的外部MCP配置或更新现有配置。\n\n**传输方式**：\n支持两种传输方式：\n\n**1. stdio（标准输入输出）**：\n```json\n{\n  \"config\": {\n    \"enabled\": true,\n    \"command\": \"node\",\n    \"args\": [\"/path/to/mcp-server.js\"],\n    \"env\": {}\n  }\n}\n```\n\n**2. sse（Server-Sent Events）**：\n```json\n{\n  \"config\": {\n    \"enabled\": true,\n    \"transport\": \"sse\",\n    \"url\": \"http://127.0.0.1:8082/sse\",\n    \"timeout\": 30\n  }\n}\n```\n\n**配置参数说明**：\n- `enabled`: 是否启用（boolean，必需）\n- `command`: 命令（stdio模式必需，如：\"node\", \"python\"）\n- `args`: 命令参数数组（stdio模式必需）\n- `env`: 环境变量（object，可选）\n- `transport`: 传输方式（\"stdio\" 或 \"sse\"，sse模式必需）\n- `url`: SSE端点URL（sse模式必需）\n- `timeout`: 超时时间（秒，可选，默认30）\n- `description`: 描述（可选）",
+					"description": "添加新的外部MCP配置或更新现有配置。\n**传输方式**：\n支持两种传输方式：\n**1. stdio（标准输入输出）**：\n```json\n{\n  \"config\": {\n    \"enabled\": true,\n    \"command\": \"node\",\n    \"args\": [\"/path/to/mcp-server.js\"],\n    \"env\": {}\n  }\n}\n```\n**2. sse（Server-Sent Events）**：\n```json\n{\n  \"config\": {\n    \"enabled\": true,\n    \"transport\": \"sse\",\n    \"url\": \"http://127.0.0.1:8082/sse\",\n    \"timeout\": 30\n  }\n}\n```\n**配置参数说明**：\n- `enabled`: 是否启用（boolean，必需）\n- `command`: 命令（stdio模式必需，如：\"node\", \"python\"）\n- `args`: 命令参数数组（stdio模式必需）\n- `env`: 环境变量（object，可选）\n- `transport`: 传输方式（\"stdio\" 或 \"sse\"，sse模式必需）\n- `url`: SSE端点URL（sse模式必需）\n- `timeout`: 超时时间（秒，可选，默认30）\n- `description`: 描述（可选）",
 					"operationId": "addOrUpdateExternalMCP",
 					"parameters": []map[string]interface{}{
 						{
@@ -3460,8 +3460,8 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 										"type": "object",
 										"properties": map[string]interface{}{
 											"message": map[string]interface{}{
-												"type":        "string",
-												"example":     "外部MCP配置已保存",
+												"type":    "string",
+												"example": "外部MCP配置已保存",
 											},
 										},
 									},
@@ -3671,7 +3671,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 						"content": map[string]interface{}{
 							"application/json": map[string]interface{}{
 								"schema": map[string]interface{}{
-									"type": "object",
+									"type":     "object",
 									"required": []string{"pinned"},
 									"properties": map[string]interface{}{
 										"pinned": map[string]interface{}{
@@ -3718,7 +3718,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 						"content": map[string]interface{}{
 							"application/json": map[string]interface{}{
 								"schema": map[string]interface{}{
-									"type": "object",
+									"type":     "object",
 									"required": []string{"pinned"},
 									"properties": map[string]interface{}{
 										"pinned": map[string]interface{}{
@@ -3774,7 +3774,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 						"content": map[string]interface{}{
 							"application/json": map[string]interface{}{
 								"schema": map[string]interface{}{
-									"type": "object",
+									"type":     "object",
 									"required": []string{"pinned"},
 									"properties": map[string]interface{}{
 										"pinned": map[string]interface{}{
@@ -3877,7 +3877,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 						"content": map[string]interface{}{
 							"application/json": map[string]interface{}{
 								"schema": map[string]interface{}{
-									"type": "object",
+									"type":        "object",
 									"description": "知识项数据",
 								},
 							},
@@ -3946,7 +3946,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 						"content": map[string]interface{}{
 							"application/json": map[string]interface{}{
 								"schema": map[string]interface{}{
-									"type": "object",
+									"type":        "object",
 									"description": "知识项数据",
 								},
 							},
@@ -4074,14 +4074,14 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 				"post": map[string]interface{}{
 					"tags":        []string{"知识库"},
 					"summary":     "搜索知识库",
-					"description": "在知识库中搜索相关内容。使用向量检索和混合搜索技术，能够根据查询内容的语义相似度和关键词匹配，自动找到最相关的知识片段。\n\n**搜索说明**：\n- 支持语义相似度搜索（向量检索）\n- 支持关键词匹配（BM25）\n- 支持混合搜索（结合向量和关键词）\n- 可以按风险类型过滤（如：SQL注入、XSS、文件上传等）\n- 建议先调用 `/api/knowledge/categories` 获取可用的风险类型列表\n\n**使用示例**：\n```json\n{\n  \"query\": \"SQL注入漏洞的检测方法\",\n  \"riskType\": \"SQL注入\",\n  \"topK\": 5,\n  \"threshold\": 0.7\n}\n```",
+					"description": "在知识库中搜索相关内容。使用向量检索和混合搜索技术，能够根据查询内容的语义相似度和关键词匹配，自动找到最相关的知识片段。\n**搜索说明**：\n- 支持语义相似度搜索（向量检索）\n- 支持关键词匹配（BM25）\n- 支持混合搜索（结合向量和关键词）\n- 可以按风险类型过滤（如：SQL注入、XSS、文件上传等）\n- 建议先调用 `/api/knowledge/categories` 获取可用的风险类型列表\n**使用示例**：\n```json\n{\n  \"query\": \"SQL注入漏洞的检测方法\",\n  \"riskType\": \"SQL注入\",\n  \"topK\": 5,\n  \"threshold\": 0.7\n}\n```",
 					"operationId": "searchKnowledge",
 					"requestBody": map[string]interface{}{
 						"required": true,
 						"content": map[string]interface{}{
 							"application/json": map[string]interface{}{
 								"schema": map[string]interface{}{
-									"type": "object",
+									"type":     "object",
 									"required": []string{"query"},
 									"properties": map[string]interface{}{
 										"query": map[string]interface{}{
@@ -4098,8 +4098,8 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 											"type":        "integer",
 											"description": "可选：返回Top-K结果数量，默认5",
 											"default":     5,
-											"minimum":    1,
-											"maximum":    50,
+											"minimum":     1,
+											"maximum":     50,
 											"example":     5,
 										},
 										"threshold": map[string]interface{}{
@@ -4280,7 +4280,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 				"post": map[string]interface{}{
 					"tags":        []string{"MCP"},
 					"summary":     "MCP端点",
-					"description": "MCP (Model Context Protocol) 端点，用于处理MCP协议请求。\n\n**协议说明**：\n本端点遵循 JSON-RPC 2.0 规范，支持以下方法：\n\n**1. initialize** - 初始化MCP连接\n```json\n{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"init-1\",\n  \"method\": \"initialize\",\n  \"params\": {\n    \"protocolVersion\": \"2024-11-05\",\n    \"capabilities\": {},\n    \"clientInfo\": {\n      \"name\": \"MyClient\",\n      \"version\": \"1.0.0\"\n    }\n  }\n}\n```\n\n**2. tools/list** - 列出所有可用工具\n```json\n{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"list-1\",\n  \"method\": \"tools/list\",\n  \"params\": {}\n}\n```\n\n**3. tools/call** - 调用工具\n```json\n{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"call-1\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"nmap\",\n    \"arguments\": {\n      \"target\": \"192.168.1.1\",\n      \"ports\": \"80,443\"\n    }\n  }\n}\n```\n\n**4. prompts/list** - 列出所有提示词模板\n```json\n{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"prompts-list-1\",\n  \"method\": \"prompts/list\",\n  \"params\": {}\n}\n```\n\n**5. prompts/get** - 获取提示词模板\n```json\n{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"prompt-get-1\",\n  \"method\": \"prompts/get\",\n  \"params\": {\n    \"name\": \"prompt-name\",\n    \"arguments\": {}\n  }\n}\n```\n\n**6. resources/list** - 列出所有资源\n```json\n{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"resources-list-1\",\n  \"method\": \"resources/list\",\n  \"params\": {}\n}\n```\n\n**7. resources/read** - 读取资源内容\n```json\n{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"resource-read-1\",\n  \"method\": \"resources/read\",\n  \"params\": {\n    \"uri\": \"resource://example\"\n  }\n}\n```\n\n**错误代码说明**：\n- `-32700`: Parse error - JSON解析错误\n- `-32600`: Invalid Request - 无效请求\n- `-32601`: Method not found - 方法不存在\n- `-32602`: Invalid params - 参数无效\n- `-32603`: Internal error - 内部错误",
+					"description": "MCP (Model Context Protocol) 端点，用于处理MCP协议请求。\n**协议说明**：\n本端点遵循 JSON-RPC 2.0 规范，支持以下方法：\n**1. initialize** - 初始化MCP连接\n```json\n{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"init-1\",\n  \"method\": \"initialize\",\n  \"params\": {\n    \"protocolVersion\": \"2024-11-05\",\n    \"capabilities\": {},\n    \"clientInfo\": {\n      \"name\": \"MyClient\",\n      \"version\": \"1.0.0\"\n    }\n  }\n}\n```\n**2. tools/list** - 列出所有可用工具\n```json\n{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"list-1\",\n  \"method\": \"tools/list\",\n  \"params\": {}\n}\n```\n**3. tools/call** - 调用工具\n```json\n{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"call-1\",\n  \"method\": \"tools/call\",\n  \"params\": {\n    \"name\": \"nmap\",\n    \"arguments\": {\n      \"target\": \"192.168.1.1\",\n      \"ports\": \"80,443\"\n    }\n  }\n}\n```\n**4. prompts/list** - 列出所有提示词模板\n```json\n{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"prompts-list-1\",\n  \"method\": \"prompts/list\",\n  \"params\": {}\n}\n```\n**5. prompts/get** - 获取提示词模板\n```json\n{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"prompt-get-1\",\n  \"method\": \"prompts/get\",\n  \"params\": {\n    \"name\": \"prompt-name\",\n    \"arguments\": {}\n  }\n}\n```\n**6. resources/list** - 列出所有资源\n```json\n{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"resources-list-1\",\n  \"method\": \"resources/list\",\n  \"params\": {}\n}\n```\n**7. resources/read** - 读取资源内容\n```json\n{\n  \"jsonrpc\": \"2.0\",\n  \"id\": \"resource-read-1\",\n  \"method\": \"resources/read\",\n  \"params\": {\n    \"uri\": \"resource://example\"\n  }\n}\n```\n**错误代码说明**：\n- `-32700`: Parse error - JSON解析错误\n- `-32600`: Invalid Request - 无效请求\n- `-32601`: Method not found - 方法不存在\n- `-32602`: Invalid params - 参数无效\n- `-32603`: Internal error - 内部错误",
 					"operationId": "mcpEndpoint",
 					"requestBody": map[string]interface{}{
 						"required": true,
@@ -4325,7 +4325,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 											"method":  "initialize",
 											"params": map[string]interface{}{
 												"protocolVersion": "2024-11-05",
-												"capabilities":     map[string]interface{}{},
+												"capabilities":    map[string]interface{}{},
 												"clientInfo": map[string]interface{}{
 													"name":    "MyClient",
 													"version": "1.0.0",
@@ -4388,7 +4388,7 @@ func (h *OpenAPIHandler) GetOpenAPISpec(c *gin.Context) {
 										"$ref": "#/components/schemas/MCPResponse",
 									},
 									"example": map[string]interface{}{
-										"id":      nil,
+										"id": nil,
 										"error": map[string]interface{}{
 											"code":    -32700,
 											"message": "Parse error",
