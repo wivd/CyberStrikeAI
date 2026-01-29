@@ -516,18 +516,34 @@
             min-width: 150px;
         }
         
-        /* 参数名、类型、必需、示例列不换行 */
+        /* 参数名、类型、必需列不换行 */
         .api-params-table th:nth-child(1),
         .api-params-table td:nth-child(1),
         .api-params-table th:nth-child(2),
         .api-params-table td:nth-child(2),
         .api-params-table th:nth-child(4),
-        .api-params-table td:nth-child(4),
-        .api-params-table th:nth-child(5),
-        .api-params-table td:nth-child(5) {
+        .api-params-table td:nth-child(4) {
             white-space: nowrap;
             overflow: hidden;
             text-overflow: ellipsis;
+        }
+        
+        /* 示例列允许换行，完整显示 */
+        .api-params-table th:nth-child(5),
+        .api-params-table td:nth-child(5) {
+            white-space: normal;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            overflow: visible;
+        }
+        
+        /* 确保示例列中的code标签也能完整显示 */
+        .api-params-table td:nth-child(5) code {
+            white-space: normal;
+            word-wrap: break-word;
+            overflow-wrap: break-word;
+            display: inline-block;
+            max-width: 100%;
         }
         
         /* 描述列允许换行，但保持水平方向 */
