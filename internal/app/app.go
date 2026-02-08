@@ -746,7 +746,11 @@ func setupRoutes(
 
 	// 前端页面
 	router.GET("/", func(c *gin.Context) {
-		c.HTML(http.StatusOK, "index.html", nil)
+		version := app.config.Version
+		if version == "" {
+			version = "v1.0.0"
+		}
+		c.HTML(http.StatusOK, "index.html", gin.H{"Version": version})
 	})
 }
 
