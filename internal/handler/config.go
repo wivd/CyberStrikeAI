@@ -174,18 +174,10 @@ func (h *ConfigHandler) GetConfig(c *gin.Context) {
 		configToolMap[tool.Name] = true
 		tools = append(tools, ToolConfigInfo{
 			Name:        tool.Name,
-			Description: tool.ShortDescription,
+			Description: h.pickToolDescription(tool.ShortDescription, tool.Description),
 			Enabled:     tool.Enabled,
 			IsExternal:  false,
 		})
-		// 如果没有简短描述，使用详细描述的前10000个字符
-		if tools[len(tools)-1].Description == "" {
-			desc := tool.Description
-			if len(desc) > 10000 {
-				desc = desc[:10000] + "..."
-			}
-			tools[len(tools)-1].Description = desc
-		}
 	}
 
 	// 从MCP服务器获取所有已注册的工具（包括直接注册的工具，如知识检索工具）
@@ -291,17 +283,9 @@ func (h *ConfigHandler) GetTools(c *gin.Context) {
 		configToolMap[tool.Name] = true
 		toolInfo := ToolConfigInfo{
 			Name:        tool.Name,
-			Description: tool.ShortDescription,
+			Description: h.pickToolDescription(tool.ShortDescription, tool.Description),
 			Enabled:     tool.Enabled,
 			IsExternal:  false,
-		}
-		// 如果没有简短描述，使用详细描述的前10000个字符
-		if toolInfo.Description == "" {
-			desc := tool.Description
-			if len(desc) > 10000 {
-				desc = desc[:10000] + "..."
-			}
-			toolInfo.Description = desc
 		}
 
 		// 根据角色配置标注工具状态
@@ -1193,7 +1177,7 @@ func (h *ConfigHandler) getExternalMCPTools(ctx context.Context) []ToolConfigInf
 		enabled := h.calculateExternalToolEnabled(mcpName, actualToolName, externalMCPConfigs)
 
 		// 处理描述信息
-		description := h.formatToolDescription(externalTool.ShortDescription, externalTool.Description)
+		description := h.pickToolDescription(externalTool.ShortDescription, externalTool.Description)
 
 		result = append(result, ToolConfigInfo{
 			Name:        actualToolName,
@@ -1249,10 +1233,13 @@ func (h *ConfigHandler) calculateExternalToolEnabled(mcpName, toolName string, c
 	return true
 }
 
-// formatToolDescription 格式化工具描述（限制长度）
-func (h *ConfigHandler) formatToolDescription(shortDesc, fullDesc string) string {
+// pickToolDescription 根据 security.tool_description_mode 选择 short 或 full 描述并限制长度
+func (h *ConfigHandler) pickToolDescription(shortDesc, fullDesc string) string {
+	useFull := strings.TrimSpace(strings.ToLower(h.config.Security.ToolDescriptionMode)) == "full"
 	description := shortDesc
-	if description == "" {
+	if useFull {
+		description = fullDesc
+	} else if description == "" {
 		description = fullDesc
 	}
 	if len(description) > 10000 {

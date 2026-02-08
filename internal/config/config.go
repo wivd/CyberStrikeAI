@@ -52,8 +52,9 @@ type OpenAIConfig struct {
 }
 
 type SecurityConfig struct {
-	Tools    []ToolConfig `yaml:"tools,omitempty"`     // 向后兼容：支持在主配置文件中定义工具
-	ToolsDir string       `yaml:"tools_dir,omitempty"` // 工具配置文件目录（新方式）
+	Tools               []ToolConfig `yaml:"tools,omitempty"`                 // 向后兼容：支持在主配置文件中定义工具
+	ToolsDir            string       `yaml:"tools_dir,omitempty"`             // 工具配置文件目录（新方式）
+	ToolDescriptionMode string       `yaml:"tool_description_mode,omitempty"` // 工具描述模式: "short" | "full"，默认 short
 }
 
 type DatabaseConfig struct {

@@ -224,13 +224,13 @@ func (e *Executor) RegisterTools(mcpServer *mcp.Server) {
 		toolName := toolConfig.Name
 		toolConfigCopy := toolConfig
 
-		// 使用简短描述（如果存在），否则使用详细描述的前10000个字符
+		// 根据配置决定暴露给 AI/API 的描述：short_description 或 description
+		useFullDescription := strings.TrimSpace(strings.ToLower(e.config.ToolDescriptionMode)) == "full"
 		shortDesc := toolConfigCopy.ShortDescription
 		if shortDesc == "" {
 			// 如果没有简短描述，从详细描述中提取第一行或前10000个字符
 			desc := toolConfigCopy.Description
 			if len(desc) > 10000 {
-				// 尝试找到第一个换行符
 				if idx := strings.Index(desc, "\n"); idx > 0 && idx < 10000 {
 					shortDesc = strings.TrimSpace(desc[:idx])
 				} else {
@@ -239,6 +239,9 @@ func (e *Executor) RegisterTools(mcpServer *mcp.Server) {
 			} else {
 				shortDesc = desc
 			}
+		}
+		if useFullDescription {
+			shortDesc = "" // 使用 description 时清空 ShortDescription，下游会回退到 Description
 		}
 
 		tool := mcp.Tool{
@@ -303,7 +306,23 @@ func (e *Executor) buildCommandArgs(toolName string, toolConfig *config.ToolConf
 			}
 		}
 
-		// 先处理标志参数（对于大多数命令，标志应该在位置参数之前）
+		// 对于需要子命令的工具（如 gobuster dir），position 0 必须紧跟在命令名后、所有 flag 之前
+		for _, param := range positionalParams {
+			if param.Name == "additional_args" || param.Name == "scan_type" || param.Name == "action" {
+				continue
+			}
+			if param.Position != nil && *param.Position == 0 {
+				value := e.getParamValue(args, param)
+				if value == nil && param.Default != nil {
+					value = param.Default
+				}
+				if value != nil {
+					cmdArgs = append(cmdArgs, e.formatParamValue(param, value))
+				}
+				break
+			}
+		}
+
 		// 处理标志参数
 		for _, param := range flagParams {
 			// 跳过特殊参数，它们会在后面单独处理
@@ -416,7 +435,11 @@ func (e *Executor) buildCommandArgs(toolName string, toolConfig *config.ToolConf
 		}
 
 		// 按位置顺序处理参数，确保即使某些位置没有参数或使用默认值，也能正确传递
+		// position 0 已在前面插入（子命令优先），此处从 1 开始
 		for i := 0; i <= maxPosition; i++ {
+			if i == 0 {
+				continue
+			}
 			for _, param := range positionalParams {
 				// 跳过特殊参数，它们会在后面单独处理
 				// action 参数仅用于工具内部逻辑，不传递给命令
