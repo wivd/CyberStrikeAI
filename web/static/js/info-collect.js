@@ -315,7 +315,7 @@ function renderFofaResults(payload) {
                         <path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                     </svg>
                 </button>
-                <button class="btn-icon" onclick="scanFofaRow('${encoded}'); event.stopPropagation();" title="发送到对话进行扫描">
+                <button class="btn-icon" onclick="scanFofaRow('${encoded}', event); event.stopPropagation();" title="发送到对话（可编辑；Ctrl/⌘+点击可直接发送）">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg">
                         <path d="M10.5 13.5l3-3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
                         <path d="M8 8H5a4 4 0 1 0 0 8h3" stroke="currentColor" stroke-width="2" stroke-linecap="round"/>
@@ -401,7 +401,7 @@ function showInlineToast(text) {
     setTimeout(() => toast.remove(), 1200);
 }
 
-function scanFofaRow(encodedRowJson) {
+function scanFofaRow(encodedRowJson, clickEvent) {
     let row = {};
     try {
         row = JSON.parse(decodeURIComponent(encodedRowJson));
@@ -416,39 +416,46 @@ function scanFofaRow(encodedRowJson) {
         return;
     }
 
-    // 切换到对话页并发送消息
+    // 切换到对话页并发送消息（每次点击都新建会话，避免发到历史会话）
     if (typeof switchPage === 'function') {
         switchPage('chat');
     } else {
         window.location.hash = 'chat';
     }
 
-    // 尽量切到“信息收集”角色（如果存在）
-    try {
-        if (typeof selectRole === 'function') {
-            selectRole('信息收集');
-        } else if (typeof handleRoleChange === 'function') {
-            handleRoleChange('信息收集');
-        }
-    } catch (e) {
-        // ignore
-    }
-
     const message = buildScanMessage(target, row);
+    const autoSend = !!(clickEvent && (clickEvent.ctrlKey || clickEvent.metaKey));
 
-    setTimeout(() => {
+    setTimeout(async () => {
+        // 新建会话：必须等待其完成，否则它会在后续把输入框清空
+        try {
+            if (typeof startNewConversation === 'function') {
+                const maybePromise = startNewConversation();
+                if (maybePromise && typeof maybePromise.then === 'function') {
+                    await maybePromise;
+                }
+            }
+        } catch (e) {
+            // ignore
+        }
+
         const input = document.getElementById('chat-input');
         if (input) {
             input.value = message;
             // 触发自动高度调整（chat.js 里如果监听 input）
             input.dispatchEvent(new Event('input', { bubbles: true }));
+            input.focus();
         }
-        if (typeof sendMessage === 'function') {
-            sendMessage();
+        if (autoSend) {
+            if (typeof sendMessage === 'function') {
+                sendMessage();
+            } else {
+                alert('未找到 sendMessage()，请刷新页面后重试');
+            }
         } else {
-            alert('未找到 sendMessage()，请刷新页面后重试');
+            showInlineToast('已填入对话输入框，可编辑后发送');
         }
-    }, 200);
+    }, 250);
 }
 
 function buildScanMessage(target, row) {
