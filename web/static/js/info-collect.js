@@ -652,6 +652,50 @@ function showInlineToast(text, options) {
     return { el: toast, remove };
 }
 
+function truncateForPreview(value, maxLen) {
+    const s = value == null ? '' : String(value);
+    if (maxLen <= 0 || s.length <= maxLen) return s;
+    return s.slice(0, maxLen) + '...（已截断）';
+}
+
+function formatFofaRowSummary(row, fields) {
+    const r = row && typeof row === 'object' ? row : {};
+    const order = [];
+    const seen = new Set();
+
+    const preferred = Array.isArray(fields) ? fields : [];
+    preferred.forEach(k => {
+        const key = String(k || '').trim();
+        if (!key || seen.has(key)) return;
+        seen.add(key);
+        order.push(key);
+    });
+
+    Object.keys(r).sort().forEach(k => {
+        if (seen.has(k)) return;
+        seen.add(k);
+        order.push(k);
+    });
+
+    if (order.length === 0) return '-';
+
+    const lines = order.map((k) => {
+        const v = r[k];
+        let text = '';
+        if (v === null) text = 'null';
+        else if (v === undefined) text = '';
+        else if (typeof v === 'string') text = v === '' ? '""' : v;
+        else if (typeof v === 'number' || typeof v === 'boolean') text = String(v);
+        else {
+            try { text = JSON.stringify(v); } catch (e) { text = String(v); }
+        }
+        text = truncateForPreview(text, 800);
+        return `- ${k}: ${text}`;
+    });
+
+    return lines.join('\n');
+}
+
 function scanFofaRow(encodedRowJson, clickEvent) {
     let row = {};
     try {
@@ -674,7 +718,7 @@ function scanFofaRow(encodedRowJson, clickEvent) {
         window.location.hash = 'chat';
     }
 
-    const message = buildScanMessage(target, row);
+    const message = buildScanMessage(target, row, { fields });
     const autoSend = !!(clickEvent && (clickEvent.ctrlKey || clickEvent.metaKey));
 
     setTimeout(async () => {
@@ -709,15 +753,12 @@ function scanFofaRow(encodedRowJson, clickEvent) {
     }, 250);
 }
 
-function buildScanMessage(target, row) {
-    const title = row && row.title != null ? String(row.title).trim() : '';
-    const server = row && row.server != null ? String(row.server).trim() : '';
-    const hintParts = [];
-    if (title) hintParts.push(`title="${title}"`);
-    if (server) hintParts.push(`server="${server}"`);
-    const hint = hintParts.length ? `（FOFA提示：${hintParts.join(', ')}）` : '';
+function buildScanMessage(target, row, options) {
+    const opts = options && typeof options === 'object' ? options : {};
+    const fields = Array.isArray(opts.fields) ? opts.fields : [];
 
-    return `对以下目标做信息收集与基础扫描：\n${target}\n\n要求：\n1) 识别服务/框架与关键指纹\n2) 枚举开放端口与常见管理入口\n3) 用 httpx/指纹/目录探测等方式快速确认可访问面\n4) 输出可复现的命令与结论\n\n${hint}`.trim();
+    const summary = formatFofaRowSummary(row || {}, fields);
+    return `对以下目标做信息收集与基础扫描：\n${target}\n\n要求：\n1) 识别服务/框架与关键指纹\n2) 枚举开放端口与常见管理入口\n3) 用 httpx/指纹/目录探测等方式快速确认可访问面\n4) 输出可复现的命令与结论\n\n已知信息（来自 FOFA 该行全部字段）：\n${summary}`.trim();
 }
 
 function bindFofaTableEvents() {
@@ -935,6 +976,7 @@ async function batchScanSelectedFofaRows() {
     const fields = p.fields || [];
     const tasks = [];
     const skipped = [];
+
     selected.forEach(idx => {
         const row = p.results[idx];
         const target = inferTargetFromRow(row || {}, fields);
@@ -942,7 +984,10 @@ async function batchScanSelectedFofaRows() {
             skipped.push(idx + 1);
             return;
         }
-        tasks.push(buildScanMessage(target, row || {}));
+        // 批量任务：与单条一致，只带“该行全部字段”的摘要（避免重复与超长）
+        tasks.push(buildScanMessage(target, row || {}, {
+            fields
+        }));
     });
 
     if (tasks.length === 0) {
