@@ -150,6 +150,7 @@ type GetConfigResponse struct {
 	Tools     []ToolConfigInfo       `json:"tools"`
 	Agent     config.AgentConfig     `json:"agent"`
 	Knowledge config.KnowledgeConfig `json:"knowledge"`
+	Robots    config.RobotsConfig     `json:"robots,omitempty"`
 }
 
 // ToolConfigInfo 工具配置信息
@@ -222,6 +223,7 @@ func (h *ConfigHandler) GetConfig(c *gin.Context) {
 		Tools:     tools,
 		Agent:     h.config.Agent,
 		Knowledge: h.config.Knowledge,
+		Robots:    h.config.Robots,
 	})
 }
 
@@ -479,6 +481,7 @@ type UpdateConfigRequest struct {
 	Tools     []ToolEnableStatus      `json:"tools,omitempty"`
 	Agent     *config.AgentConfig     `json:"agent,omitempty"`
 	Knowledge *config.KnowledgeConfig `json:"knowledge,omitempty"`
+	Robots    *config.RobotsConfig    `json:"robots,omitempty"`
 }
 
 // ToolEnableStatus 工具启用状态
@@ -552,6 +555,16 @@ func (h *ConfigHandler) UpdateConfig(c *gin.Context) {
 			zap.Int("retrieval_top_k", h.config.Knowledge.Retrieval.TopK),
 			zap.Float64("similarity_threshold", h.config.Knowledge.Retrieval.SimilarityThreshold),
 			zap.Float64("hybrid_weight", h.config.Knowledge.Retrieval.HybridWeight),
+		)
+	}
+
+	// 更新机器人配置
+	if req.Robots != nil {
+		h.config.Robots = *req.Robots
+		h.logger.Info("更新机器人配置",
+			zap.Bool("wecom_enabled", h.config.Robots.Wecom.Enabled),
+			zap.Bool("dingtalk_enabled", h.config.Robots.Dingtalk.Enabled),
+			zap.Bool("lark_enabled", h.config.Robots.Lark.Enabled),
 		)
 	}
 
@@ -856,6 +869,7 @@ func (h *ConfigHandler) saveConfig() error {
 	updateOpenAIConfig(root, h.config.OpenAI)
 	updateFOFAConfig(root, h.config.FOFA)
 	updateKnowledgeConfig(root, h.config.Knowledge)
+	updateRobotsConfig(root, h.config.Robots)
 	// 更新外部MCP配置（使用external_mcp.go中的函数，同一包中可直接调用）
 	// 读取原始配置以保持向后兼容
 	originalConfigs := make(map[string]map[string]bool)
@@ -1029,6 +1043,30 @@ func updateKnowledgeConfig(doc *yaml.Node, cfg config.KnowledgeConfig) {
 	setIntInMap(retrievalNode, "top_k", cfg.Retrieval.TopK)
 	setFloatInMap(retrievalNode, "similarity_threshold", cfg.Retrieval.SimilarityThreshold)
 	setFloatInMap(retrievalNode, "hybrid_weight", cfg.Retrieval.HybridWeight)
+}
+
+func updateRobotsConfig(doc *yaml.Node, cfg config.RobotsConfig) {
+	root := doc.Content[0]
+	robotsNode := ensureMap(root, "robots")
+
+	wecomNode := ensureMap(robotsNode, "wecom")
+	setBoolInMap(wecomNode, "enabled", cfg.Wecom.Enabled)
+	setStringInMap(wecomNode, "token", cfg.Wecom.Token)
+	setStringInMap(wecomNode, "encoding_aes_key", cfg.Wecom.EncodingAESKey)
+	setStringInMap(wecomNode, "corp_id", cfg.Wecom.CorpID)
+	setStringInMap(wecomNode, "secret", cfg.Wecom.Secret)
+	setIntInMap(wecomNode, "agent_id", int(cfg.Wecom.AgentID))
+
+	dingtalkNode := ensureMap(robotsNode, "dingtalk")
+	setBoolInMap(dingtalkNode, "enabled", cfg.Dingtalk.Enabled)
+	setStringInMap(dingtalkNode, "client_id", cfg.Dingtalk.ClientID)
+	setStringInMap(dingtalkNode, "client_secret", cfg.Dingtalk.ClientSecret)
+
+	larkNode := ensureMap(robotsNode, "lark")
+	setBoolInMap(larkNode, "enabled", cfg.Lark.Enabled)
+	setStringInMap(larkNode, "app_id", cfg.Lark.AppID)
+	setStringInMap(larkNode, "app_secret", cfg.Lark.AppSecret)
+	setStringInMap(larkNode, "verify_token", cfg.Lark.VerifyToken)
 }
 
 func ensureMap(parent *yaml.Node, path ...string) *yaml.Node {

@@ -25,9 +25,42 @@ type Config struct {
 	Auth        AuthConfig            `yaml:"auth"`
 	ExternalMCP ExternalMCPConfig     `yaml:"external_mcp,omitempty"`
 	Knowledge   KnowledgeConfig       `yaml:"knowledge,omitempty"`
+	Robots      RobotsConfig          `yaml:"robots,omitempty" json:"robots,omitempty"`         // 企业微信/钉钉/飞书等机器人配置
 	RolesDir    string                `yaml:"roles_dir,omitempty" json:"roles_dir,omitempty"`   // 角色配置文件目录（新方式）
 	Roles       map[string]RoleConfig `yaml:"roles,omitempty" json:"roles,omitempty"`           // 向后兼容：支持在主配置文件中定义角色
 	SkillsDir   string                `yaml:"skills_dir,omitempty" json:"skills_dir,omitempty"` // Skills配置文件目录
+}
+
+// RobotsConfig 机器人配置（企业微信、钉钉、飞书等）
+type RobotsConfig struct {
+	Wecom   RobotWecomConfig   `yaml:"wecom,omitempty" json:"wecom,omitempty"`     // 企业微信
+	Dingtalk RobotDingtalkConfig `yaml:"dingtalk,omitempty" json:"dingtalk,omitempty"` // 钉钉
+	Lark    RobotLarkConfig    `yaml:"lark,omitempty" json:"lark,omitempty"`     // 飞书
+}
+
+// RobotWecomConfig 企业微信机器人配置
+type RobotWecomConfig struct {
+	Enabled       bool   `yaml:"enabled" json:"enabled"`
+	Token         string `yaml:"token" json:"token"`                     // 回调 URL 校验 Token
+	EncodingAESKey string `yaml:"encoding_aes_key" json:"encoding_aes_key"` // EncodingAESKey
+	CorpID        string `yaml:"corp_id" json:"corp_id"`               // 企业 ID
+	Secret        string `yaml:"secret" json:"secret"`                  // 应用 Secret
+	AgentID       int64  `yaml:"agent_id" json:"agent_id"`              // 应用 AgentId
+}
+
+// RobotDingtalkConfig 钉钉机器人配置
+type RobotDingtalkConfig struct {
+	Enabled      bool   `yaml:"enabled" json:"enabled"`
+	ClientID     string `yaml:"client_id" json:"client_id"`         // 应用 Key (AppKey)
+	ClientSecret string `yaml:"client_secret" json:"client_secret"` // 应用 Secret
+}
+
+// RobotLarkConfig 飞书机器人配置
+type RobotLarkConfig struct {
+	Enabled   bool   `yaml:"enabled" json:"enabled"`
+	AppID     string `yaml:"app_id" json:"app_id"`         // 应用 App ID
+	AppSecret string `yaml:"app_secret" json:"app_secret"` // 应用 App Secret
+	VerifyToken string `yaml:"verify_token" json:"verify_token"` // 事件订阅 Verification Token（可选）
 }
 
 type ServerConfig struct {

@@ -259,6 +259,96 @@ func (h *AgentHandler) AgentLoop(c *gin.Context) {
 	})
 }
 
+// ProcessMessageForRobot 供机器人（企业微信/钉钉/飞书）调用：与 /api/agent-loop/stream 相同执行路径（含 progressCallback、过程详情），仅不发送 SSE，最后返回完整回复
+func (h *AgentHandler) ProcessMessageForRobot(ctx context.Context, conversationID, message, role string) (response string, convID string, err error) {
+	if conversationID == "" {
+		title := safeTruncateString(message, 50)
+		conv, createErr := h.db.CreateConversation(title)
+		if createErr != nil {
+			return "", "", fmt.Errorf("创建对话失败: %w", createErr)
+		}
+		conversationID = conv.ID
+	} else {
+		if _, getErr := h.db.GetConversation(conversationID); getErr != nil {
+			return "", "", fmt.Errorf("对话不存在")
+		}
+	}
+
+	agentHistoryMessages, err := h.loadHistoryFromReActData(conversationID)
+	if err != nil {
+		historyMessages, getErr := h.db.GetMessages(conversationID)
+		if getErr != nil {
+			agentHistoryMessages = []agent.ChatMessage{}
+		} else {
+			agentHistoryMessages = make([]agent.ChatMessage, 0, len(historyMessages))
+			for _, msg := range historyMessages {
+				agentHistoryMessages = append(agentHistoryMessages, agent.ChatMessage{Role: msg.Role, Content: msg.Content})
+			}
+		}
+	}
+
+	finalMessage := message
+	var roleTools, roleSkills []string
+	if role != "" && role != "默认" && h.config.Roles != nil {
+		if r, exists := h.config.Roles[role]; exists && r.Enabled {
+			if r.UserPrompt != "" {
+				finalMessage = r.UserPrompt + "\n\n" + message
+			}
+			roleTools = r.Tools
+			roleSkills = r.Skills
+		}
+	}
+
+	if _, err = h.db.AddMessage(conversationID, "user", message, nil); err != nil {
+		return "", "", fmt.Errorf("保存用户消息失败: %w", err)
+	}
+
+	// 与 agent-loop/stream 一致：先创建助手消息占位，用 progressCallback 写过程详情（不发送 SSE）
+	assistantMsg, err := h.db.AddMessage(conversationID, "assistant", "处理中...", nil)
+	if err != nil {
+		h.logger.Warn("机器人：创建助手消息占位失败", zap.Error(err))
+	}
+	var assistantMessageID string
+	if assistantMsg != nil {
+		assistantMessageID = assistantMsg.ID
+	}
+	progressCallback := h.createProgressCallback(conversationID, assistantMessageID, nil)
+
+	result, err := h.agent.AgentLoopWithProgress(ctx, finalMessage, agentHistoryMessages, conversationID, progressCallback, roleTools, roleSkills)
+	if err != nil {
+		errMsg := "执行失败: " + err.Error()
+		if assistantMessageID != "" {
+			_, _ = h.db.Exec("UPDATE messages SET content = ? WHERE id = ?", errMsg, assistantMessageID)
+			_ = h.db.AddProcessDetail(assistantMessageID, conversationID, "error", errMsg, nil)
+		}
+		return "", conversationID, err
+	}
+
+	// 更新助手消息内容与 MCP 执行 ID（与 stream 一致）
+	if assistantMessageID != "" {
+		mcpIDsJSON := ""
+		if len(result.MCPExecutionIDs) > 0 {
+			jsonData, _ := json.Marshal(result.MCPExecutionIDs)
+			mcpIDsJSON = string(jsonData)
+		}
+		_, err = h.db.Exec(
+			"UPDATE messages SET content = ?, mcp_execution_ids = ? WHERE id = ?",
+			result.Response, mcpIDsJSON, assistantMessageID,
+		)
+		if err != nil {
+			h.logger.Warn("机器人：更新助手消息失败", zap.Error(err))
+		}
+	} else {
+		if _, err = h.db.AddMessage(conversationID, "assistant", result.Response, result.MCPExecutionIDs); err != nil {
+			h.logger.Warn("机器人：保存助手消息失败", zap.Error(err))
+		}
+	}
+	if result.LastReActInput != "" || result.LastReActOutput != "" {
+		_ = h.db.SaveReActData(conversationID, result.LastReActInput, result.LastReActOutput)
+	}
+	return result.Response, conversationID, nil
+}
+
 // StreamEvent 流式事件
 type StreamEvent struct {
 	Type    string      `json:"type"`    // conversation, progress, tool_call, tool_result, response, error, cancelled, done

@@ -14,6 +14,7 @@ import (
 	"cyberstrike-ai/internal/database"
 	"cyberstrike-ai/internal/handler"
 	"cyberstrike-ai/internal/knowledge"
+	"cyberstrike-ai/internal/robot"
 	"cyberstrike-ai/internal/logger"
 	"cyberstrike-ai/internal/mcp"
 	"cyberstrike-ai/internal/mcp/builtin"
@@ -325,6 +326,14 @@ func New(cfg *config.Config, log *logger.Logger) (*App, error) {
 
 	// 创建OpenAPI处理器
 	conversationHandler := handler.NewConversationHandler(db, log.Logger)
+	robotHandler := handler.NewRobotHandler(cfg, db, agentHandler, log.Logger)
+	// 飞书/钉钉长连接（无需公网），启用时在后台启动
+	if cfg.Robots.Lark.Enabled && cfg.Robots.Lark.AppID != "" && cfg.Robots.Lark.AppSecret != "" {
+		go robot.StartLark(cfg.Robots.Lark, robotHandler, log.Logger)
+	}
+	if cfg.Robots.Dingtalk.Enabled && cfg.Robots.Dingtalk.ClientID != "" && cfg.Robots.Dingtalk.ClientSecret != "" {
+		go robot.StartDing(cfg.Robots.Dingtalk, robotHandler, log.Logger)
+	}
 	openAPIHandler := handler.NewOpenAPIHandler(db, log.Logger, resultStorage, conversationHandler, agentHandler)
 
 	// 创建 App 实例（部分字段稍后填充）
@@ -408,6 +417,7 @@ func New(cfg *config.Config, log *logger.Logger) (*App, error) {
 		agentHandler,
 		monitorHandler,
 		conversationHandler,
+		robotHandler,
 		groupHandler,
 		configHandler,
 		externalMCPHandler,
@@ -472,6 +482,7 @@ func setupRoutes(
 	agentHandler *handler.AgentHandler,
 	monitorHandler *handler.MonitorHandler,
 	conversationHandler *handler.ConversationHandler,
+	robotHandler *handler.RobotHandler,
 	groupHandler *handler.GroupHandler,
 	configHandler *handler.ConfigHandler,
 	externalMCPHandler *handler.ExternalMCPHandler,
@@ -497,9 +508,18 @@ func setupRoutes(
 		authRoutes.GET("/validate", security.AuthMiddleware(authManager), authHandler.Validate)
 	}
 
+	// 机器人回调（无需登录，供企业微信/钉钉/飞书服务器调用）
+	api.GET("/robot/wecom", robotHandler.HandleWecomGET)
+	api.POST("/robot/wecom", robotHandler.HandleWecomPOST)
+	api.POST("/robot/dingtalk", robotHandler.HandleDingtalkPOST)
+	api.POST("/robot/lark", robotHandler.HandleLarkPOST)
+
 	protected := api.Group("")
 	protected.Use(security.AuthMiddleware(authManager))
 	{
+		// 机器人测试（需登录）：POST /api/robot/test，body: {"platform":"dingtalk","user_id":"test","text":"帮助"}，用于验证机器人逻辑
+		protected.POST("/robot/test", robotHandler.HandleRobotTest)
+
 		// Agent Loop
 		protected.POST("/agent-loop", agentHandler.AgentLoop)
 		// Agent Loop 流式输出

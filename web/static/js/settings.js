@@ -170,6 +170,38 @@ async function loadConfig(loadTools = true) {
                 retrievalWeightInput.value = (hybridWeight !== undefined && hybridWeight !== null) ? hybridWeight : 0.7;
             }
         }
+
+        // 填充机器人配置
+        const robots = currentConfig.robots || {};
+        const wecom = robots.wecom || {};
+        const dingtalk = robots.dingtalk || {};
+        const lark = robots.lark || {};
+        const wecomEnabled = document.getElementById('robot-wecom-enabled');
+        if (wecomEnabled) wecomEnabled.checked = wecom.enabled === true;
+        const wecomToken = document.getElementById('robot-wecom-token');
+        if (wecomToken) wecomToken.value = wecom.token || '';
+        const wecomAes = document.getElementById('robot-wecom-encoding-aes-key');
+        if (wecomAes) wecomAes.value = wecom.encoding_aes_key || '';
+        const wecomCorp = document.getElementById('robot-wecom-corp-id');
+        if (wecomCorp) wecomCorp.value = wecom.corp_id || '';
+        const wecomSecret = document.getElementById('robot-wecom-secret');
+        if (wecomSecret) wecomSecret.value = wecom.secret || '';
+        const wecomAgentId = document.getElementById('robot-wecom-agent-id');
+        if (wecomAgentId) wecomAgentId.value = wecom.agent_id || '0';
+        const dingtalkEnabled = document.getElementById('robot-dingtalk-enabled');
+        if (dingtalkEnabled) dingtalkEnabled.checked = dingtalk.enabled === true;
+        const dingtalkClientId = document.getElementById('robot-dingtalk-client-id');
+        if (dingtalkClientId) dingtalkClientId.value = dingtalk.client_id || '';
+        const dingtalkClientSecret = document.getElementById('robot-dingtalk-client-secret');
+        if (dingtalkClientSecret) dingtalkClientSecret.value = dingtalk.client_secret || '';
+        const larkEnabled = document.getElementById('robot-lark-enabled');
+        if (larkEnabled) larkEnabled.checked = lark.enabled === true;
+        const larkAppId = document.getElementById('robot-lark-app-id');
+        if (larkAppId) larkAppId.value = lark.app_id || '';
+        const larkAppSecret = document.getElementById('robot-lark-app-secret');
+        if (larkAppSecret) larkAppSecret.value = lark.app_secret || '';
+        const larkVerify = document.getElementById('robot-lark-verify-token');
+        if (larkVerify) larkVerify.value = lark.verify_token || '';
         
         // 只有在需要时才加载工具列表（MCP管理页面需要，系统设置页面不需要）
         if (loadTools) {
@@ -696,6 +728,7 @@ async function applySettings() {
             }
         };
         
+        const wecomAgentIdVal = document.getElementById('robot-wecom-agent-id')?.value.trim();
         const config = {
             openai: {
                 api_key: apiKey,
@@ -711,6 +744,27 @@ async function applySettings() {
                 max_iterations: parseInt(document.getElementById('agent-max-iterations').value) || 30
             },
             knowledge: knowledgeConfig,
+            robots: {
+                wecom: {
+                    enabled: document.getElementById('robot-wecom-enabled')?.checked === true,
+                    token: document.getElementById('robot-wecom-token')?.value.trim() || '',
+                    encoding_aes_key: document.getElementById('robot-wecom-encoding-aes-key')?.value.trim() || '',
+                    corp_id: document.getElementById('robot-wecom-corp-id')?.value.trim() || '',
+                    secret: document.getElementById('robot-wecom-secret')?.value.trim() || '',
+                    agent_id: parseInt(wecomAgentIdVal, 10) || 0
+                },
+                dingtalk: {
+                    enabled: document.getElementById('robot-dingtalk-enabled')?.checked === true,
+                    client_id: document.getElementById('robot-dingtalk-client-id')?.value.trim() || '',
+                    client_secret: document.getElementById('robot-dingtalk-client-secret')?.value.trim() || ''
+                },
+                lark: {
+                    enabled: document.getElementById('robot-lark-enabled')?.checked === true,
+                    app_id: document.getElementById('robot-lark-app-id')?.value.trim() || '',
+                    app_secret: document.getElementById('robot-lark-app-secret')?.value.trim() || '',
+                    verify_token: document.getElementById('robot-lark-verify-token')?.value.trim() || ''
+                }
+            },
             tools: []
         };
         

@@ -1062,6 +1062,9 @@
                                 <div class="settings-nav-item active" data-section="basic" onclick="switchSettingsSection('basic')">
                                     <span>基本设置</span>
                                 </div>
+                                <div class="settings-nav-item" data-section="robots" onclick="switchSettingsSection('robots')">
+                                    <span>机器人设置</span>
+                                </div>
                                 <div class="settings-nav-item" data-section="security" onclick="switchSettingsSection('security')">
                                     <span>安全设置</span>
                                 </div>
@@ -1187,6 +1190,114 @@
                                             <small class="form-hint">向量检索的权重（0-1），1.0表示纯向量检索，0.0表示纯关键词检索</small>
                                         </div>
                                     </div>
+                                </div>
+
+                                <div class="settings-actions">
+                                    <button class="btn-primary" onclick="applySettings()">应用配置</button>
+                                </div>
+                            </div>
+
+                            <!-- 机器人设置 -->
+                            <div id="settings-section-robots" class="settings-section-content">
+                                <div class="settings-section-header">
+                                    <h3>机器人设置</h3>
+                                    <p class="settings-description">配置企业微信、钉钉、飞书等机器人，在手机端直接与 CyberStrikeAI 对话，无需在服务器上打开网页。</p>
+                                </div>
+
+                                <!-- 企业微信 -->
+                                <div class="settings-subsection">
+                                    <h4>企业微信</h4>
+                                    <div class="settings-form">
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="robot-wecom-enabled" class="modern-checkbox" />
+                                                <span class="checkbox-custom"></span>
+                                                <span class="checkbox-text">启用企业微信机器人</span>
+                                            </label>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="robot-wecom-token">Token</label>
+                                            <input type="text" id="robot-wecom-token" placeholder="Token" autocomplete="off" />
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="robot-wecom-encoding-aes-key">EncodingAESKey</label>
+                                            <input type="text" id="robot-wecom-encoding-aes-key" placeholder="EncodingAESKey（明文模式可留空）" autocomplete="off" />
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="robot-wecom-corp-id">CorpID</label>
+                                            <input type="text" id="robot-wecom-corp-id" placeholder="企业 ID" autocomplete="off" />
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="robot-wecom-secret">Secret</label>
+                                            <input type="password" id="robot-wecom-secret" placeholder="应用 Secret" autocomplete="off" />
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="robot-wecom-agent-id">AgentID</label>
+                                            <input type="number" id="robot-wecom-agent-id" placeholder="应用 AgentId" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 钉钉 -->
+                                <div class="settings-subsection">
+                                    <h4>钉钉</h4>
+                                    <div class="settings-form">
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="robot-dingtalk-enabled" class="modern-checkbox" />
+                                                <span class="checkbox-custom"></span>
+                                                <span class="checkbox-text">启用钉钉机器人</span>
+                                            </label>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="robot-dingtalk-client-id">Client ID (AppKey)</label>
+                                            <input type="text" id="robot-dingtalk-client-id" placeholder="钉钉应用 AppKey" autocomplete="off" />
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="robot-dingtalk-client-secret">Client Secret</label>
+                                            <input type="password" id="robot-dingtalk-client-secret" placeholder="钉钉应用 Secret" autocomplete="off" />
+                                            <small class="form-hint">需开启机器人能力并配置流式接入</small>
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <!-- 飞书 -->
+                                <div class="settings-subsection">
+                                    <h4>飞书 (Lark)</h4>
+                                    <div class="settings-form">
+                                        <div class="form-group">
+                                            <label class="checkbox-label">
+                                                <input type="checkbox" id="robot-lark-enabled" class="modern-checkbox" />
+                                                <span class="checkbox-custom"></span>
+                                                <span class="checkbox-text">启用飞书机器人</span>
+                                            </label>
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="robot-lark-app-id">App ID</label>
+                                            <input type="text" id="robot-lark-app-id" placeholder="飞书应用 App ID" autocomplete="off" />
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="robot-lark-app-secret">App Secret</label>
+                                            <input type="password" id="robot-lark-app-secret" placeholder="飞书应用 App Secret" autocomplete="off" />
+                                        </div>
+                                        <div class="form-group">
+                                            <label for="robot-lark-verify-token">Verify Token（可选）</label>
+                                            <input type="text" id="robot-lark-verify-token" placeholder="事件订阅 Verification Token" autocomplete="off" />
+                                        </div>
+                                    </div>
+                                </div>
+
+                                <div class="settings-subsection">
+                                    <h4>机器人命令说明</h4>
+                                    <p class="settings-description">在对话中可发送以下命令：</p>
+                                    <ul style="color: var(--text-muted); font-size: 13px; line-height: 1.8; margin: 8px 0 0 16px;">
+                                        <li><strong>帮助</strong> — 显示命令帮助</li>
+                                        <li><strong>列表</strong> 或 <strong>对话列表</strong> — 列出所有对话标题与 ID</li>
+                                        <li><strong>切换 &lt;对话ID&gt;</strong> 或 <strong>继续 &lt;对话ID&gt;</strong> — 指定对话 ID 继续对话</li>
+                                        <li><strong>新对话</strong> — 开启新对话</li>
+                                        <li><strong>清空</strong> — 清空当前对话上下文（不删除历史）</li>
+                                        <li><strong>当前</strong> — 显示当前对话 ID 与标题</li>
+                                    </ul>
                                 </div>
 
                                 <div class="settings-actions">
