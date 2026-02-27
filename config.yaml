@@ -118,6 +118,29 @@ knowledge:
     hybrid_weight: 0.7              # 混合检索权重（0-1），向量检索的权重，1.0表示纯向量检索，0.0表示纯关键词检索
 
 # ============================================
+# 机器人配置（企业微信、钉钉、飞书）
+# ============================================
+# 用于在手机端通过企业微信/钉钉/飞书与 CyberStrikeAI 对话，无需部署在服务器上也可使用
+# 在系统设置 -> 机器人设置 中可配置
+robots:
+  wecom: # 企业微信
+    enabled: false
+    token: ""
+    encoding_aes_key: ""
+    corp_id: ""
+    secret: ""
+    agent_id: 0
+  dingtalk: # 钉钉
+    enabled: false
+    client_id: 
+    client_secret: 
+  lark: # 飞书
+    enabled: false
+    app_id: ""
+    app_secret: ""
+    verify_token: ""
+
+# ============================================
 # Skills 相关配置
 # ============================================
 
